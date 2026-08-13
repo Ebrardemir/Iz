@@ -1,0 +1,28 @@
+# Code generation yapılandırması (build_runner).
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Tarihleri TEXT (ISO-8601) olarak sakla. Unix timestamp'e göre
+          # avantajı: zaman dilimi bilgisi korunur ve V1.5'te sunucuyla
+          # veri alışverişinde dönüşüm gerekmez.
+          store_date_time_values_as_text: true
+
+          # Üretilen companion/insert sınıflarında isimli parametre kullan.
+          named_parameters: true
+
+          # NOT: Burada `generate_connect_constructor: true` vardı.
+          # Kaldırıldı — drift 2.5'ten beri gereksiz (build_runner her
+          # derlemede bunu uyarı olarak söylüyordu) ve ürettiği
+          # `.connect()` yapıcısını hiçbir yerden çağırmıyorduk.
+          # Testler bellek içi veritabanını `AppDatabase.forTesting(...)`
+          # ile kuruyor (bkz. test/helpers/test_database.dart).
+
+          sql:
+            dialect: sqlite
+            options:
+              # FTS5 = tam metin arama modülü. FR-090/FR-092 (offline arama)
+              # bunun üzerine kuruluyor.
+              modules:
+                - fts5

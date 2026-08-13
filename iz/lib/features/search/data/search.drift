@@ -1,0 +1,57 @@
+-- FR-090/FR-092: "Kullanıcı başlık ve not metninde arama yapabilmelidir."
+--                "Arama offline çalışabilmelidir; local indeks kullanılmalıdır."
+--
+-- NEDEN FTS5, `LIKE '%...%'` DEĞİL?
+-- LIKE sorgusu indeks kullanamaz; her satırı tarar. 10.000 anıda (NFR test
+-- hedefi) bu NFR-002'nin 500ms hedefini kaçırır. FTS5 ters indeks kurar.
+--
+-- `remove_diacritics 2`: Türkçe için kritik. "sarı" ararken "sari",
+-- "İzmir" ararken "izmir" de eşleşir.
+
+import 'package:iz/features/memories/data/tables/memory_tables.dart';
+
+CREATE VIRTUAL TABLE memory_search USING fts5 (
+  memory_id UNINDEXED,
+  title,
+  note,
+  tokenize = 'unicode61 remove_diacritics 2'
+);
+
+-- İndeksi anılar tablosuyla otomatik senkron tutan trigger'lar.
+-- Repository'de elle güncellemek yerine trigger kullanıyoruz: bir yerde
+-- güncellemeyi unutmak imkânsız hâle gelsin.
+
+CREATE TRIGGER memory_search_after_insert AFTER INSERT ON memories BEGIN
+  INSERT INTO memory_search (memory_id, title, note)
+  VALUES (new.id, COALESCE(new.title, ''), COALESCE(new.note, ''));
+END;
+
+-- Güncellemede: önce eski satırı at, sonra (silinmemişse) yenisini ekle.
+-- Soft-delete edilen anı arama sonuçlarında çıkmamalı.
+CREATE TRIGGER memory_search_after_update AFTER UPDATE ON memories BEGIN
+  DELETE FROM memory_search WHERE memory_id = old.id;
+  INSERT INTO memory_search (memory_id, title, note)
+  SELECT new.id, COALESCE(new.title, ''), COALESCE(new.note, '')
+  WHERE new.deleted_at IS NULL;
+END;
+
+CREATE TRIGGER memory_search_after_delete AFTER DELETE ON memories BEGIN
+  DELETE FROM memory_search WHERE memory_id = old.id;
+END;
+
+-- Adlandırılmış sorgular: drift bunlardan tip güvenli Dart metotları üretir.
+
+-- Eşleşen anı id'lerini alaka sırasına göre döndürür.
+searchMemoryIds(:query AS TEXT):
+  SELECT memory_id FROM memory_search
+  WHERE memory_search MATCH :query
+  ORDER BY rank;
+
+-- İndeksi sıfırdan kurar (migration sonrası veya onarım için).
+rebuildMemorySearchIndex:
+  INSERT INTO memory_search (memory_id, title, note)
+  SELECT id, COALESCE(title, ''), COALESCE(note, '')
+  FROM memories WHERE deleted_at IS NULL;
+
+clearMemorySearchIndex:
+  DELETE FROM memory_search;

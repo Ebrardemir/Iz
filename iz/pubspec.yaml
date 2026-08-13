@@ -1,0 +1,103 @@
+name: iz
+description: "İZ — Hayatında iz bırakanları seç, biriktir ve yaşat."
+publish_to: 'none'
+
+# version: <marketing-version>+<build-number>
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # --- State management & DI -------------------------------------------------
+  # Riverpod hem ViewModel'lerin (Notifier) barındığı yer, hem de DI konteyneri.
+  # Ayrı bir get_it/injectable'a ihtiyaç duymuyoruz.
+  # NOT: riverpod_generator/riverpod_lint bilerek eklenmedi — güncel sürümleri
+  # drift_dev ile analyzer çakışması yaşıyor. Provider'ları elle yazıyoruz;
+  # zaten daha okunabilir ve "ne olduğunu" görerek öğrenmeyi kolaylaştırıyor.
+  flutter_riverpod: ^3.3.2
+
+  # --- Navigation ------------------------------------------------------------
+  # Deklaratif routing + deep link. StatefulShellRoute ile sekme state'i korunur.
+  go_router: ^17.3.0
+
+  # --- Local-first veri katmanı ---------------------------------------------
+  # Drift = type-safe SQLite. N-N ilişkiler, FTS5 arama, versiyonlu migration.
+  drift: ^2.34.0
+  drift_flutter: ^0.3.1
+
+  # --- Modeller --------------------------------------------------------------
+  # freezed KULLANMIYORUZ: Drift data class + copyWith'i zaten üretiyor,
+  # domain tarafında Dart 3'ün sealed class + pattern matching'i yeterli.
+  json_annotation: ^4.12.0
+
+  # --- Platform & yardımcılar -----------------------------------------------
+  # Galeriden fotoğraf seçimi. SİSTEM SEÇİCİSİNİ kullanıyor (Android Photo
+  # Picker / iOS PHPicker), yani TÜM GALERİYE ERİŞİM İZNİ İSTEMİYOR —
+  # kullanıcı ne seçerse yalnızca onu alıyoruz. NFR-051 ve ürünün
+  # "tüm galeriyi yedeklemeyen seçilmiş anı" duruşuyla birebir örtüşüyor.
+  # Kendi galeri arayüzünü çizen paketler (photo_manager gibi) tam erişim
+  # izni isterdi; bilinçli olarak onları seçmedik.
+  image_picker: ^1.2.0
+  shared_preferences: ^2.5.5      # basit tercihler (onboarding görüldü mü, tema)
+  flutter_secure_storage: ^10.3.1 # NFR-010/011: token, anahtar → Keychain/Keystore
+  uuid: ^4.6.0                    # cihazlar arası benzersiz id (sync'e hazır)
+  intl: ^0.20.2                   # tarih/sayı biçimleme
+  collection: ^1.19.1
+  logging: ^1.3.0
+  equatable: ^2.1.0
+  cupertino_icons: ^1.0.8
+  lucide_icons_flutter: ^3.1.15
+  font_awesome_flutter: ^11.0.0
+  flutter_svg: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # --- Code generation -------------------------------------------------------
+  build_runner: ^2.9.0
+  drift_dev: ^2.34.0
+  json_serializable: ^6.11.1
+
+  # --- Test ------------------------------------------------------------------
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+
+  # Uygulama içi çeviriler l10n.yaml + lib/core/l10n/arb üzerinden üretilir.
+  generate: true
+
+  # Kaynak/lisans bilgisi docs/assets/images.md içinde. BİLEREK assets/
+  # dışında: burada listelenen klasörlerin TAMAMI uygulamaya paketlenir,
+  # okunmayacak bir belge bile gereksiz yere APK'ya girerdi.
+  assets:
+    - assets/images/auth/
+    - assets/images/home/
+
+  # Tasarımın yazı tipleri. Google Fonts'tan İNDİRİLMİYOR, gömülü:
+  # uygulama çevrimdışı da doğru fontla açılmalı (bkz. app_typography.dart).
+  # Lisanslar assets/fonts/OFL-*.txt içinde.
+  fonts:
+    # Gövde metni, etiket, buton.
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+
+    # Display ve başlıklar. Tek dosya = değişken (variable) font;
+    # ağırlık `wght` ekseniyle seçilir.
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond-Variable.ttf

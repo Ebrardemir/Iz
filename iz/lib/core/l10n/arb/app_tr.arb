@@ -1,0 +1,795 @@
+{
+  "@@locale": "tr",
+  "appTitle": "İZ",
+  "@appTitle": {
+    "description": "Uygulama adı"
+  },
+  "appTagline": "Hayatında iz bırakanları seç, biriktir ve yaşat",
+  "commonCancel": "Vazgeç",
+  "commonSave": "Kaydet",
+  "commonDelete": "Sil",
+  "commonEdit": "Düzenle",
+  "commonRetry": "Tekrar dene",
+  "commonClose": "Kapat",
+  "commonDone": "Tamam",
+  "commonShare": "Paylaş",
+  "commonSearch": "Ara",
+  "commonSeeAll": "Tümünü Gör",
+  "commonAdd": "Ekle",
+  "commonNext": "Devam",
+  "commonSkip": "Atla",
+  "commonLoading": "Yükleniyor",
+  "@commonLoading": {
+    "description": "NFR-032: yükleme göstergesinin ekran okuyucu etiketi"
+  },
+  "authWelcomeBack": "Tekrar hoş geldin",
+  "@authWelcomeBack": {
+    "description": "Giriş ekranı ana başlığı"
+  },
+  "authWelcomeSubtitle": "Değerli anılarına kaldığın yerden devam et.",
+  "authEmail": "E-posta",
+  "authPassword": "Şifre",
+  "authForgotPassword": "Şifremi unuttum",
+  "authSignIn": "Giriş Yap",
+  "authCreateAccount": "Hesap Oluştur",
+  "authOr": "veya",
+  "authSignInWithApple": "Apple ile Giriş Yap",
+  "authSignInWithGoogle": "Google ile Giriş Yap",
+  "authPrivacyNote": "Verilerin güvende. Gizliliğine saygı duyuyoruz.",
+  "@authPrivacyNote": {
+    "description": "R-002 gizlilik endişesinin azaltımı — giriş ekranı alt notu"
+  },
+  "authShowPassword": "Şifreyi göster",
+  "authHidePassword": "Şifreyi gizle",
+  "authHeroSemantics": "Anılardan oluşan bir fotoğraf kolajı",
+  "authResetLinkSent": "Şifre sıfırlama bağlantısı gönderildi.",
+  "authResetNeedsEmail": "Önce e-posta adresini gir.",
+  "authFullName": "Ad Soyad",
+  "authPasswordAgain": "Şifreyi tekrar gir",
+  "authSignUp": "Kayıt Ol",
+  "authContinueWithApple": "Apple ile Devam Et",
+  "authContinueWithGoogle": "Google ile Devam Et",
+  "authAlreadyHaveAccount": "Zaten hesabın var mı?",
+  "@authHeroSemantics": {
+    "description": "NFR-032 — dekoratif görselin ekran okuyucu açıklaması"
+  },
+  "navHome": "Ana Sayfa",
+  "navMyLife": "Hayatım",
+  "navAdd": "Ekle",
+  "@navAdd": {
+    "description": "Alt çubuğun ortasındaki yükseltilmiş eylem — yeni anı"
+  },
+  "navStore": "Mağaza",
+  "navProfile": "Profilim",
+  "myLifePreviousMonth": "Önceki ay",
+  "myLifeNextMonth": "Sonraki ay",
+  "myLifeTabCalendar": "TAKVİM",
+  "myLifeTabCollections": "KOLEKSİYONLAR",
+  "myLifeTabSeries": "SERİLERİM",
+  "@myLifeTabCalendar": {
+    "description": "Hayatim ekraninin sekmeleri. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir, Turkce i harfini I yapar."
+  },
+  "myLifeTitle": "HAYATIM",
+  "myLifeDayEmptyTitle": "Bu güne henüz iz düşmedi",
+  "@myLifeDayEmptyTitle": {
+    "description": "Takvimde anısı olmayan bir gün seçildiğinde. NFR-035: boş durum kullanıcıya ne yapacağını anlatmalı"
+  },
+  "myLifeDayEmptyAction": "Bu güne bir iz bırak",
+  "@myLifeDayEmptyAction": {
+    "description": "Boş günün eylemi — yeni anı ekranını açar"
+  },
+  "collectionsEmptyTitle": "Henüz bir koleksiyon yok",
+  "@collectionsEmptyTitle": {
+    "description": "KOLEKSİYONLAR sekmesi boşken. NFR-035"
+  },
+  "collectionsEmptyMessage": "Bir seyahati, bir dönemi ya da bir kişiyi anlatan anıları tek bir koleksiyonda topla.",
+  "collectionExpand": "Koleksiyonu aç",
+  "collectionNewTitle": "Yeni Koleksiyon",
+  "@collectionNewTitle": {
+    "description": "Koleksiyon oluşturma ekranının başlığı."
+  },
+  "collectionFieldName": "Koleksiyon Adı",
+  "collectionFieldNameHint": "Koleksiyon adı gir",
+  "collectionFieldDescription": "Açıklama",
+  "collectionFieldDescriptionHint": "Koleksiyonunu kısaca açıkla",
+  "collectionFieldDateRange": "Tarih Aralığı",
+  "collectionFieldDateRangeHint": "Başlangıç – Bitiş",
+  "collectionFieldPeople": "İlgili Kişiler",
+  "collectionFieldPeopleHint": "Kişi ekle",
+  "collectionFieldCategory": "Kategori",
+  "collectionFieldCategoryHint": "Kategori seç",
+  "collectionFieldMemories": "İlk Anıları Ekle",
+  "collectionFieldMemoriesHint": "Anı seçerek başla",
+  "collectionSelectedMemories": "{count} anı seçildi",
+  "@collectionSelectedMemories": {
+    "description": "Koleksiyon formunda seçilen anı sayısı.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionCreateAction": "Koleksiyonu Oluştur",
+  "collectionNameRequired": "Bir isim yazmadan oluşturamayız.",
+  "@collectionNameRequired": {
+    "description": "FR-074 — koleksiyon adı zorunlu."
+  },
+  "collectionCreated": "Koleksiyonun oluştu, Hayatım’da seni bekliyor.",
+  "@collectionExpand": {
+    "description": "Kapalı koleksiyon kartının ekran okuyucu etiketi"
+  },
+  "collectionCollapse": "Koleksiyonu kapat",
+  "collectionMemoryCount": "{count, plural, =0{Anı yok} =1{1 anı} other{{count} anı}}",
+  "@collectionMemoryCount": {
+    "description": "Koleksiyon başlığının altındaki sayı. `memoryCount` ile aynı metin ama AYRI anahtar: koleksiyon satırında ileride 'anı' yerine 'öğe' demek gerekebilir ve o gün ötekini bozmadan değiştirilebilsin.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addMenuTitle": "Ne eklemek istersin?",
+  "@addMenuTitle": {
+    "description": "Alt çubuktaki Ekle düğmesinin açtığı halka menünün ekran okuyucu başlığı. Ekranda YAZILI DEĞİL — tasarımda başlık yok, seçenekler kendini anlatıyor."
+  },
+  "addMenuMemory": "Anı",
+  "addMenuSeries": "Seri",
+  "@addMenuSeries": {
+    "description": "Tekrarlanan olay (domain'de Ritual). ARAYÜZDE HER YERDE 'seri' DENİR — SERİLERİM sekmesiyle aynı kelime. Entity adı ile arayüz kelimesinin ayrı olması bilinçli: kod 'ritual', kullanıcı 'seri' görüyor."
+  },
+  "addMenuJournal": "Günlük Kaydı",
+  "addMenuCollection": "Koleksiyon",
+  "addMenuPerson": "Kişi",
+  "seriesEmptyTitle": "Henüz bir seri yok",
+  "@seriesEmptyTitle": {
+    "description": "SERİLERİM sekmesi boşken. NFR-035"
+  },
+  "seriesEmptyMessage": "Her yıl tekrarlanan şeyleri bir seriye bağla; yılları yan yana görürsün.",
+  "ritualEveryYearOn": "{month, select, 1{Her yıl {day} Ocak'ta} 2{Her yıl {day} Şubat'ta} 3{Her yıl {day} Mart'ta} 4{Her yıl {day} Nisan'da} 5{Her yıl {day} Mayıs'ta} 6{Her yıl {day} Haziran'da} 7{Her yıl {day} Temmuz'da} 8{Her yıl {day} Ağustos'ta} 9{Her yıl {day} Eylül'de} 10{Her yıl {day} Ekim'de} 11{Her yıl {day} Kasım'da} 12{Her yıl {day} Aralık'ta} other{Her yıl}}",
+  "@ritualEveryYearOn": {
+    "description": "NEDEN 12 DAL VAR? Türkçede bulunma hâli eki aya göre değişiyor: Mart'TA, Nisan'DA, Eylül'DE. Ünlü ve ünsüz uyumuna bağlı olduğu için tek bir kalıpla ('Her yıl {day} {ay}'ta') üretilemez — bir DİL kuralı, bu yüzden yeri çeviri dosyası. SADELEŞTİRME: bir dilin böyle bir kuralı yoksa yalnızca `other` dalını yazmak yeterli.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualEveryYearInSeason": "{season, select, spring{Her yıl ilkbaharda} summer{Her yıl yaz aylarında} autumn{Her yıl sonbaharda} winter{Her yıl kış aylarında} other{Her yıl}}",
+  "@ritualEveryYearInSeason": {
+    "description": "Tarihi kayan ritüeller (yaz tatili, kamp). Mevsim, ritüelin anchorMonth'undan türetiliyor.",
+    "placeholders": {
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "ritualCustomSchedule": "Belirli bir tarihi yok",
+  "ritualEveryMonth": "Her ay",
+  "ritualEveryWeek": "Her hafta",
+  "ritualNewTitle": "Yeni Seri",
+  "@ritualNewTitle": {
+    "description": "Seri oluşturma ekranının başlığı."
+  },
+  "coverAdd": "Kapak Görseli Ekle",
+  "coverChange": "Kapak Görselini Değiştir",
+  "coverIllustrationSemantics": "Dağlar, güneş ve bir zeytin dalı çizimi",
+  "@coverIllustrationSemantics": {
+    "description": "NFR-032 — kapak alanındaki çizimin ekran okuyucu açıklaması."
+  },
+  "ritualFieldName": "Seri Adı",
+  "ritualFieldNameHint": "Serine bir isim ver",
+  "ritualFieldDescription": "Açıklama",
+  "ritualFieldDescriptionHint": "Bu seriyle ilgili kısa bir açıklama yaz",
+  "ritualFieldRecurrence": "Tekrarlama",
+  "ritualFieldPeople": "İlgili Kişiler",
+  "ritualFieldPeopleHint": "Kişi ekle",
+  "ritualFieldCategory": "Kategori",
+  "ritualFieldCategoryHint": "Kategori seç",
+  "ritualFieldMemories": "Bu Yıla Anı Ekle",
+  "ritualFieldMemoriesHint": "Seriye anı bağla",
+  "ritualSelectedMemories": "{count} anı seçildi",
+  "@ritualSelectedMemories": {
+    "description": "Seri formunda seçilen anı sayısı.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualDateRange": "Tarih aralığı: {range}",
+  "@ritualDateRange": {
+    "description": "Seçilen anılardan TÜRETİLEN tarih aralığı; kullanıcı tarih girmiyor.",
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "ritualCreateAction": "Seriyi Oluştur",
+  "ritualNameRequired": "Bir isim yazmadan oluşturamayız.",
+  "@ritualNameRequired": {
+    "description": "FR-075 — seri adı zorunlu."
+  },
+  "ritualCreated": "Serin oluştu, Serilerim’de seni bekliyor.",
+  "memoryPickerTitle": "Anı Seç",
+  "memoryPickerEmpty": "Bağlanabilecek anı kalmamış. Bir anı yalnızca tek bir seriye bağlanabilir.",
+  "@memoryPickerEmpty": {
+    "description": "BR — bir anı tek seriye bağlanır; liste yalnızca bağsız anıları gösterir."
+  },
+  "memoryPickerDone": "Bitti",
+  "ritualStatYears": "{count} yıl",
+  "@ritualStatYears": {
+    "description": "Seri detayındaki ilk kutu.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatYearsLabel": "Birlikte",
+  "ritualStatMemories": "{count} anı",
+  "@ritualStatMemories": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatMemoriesLabel": "Toplam",
+  "ritualStatCities": "{count} şehir",
+  "@ritualStatCities": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatCitiesLabel": "Keşfedildi",
+  "ritualDetailMemories": "Bu Serideki Anılar",
+  "ritualDetailShowAll": "Tümünü Gör",
+  "ritualDetailShowLess": "Daha Az Göster",
+  "ritualDetailNoMemories": "Bu seriye henüz anı bağlamadın. Bağladığın her anı burada yıl yıl birikecek.",
+  "ritualDetailActions": "Seri işlemleri",
+  "@ritualDetailActions": {
+    "description": "AppBar'daki üç noktanın ekran okuyucu etiketi."
+  },
+  "ritualEditAction": "Seriyi Düzenle",
+  "ritualDeleteAction": "Seriyi Sil",
+  "ritualDeleteTitle": "Seri silinsin mi?",
+  "ritualDeleteMessage": "Bu seri silinecek. İçindeki anılar silinmez, yalnızca serideki bağlantıları kopar.",
+  "@ritualDeleteMessage": {
+    "description": "Kişi silmedeki söz veriyle aynı: bir kabı silmek içindekini silmiyor."
+  },
+  "ritualRecurrenceSectionSemantics": "Tekrarlama seçenekleri",
+  "@ritualCustomSchedule": {
+    "description": "Kullanıcının elle bağladığı ritüeller (RecurrenceType.custom)"
+  },
+  "ritualYearCount": "{count, plural, =0{Yıl yok} =1{1 yıl} other{{count} yıl}}",
+  "@ritualYearCount": {
+    "description": "Seri kartının ekran okuyucu özeti — kaç yılın anısı var",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryMoreActions": "Anı işlemleri",
+  "@memoryMoreActions": {
+    "description": "Anı satırındaki üç nokta düğmesinin ipucu"
+  },
+  "memoryOpenDetail": "Anıya git",
+  "commonFilter": "Filtrele",
+  "@myLifeTitle": {
+    "description": "Hayatim ekraninin basligi. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir."
+  },
+  "homeHeroTodayEyebrow": "BUGÜNÜN İZİ",
+  "@homeHeroTodayEyebrow": {
+    "description": "Fotograf uzerindeki kucuk ust baslik. BUYUK HARFLE YAZILI: Dart'in toUpperCase() metodu dile duyarsizdir ve Turkce 'i' harfini 'I' yapar ('BUGUNUN IZI'). Dogru buyuk harf cevirmenin sorumlulugunda."
+  },
+  "homeHeroViewMemory": "Anıyı Gör",
+  "homeHeroEmptyTitle": "İlk İzini Bırak",
+  "homeHeroEmptySubtitle": "Hatırlamak isteyeceğin bir anı seç ve sakla.",
+  "homeHeroAddMemory": "Anı Ekle",
+  "homeRecentTitle": "SON ANILAR",
+  "homeRecentEmptyTitle": "Burada henüz bir iz yok.",
+  "homeRecentEmptyMessage": "İlk anını eklediğinde burada görünmeye başlayacak.",
+  "@homeRecentTitle": {
+    "description": "Bolum basligi. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir ve Turkce i harfini I yapar."
+  },
+  "homeStatJournal": "GÜNLÜK",
+  "homeStatJournalUnit": "{count, plural, other{kayıt}}",
+  "@homeStatJournalUnit": {
+    "description": "Sayacin altindaki birim. Turkcede sayidan sonra cogul eki gelmez, Ingilizcede gelir; bu yuzden cogul yapisi kullaniliyor.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatPeople": "KİŞİLER",
+  "homeStatPeopleUnit": "{count, plural, other{kişi}}",
+  "@homeStatPeopleUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatSeries": "SERİLER",
+  "homeStatSeriesUnit": "{count, plural, other{seri}}",
+  "@homeStatSeriesUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatCollections": "KOLEKSİYONLAR",
+  "homeStatCollectionsUnit": "{count, plural, other{koleksiyon}}",
+  "@homeStatCollectionsUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNotifications": "Bildirimler",
+  "screenComingSoon": "Bu ekran yakında",
+  "@screenComingSoon": {
+    "description": "Henüz tasarlanmamış sekmelerin yer tutucu başlığı"
+  },
+  "screenComingSoonMessage": "Tasarımı hazırlanıyor. Çok yakında burada olacak.",
+  "navJournal": "Günlük",
+  "navPeople": "Kişiler",
+  "navSettings": "Ayarlar",
+  "memoriesTitle": "Anılarım",
+  "memoryNew": "Yeni Anı",
+  "memoryEdit": "Anıyı Düzenle",
+  "memoryFavorite": "Favorilere ekle",
+  "memoryUnfavorite": "Favorilerden çıkar",
+  "memoryFilterFavoritesOff": "Yalnızca favorileri göster",
+  "@memoryFilterFavoritesOff": {
+    "description": "Anı listesindeki favori filtresi KAPALIYKEN düğmenin ipucu — dokununca ne olacağını söyler"
+  },
+  "memoryFilterFavoritesOn": "Favori filtresini kaldır",
+  "@memoryFilterFavoritesOn": {
+    "description": "Filtre AÇIKKEN ipucu. NFR-031: durumu renkten başka bir kanalla da bildirmek için metin değişiyor"
+  },
+  "memoryEmptyTitle": "Henüz bir iz yok",
+  "@memoryEmptyTitle": {
+    "description": "NFR-035: boş durum ekranı kullanıcıya ne yapacağını anlatmalı"
+  },
+  "memoryEmptyMessage": "Tüm galerini değil, saklamaya değer anlarını biriktir. İlk izini bırakarak başla.",
+  "memoryEmptyAction": "İlk izini bırak",
+  "memoryDeleteTitle": "Anı silinsin mi?",
+  "memoryDeleteMessage": "Bu anı çöp kutusuna taşınacak. 30 gün içinde geri alabilirsin.",
+  "memoryDeleteConfirm": "Sil",
+  "memoryDeleted": "Anı çöp kutusuna taşındı",
+  "memoryRestore": "Geri al",
+  "memoryCount": "{count, plural, =0{Anı yok} =1{1 anı} other{{count} anı}}",
+  "@memoryCount": {
+    "description": "Koleksiyon/kişi kartlarında anı sayısı",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryYearsAgo": "{years, plural, =0{Bugün} =1{Geçen yıl bugün} other{{years} yıl önce bugün}}",
+  "@memoryYearsAgo": {
+    "description": "FR-080 Bugünün İzi kartı başlığı",
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryFieldTitle": "Başlık",
+  "@memoryFieldTitle": {
+    "description": "Anı editörü — başlık alanının etiketi"
+  },
+  "memoryFieldTitleHint": "Bu anı neydi?",
+  "memoryFieldNote": "Not",
+  "memoryFieldNoteHint": "Neyi hatırlamak istersin?",
+  "memoryFieldDate": "Tarih",
+  "memoryFieldCategory": "Kategori",
+  "memoryFieldCollection": "Koleksiyon",
+  "memoryFieldSeries": "Seri",
+  "@memoryFieldSeries": {
+    "description": "Domainde `Ritual`, arayüzde 'seri' — SERİLERİM sekmesiyle aynı kelime."
+  },
+  "memoryFieldLocationHint": "Neredeydi?",
+  "memoryFieldEmpty": "Seç",
+  "@memoryFieldEmpty": {
+    "description": "Henüz seçim yapılmamış satırlarda değerin yerine görünen yer tutucu"
+  },
+  "memoryDetailsTitle": "Detayları Gir",
+  "@memoryDetailsTitle": {
+    "description": "Yeni anı akışının İKİNCİ adımı. Düzenleme modunda `memoryEdit` kullanılıyor."
+  },
+  "memoryDateInvalid": "Tarihi anlayamadım. Örnek: {example}",
+  "@memoryDateInvalid": {
+    "description": "Elle yazılan tarih ayrıştırılamadığında. Örnek biçim cihazın diline göre üretiliyor, çeviriye gömülü DEĞİL.",
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryDateFuture": "Gelecek bir tarih seçemezsin.",
+  "@memoryDateFuture": {
+    "description": "FR-013 — geçmişe izin var, geleceğe yok"
+  },
+  "pickerAddNew": "Yeni ekle",
+  "@pickerAddNew": {
+    "description": "Seçim diyaloğunun en altındaki + satırı"
+  },
+  "pickerEmpty": "Henüz hiç yok. Aşağıdan ekleyebilirsin.",
+  "@pickerEmpty": {
+    "description": "Seçilecek hiçbir kayıt yokken. NFR-035: boş durum ne yapacağını söylemeli"
+  },
+  "memoryPhotos": "Fotoğraflar",
+  "memoryNoPhotos": "Henüz fotoğraf eklenmedi.",
+  "memoryDetailTitle": "Anı Detay",
+  "@memoryDetailTitle": {
+    "description": "Anı detay ekranının AppBar başlığı."
+  },
+  "memoryActionCollage": "Kolaj Oluştur",
+  "@memoryActionCollage": {
+    "description": "Anı detayındaki eylem: seçili fotoğraflardan kolaj üretir."
+  },
+  "memoryNoteExpand": "Notun tamamını göster",
+  "@memoryNoteExpand": {
+    "description": "Kapalı nottaki aç/kapa okunun ekran okuyucu etiketi."
+  },
+  "memoryNoteCollapse": "Notu kısalt",
+  "memoryPhotosPrompt": "Bu anıdan geriye hangi kareler kalsın?",
+  "@memoryPhotosPrompt": {
+    "description": "Yeni anı akışının İLK adımındaki başlık. Serif (Cormorant) — markanın duygusal sesi. 'Kare' fotoğraf demek; 'geriye kalmak' ürünün tezini taşıyor (her şeyi değil, kalmaya değeni sakla)."
+  },
+  "memoryPickFromGallery": "Galeriden Fotoğraf Seç",
+  "memoryPhotoLimitHint": "En fazla {limit} fotoğraf seçebilirsin.",
+  "@memoryPhotoLimitHint": {
+    "description": "FR-041 limiti. SAYI SABİT DEĞİL: kullanıcının planına göre entitlement matrisinden geliyor (Free 3, İZ+ 30). Ücretsiz planda 3 yazacak.",
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryPhotosIllustrationSemantics": "Fotoğraf çerçeveleri ve bir dal çizimi",
+  "commonSaveChanges": "Değişiklikleri Kaydet",
+  "@commonSaveChanges": {
+    "description": "Düzenleme ekranlarının kaydet düğmesi (anı ve kişi); yeni kayıtta \"Kaydet\" yazıyor."
+  },
+  "memoryPhotoRemove": "Fotoğrafı kaldır",
+  "memoryPhotoAdd": "Fotoğraf ekle",
+  "@memoryPhotosIllustrationSemantics": {
+    "description": "NFR-032 — dekoratif illüstrasyonun ekran okuyucu açıklaması"
+  },
+  "relationPeople": "Kişiler",
+  "@relationPeople": {
+    "description": "FR-020 anı detayı — ilişkili kayıt bölüm başlıkları"
+  },
+  "relationCollections": "Koleksiyonlar",
+  "relationRitual": "Seri",
+  "relationLocation": "Konum",
+  "photoLimitReached": "Ücretsiz planda bir anıya en fazla {limit} fotoğraf ekleyebilirsin.",
+  "@photoLimitReached": {
+    "description": "FR-041 medya limiti",
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "todaysTraceTitle": "Bugünün İzi",
+  "todaysTraceSubtitle": "Geçmiş yıllarda bugün yaşadıklarını hatırlat",
+  "thenAndNowTitle": "O Zaman / Şimdi",
+  "onboardingCurateTitle": "Tüm galerini değil,\nizini bırakanları biriktir",
+  "@onboardingCurateTitle": {
+    "description": "FR-001 onboarding 1/3 — ürünün yedekleme uygulaması olmadığını anlatır"
+  },
+  "onboardingCurateBody": "İZ bir yedekleme uygulaması değil. Senin için gerçekten anlamlı olan anları seçip anlamlandırdığın bir kişisel hafıza.",
+  "onboardingContextTitle": "Bir anı,\nbirçok bağlam",
+  "onboardingContextBody": "Aynı anıyı kişilerle, kategorilerle, koleksiyonlarla ve serilerle ilişkilendir. Klasörlerde kaybolmadan yıllar sonra saniyeler içinde bul.",
+  "onboardingLocalTitle": "Verilerin\nşimdilik bu cihazda",
+  "@onboardingLocalTitle": {
+    "description": "Rapor 20.2: local-only yaklaşımı ve veri kaybı riski dürüstçe anlatılmalı"
+  },
+  "onboardingLocalBody": "Anıların telefonunda saklanıyor; kimseyle paylaşılmıyor. Ama telefonunu kaybedersen anıların da kaybolur — bu yüzden düzenli olarak dışa aktarmanı hatırlatacağız.",
+  "onboardingStart": "İlk izini bırak",
+  "journalEmptyTitle": "Bugün neyin izini bırakmak istersin?",
+  "journalEmptyMessage": "Kısa bir not yeter. İstersen sonradan kalıcı bir anıya dönüştürürsün.",
+  "journalNewTitle": "Yeni Günlük",
+  "@journalNewTitle": {
+    "description": "Günlük oluşturma ekranının başlığı."
+  },
+  "journalGreeting": "Merhaba",
+  "journalPrompt1": "Bugün seni ne yordu, ne güldürdü? Birkaç satır bırak; yarın sana iyi gelecek.",
+  "@journalPrompt1": {
+    "description": "FR-032 — günlük davet cümleleri (güne göre değişiyor)."
+  },
+  "journalPrompt2": "Unutma diye değil, hatırlamak istediğinde bulasın diye yaz.",
+  "journalPrompt3": "Küçük şeyler de yazılır: bir kahve, bir söz, bir bakış. Hepsi bugünün izi.",
+  "journalPrompt4": "Kelimelerin düzgün olmak zorunda değil. Sen anlatsan yeter.",
+  "journalPrompt5": "Bugünden geriye ne kalsın istersin? Onu yaz, gerisini zamana bırak.",
+  "journalMoodLow": "Zorlu bir gündü",
+  "@journalMoodLow": {
+    "description": "Ruh hâli ölçeğinin sol ucu — sayı değil, duygu."
+  },
+  "journalMoodHigh": "Güzel bir gündü",
+  "journalIllustrationSemantics": "Açık bir defter ve zeytin dalı çizimi",
+  "@journalIllustrationSemantics": {
+    "description": "NFR-032 — dekoratif çizimin ekran okuyucu açıklaması."
+  },
+  "journalMoodQuestion": "Bugün kendini nasıl hissediyorsun?",
+  "journalMoodSemantics": "Bugünkü ruh hâlin: {value}",
+  "@journalMoodSemantics": {
+    "description": "Kaydırıcının ekran okuyucu etiketi.",
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "journalFieldTitle": "Başlık",
+  "journalFieldTitleHint": "Bugüne bir ad ver",
+  "journalFieldNotes": "Notlarım",
+  "journalFieldNotesHint": "İçinden geçenleri özgürce yaz…",
+  "journalPhotosLabel": "Bugünden bir kare",
+  "journalPhotosHint": "İstersen en fazla {count} fotoğraf ekle.",
+  "@journalPhotosHint": {
+    "description": "Fotoğraf opsiyonel; sınırı önceden söylüyoruz.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journalCreateAction": "Kaydı Oluştur",
+  "journalNotesRequired": "Birkaç kelime yazmadan kaydedemeyiz.",
+  "@journalNotesRequired": {
+    "description": "FR-030 — günlük metni zorunlu, başlık değil."
+  },
+  "journalCreated": "Bugünün izi kaydedildi.",
+  "journalHeroGreeting": "Hoş geldin",
+  "@journalHeroGreeting": {
+    "description": "Günlük ana sayfasındaki karşılama."
+  },
+  "journalHeroGreetingNamed": "Hoş geldin, {name}",
+  "@journalHeroGreetingNamed": {
+    "description": "Profil adı bilindiğinde kullanılan hâli.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "journalHeroBody": "Kendine birkaç satır da olsa bugün eşlik et.",
+  "journalHeroAction": "Yazmaya Başla",
+  "journalHeroSemantics": "Bir masada açık defter, kalem ve kahve çizimi",
+  "@journalHeroSemantics": {
+    "description": "NFR-032 — kapak fotoğrafının ekran okuyucu açıklaması."
+  },
+  "journalRecentTitle": "Son Yazılarım",
+  "journalRecentEmptyTitle": "Burası senin sessiz köşen",
+  "journalRecentEmptyBody": "Yazdığın her satır, bir gün dönüp bulacağın bir iz olacak.",
+  "journalEmptyIllustrationSemantics": "Boş bir sayfa, kalem ve filiz çizimi",
+  "@journalEmptyIllustrationSemantics": {
+    "description": "NFR-032 — boş durum çiziminin ekran okuyucu açıklaması."
+  },
+  "journalAllTitle": "Tüm Günlükler",
+  "journalFilterAll": "Tümü",
+  "journalFilterThisWeek": "Bu Hafta",
+  "journalFilterThisMonth": "Bu Ay",
+  "journalFilterFavorites": "Favoriler",
+  "journalAllEmptyWeek": "Bu hafta henüz yazmadın. Hafta bitmeden bir satır bırakabilirsin.",
+  "@journalAllEmptyWeek": {
+    "description": "Süzgece göre değişen boş durum: her biri neyin eksik olduğunu söylüyor."
+  },
+  "journalAllEmptyMonth": "Bu ay hiç yazmamışsın. Ay kapanmadan bir gün seç ve yaz.",
+  "journalAllEmptyFavorites": "Henüz hiçbir yazını yıldızlamadın. Dönüp dönüp okuduğun bir gün varsa onu işaretle.",
+  "journalFavoriteAdd": "Yıldızla",
+  "journalFavoriteRemove": "Yıldızı kaldır",
+  "peopleEmptyTitle": "Burası onlarla dolacak.",
+  "peopleEmptyMessage": "Annen, en yakın arkadaşın, belki kedin… Kimi eklersen, onunla yaşadıklarınız tek bir çizgide birikmeye başlar.",
+  "peopleTitle": "Kişilerim",
+  "@peopleTitle": {
+    "description": "Kişiler ekranının başlığı; alt çubuktaki kısa ad \"Kişiler\" (navPeople)."
+  },
+  "peopleSubtitle": "Hayatına iz bırakanlar burada yaşar.",
+  "peopleEmptyAction": "İlk Kişini Ekle",
+  "peopleIllustrationSemantics": "Bir kubbenin altında duran üç kişi çizimi",
+  "relationTypeSelf": "Kendim",
+  "@relationTypeSelf": {
+    "description": "FR-061 ilişki türlerinin ekranda görünen adları."
+  },
+  "relationTypePartner": "Eşim",
+  "relationTypeParent": "Anne / Baba",
+  "relationTypeChild": "Çocuğum",
+  "relationTypeSibling": "Kardeşim",
+  "relationTypeGrandparent": "Anneanne / Dede",
+  "relationTypeGrandchild": "Torunum",
+  "relationTypeRelative": "Akrabam",
+  "relationTypeFriend": "Arkadaşım",
+  "relationTypeColleague": "İş arkadaşım",
+  "relationTypePet": "Dostum",
+  "@relationTypePet": {
+    "description": "Evcil hayvan. \"Hayvanım\" değil: uygulama onları da aileden sayıyor."
+  },
+  "relationTypeOther": "Yakınım",
+  "peopleAddAction": "Kişi Ekle",
+  "peopleSearchHint": "Kişilerde ara",
+  "peopleSearchClear": "Aramayı temizle",
+  "personNewTitle": "Yeni Kişi",
+  "personPhotoAdd": "Fotoğraf Ekle",
+  "personPhotoChange": "Fotoğrafı değiştir",
+  "personPhotoRemove": "Fotoğrafı kaldır",
+  "personFieldName": "Ad",
+  "personFieldNameHint": "Örn. Elif",
+  "personFieldRelation": "İlişkiniz",
+  "personFieldRelationHint": "Örn. Annem",
+  "@personFieldRelationHint": {
+    "description": "Kullanıcı ilişkiyi kendi kelimeleriyle yazıyor; listeden seçmiyor."
+  },
+  "personFieldBirthDate": "Doğum Tarihi",
+  "personFieldBirthDateHint": "Tarih seç",
+  "personFieldNote": "Kısa Not",
+  "personFieldNoteHint": "Bu kişi hakkında bir not ekle…",
+  "personSaveAction": "Kişiyi Kaydet",
+  "personNameRequired": "Bir ad yazmadan kaydedemeyiz.",
+  "personBirthDateFuture": "Doğum tarihi gelecekte olamaz.",
+  "formOptional": "(Opsiyonel)",
+  "personDetailCollections": "Koleksiyonlarımız",
+  "personDetailRituals": "Serilerimiz",
+  "personDetailNoCollections": "Onunla paylaştığın bir koleksiyon henüz yok.",
+  "personDetailNoRituals": "Birlikte tekrarladığın bir seri henüz yok.",
+  "personEditAction": "Kişiyi Düzenle",
+  "personDeleteAction": "Kişiyi Sil",
+  "personActions": "Kişi işlemleri",
+  "@personActions": {
+    "description": "AppBar'daki üç noktanın ekran okuyucu etiketi."
+  },
+  "personDeleteTitle": "Kişi silinsin mi?",
+  "personDeleteMessage": "Bu kişi silinecek. Onunla yaşadığın anılar silinmez, yalnızca bağlantısı kopar.",
+  "personEditTitle": "Kişiyi Düzenle",
+  "@personEditTitle": {
+    "description": "Kişi düzenleme ekranının başlığı."
+  },
+  "@personDeleteMessage": {
+    "description": "FR-063 — kişi silmek anıları silmiyor; kullanıcıya bunu açıkça söylemek gerekiyor."
+  },
+  "ritualDurationYears": "{count} yıl",
+  "@ritualDurationYears": {
+    "description": "Ritüelin kaç yıldır sürdüğü.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myLifeFilteredByPerson": "{name} ile",
+  "@myLifeFilteredByPerson": {
+    "description": "Koleksiyonlar bir kişiye süzüldüğünde gösterilen çip.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "myLifeClearFilter": "Süzmeyi kaldır",
+  "@formOptional": {
+    "description": "Zorunlu olmayan alan etiketlerinin yanına eklenir."
+  },
+  "peopleSearchEmptyTitle": "Aradığın kişiyi bulamadım",
+  "peopleSearchEmptyMessage": "\"{query}\" ile eşleşen bir kişi yok. Başka bir ad ya da ilişki dene.",
+  "@peopleSearchEmptyMessage": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "peopleOpenDetail": "{name} sayfasını aç",
+  "@peopleOpenDetail": {
+    "description": "Satır sonundaki okun ekran okuyucu etiketi.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPromptTitle": "Anılarında ara",
+  "searchPromptMessage": "Başlık ve notlarda arama yapabilirsin. Arama internet olmadan da çalışır.",
+  "searchNoResultsTitle": "Sonuç bulunamadı",
+  "searchNoResultsMessage": "Farklı bir kelime deneyebilir veya filtreleri temizleyebilirsin.",
+  "backupLocalOnly": "Yalnız bu cihazda",
+  "@backupLocalOnly": {
+    "description": "FR-162 / R-001 yedekleme durumu uyarısı"
+  },
+  "backupLocalOnlyDetail": "Verilerin sadece bu telefonda tutuluyor. Telefonunu kaybedersen anıların da kaybolur.",
+  "backupExportNow": "Şimdi dışa aktar",
+  "backupLastExport": "Son dışa aktarma: {date}",
+  "@backupLastExport": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "backupNeverExported": "Henüz hiç dışa aktarmadın",
+  "mediaMissingTitle": "Orijinal fotoğraf bulunamadı",
+  "@mediaMissingTitle": {
+    "description": "BR-007 / FR-044 kaynak eksik durumu"
+  },
+  "mediaMissingMessage": "Bu fotoğraf galerinden silinmiş görünüyor. İZ'de sakladığımız önizleme gösteriliyor.",
+  "paywallTitle": "İZ+ ile aç",
+  "paywallFeatureLocked": "Bu özellik {plan} planında kullanılabilir.",
+  "@paywallFeatureLocked": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+  "errorDatabase": "Verilerine şu anda ulaşılamıyor.",
+  "errorNotFound": "Aradığın kayıt bulunamadı.",
+  "errorPermission": "Devam etmek için izin vermen gerekiyor.",
+  "errorPermissionSettings": "İzni Ayarlar'dan açabilirsin.",
+  "errorNetwork": "Bağlantı kurulamadı.",
+  "errorOffline": "İnternet bağlantın yok gibi görünüyor.",
+  "errorValidationEmptyMemory": "Bir anı en az bir not veya bir fotoğraf içermeli.",
+  "@errorValidationEmptyMemory": {
+    "description": "FR-012 iş kuralı — ValidationCode.emptyMemory karşılığı"
+  },
+  "errorValidationFutureDate": "Anı tarihi gelecekte olamaz.",
+  "@errorValidationFutureDate": {
+    "description": "FR-013 iş kuralı — ValidationCode.futureDate karşılığı"
+  },
+  "errorValidationEmailRequired": "E-posta adresini gir.",
+  "errorValidationEmailInvalid": "Geçerli bir e-posta adresi gir.",
+  "errorValidationPasswordRequired": "Şifreni gir.",
+  "errorValidationPasswordTooShort": "Şifre en az {min} karakter olmalı.",
+  "@errorValidationPasswordTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "errorSignInFailed": "E-posta veya şifre hatalı.",
+  "errorValidationNameRequired": "Adını ve soyadını gir.",
+  "errorValidationPasswordsDoNotMatch": "Şifreler eşleşmiyor.",
+  "routeNotFound": "Sayfa bulunamadı",
+  "routeNotImplemented": "Bu ekran henüz hazır değil.",
+  "routeGoHome": "Ana sayfaya dön",
+  "categoryTravel": "Seyahat",
+  "@categoryTravel": {
+    "description": "FR-070 varsayılan sistem kategorileri. Veritabanında ad değil anahtar saklanır; gösterim burada çevrilir."
+  },
+  "categoryFamily": "Aile",
+  "categoryRelationships": "İlişkiler",
+  "categoryCelebrations": "Kutlamalar",
+  "categoryEducation": "Eğitim",
+  "categoryCareer": "Kariyer",
+  "categoryHome": "Ev",
+  "categoryDaily": "Günlük Yaşam",
+  "settingsAppearance": "Görünüm",
+  "settingsThemeSystem": "Sistem",
+  "settingsThemeLight": "Açık",
+  "settingsThemeDark": "Koyu",
+  "settingsLanguage": "Dil",
+  "settingsLanguageSystem": "Sistem dili",
+  "settingsNotifications": "Bildirimler",
+  "settingsPrivacy": "Gizlilik ve Güvenlik",
+  "settingsBackup": "Yedekleme Durumu",
+  "settingsStorage": "Depolama Kullanımı"
+}

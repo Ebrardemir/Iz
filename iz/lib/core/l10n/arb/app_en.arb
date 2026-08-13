@@ -1,0 +1,581 @@
+{
+  "@@locale": "en",
+  "appTitle": "İZ",
+  "appTagline": "Choose, collect and keep alive what leaves a trace",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonEdit": "Edit",
+  "commonRetry": "Try again",
+  "commonClose": "Close",
+  "commonDone": "Done",
+  "commonShare": "Share",
+  "commonSearch": "Search",
+  "commonSeeAll": "See All",
+  "commonAdd": "Add",
+  "commonNext": "Next",
+  "commonSkip": "Skip",
+  "commonLoading": "Loading",
+  "authWelcomeBack": "Welcome back",
+  "authWelcomeSubtitle": "Pick up your memories where you left off.",
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authForgotPassword": "Forgot my password",
+  "authSignIn": "Sign In",
+  "authCreateAccount": "Create Account",
+  "authOr": "or",
+  "authSignInWithApple": "Sign in with Apple",
+  "authSignInWithGoogle": "Sign in with Google",
+  "authPrivacyNote": "Your data is safe. We respect your privacy.",
+  "authShowPassword": "Show password",
+  "authHidePassword": "Hide password",
+  "authHeroSemantics": "A collage of memory photographs",
+  "authResetLinkSent": "Password reset link sent.",
+  "authResetNeedsEmail": "Enter your email address first.",
+  "authFullName": "Full Name",
+  "authPasswordAgain": "Repeat password",
+  "authSignUp": "Sign Up",
+  "authContinueWithApple": "Continue with Apple",
+  "authContinueWithGoogle": "Continue with Google",
+  "authAlreadyHaveAccount": "Already have an account?",
+  "navHome": "Home",
+  "navMyLife": "My Life",
+  "navAdd": "Add",
+  "navStore": "Store",
+  "navProfile": "Profile",
+  "myLifePreviousMonth": "Previous month",
+  "myLifeNextMonth": "Next month",
+  "myLifeTabCalendar": "CALENDAR",
+  "myLifeTabCollections": "COLLECTIONS",
+  "myLifeTabSeries": "MY SERIES",
+  "@myLifeTabCalendar": {
+    "description": "Hayatim ekraninin sekmeleri. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir, Turkce i harfini I yapar."
+  },
+  "myLifeTitle": "MY LIFE",
+  "myLifeDayEmptyTitle": "No trace left on this day yet",
+  "myLifeDayEmptyAction": "Leave a trace on this day",
+  "collectionsEmptyTitle": "No collections yet",
+  "collectionsEmptyMessage": "Gather the memories of a trip, a season or a person into a single collection.",
+  "collectionExpand": "Expand collection",
+  "collectionNewTitle": "New Collection",
+  "collectionFieldName": "Collection Name",
+  "collectionFieldNameHint": "Enter a collection name",
+  "collectionFieldDescription": "Description",
+  "collectionFieldDescriptionHint": "Describe your collection briefly",
+  "collectionFieldDateRange": "Date Range",
+  "collectionFieldDateRangeHint": "Start – End",
+  "collectionFieldPeople": "Related People",
+  "collectionFieldPeopleHint": "Add people",
+  "collectionFieldCategory": "Category",
+  "collectionFieldCategoryHint": "Pick a category",
+  "collectionFieldMemories": "Add First Memories",
+  "collectionFieldMemoriesHint": "Start by picking memories",
+  "collectionSelectedMemories": "{count} memories selected",
+  "@collectionSelectedMemories": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionCreateAction": "Create Collection",
+  "collectionNameRequired": "We need a name before we can create it.",
+  "collectionCreated": "Your collection is ready, waiting in My Life.",
+  "collectionCollapse": "Collapse collection",
+  "collectionMemoryCount": "{count, plural, =0{No memories} =1{1 memory} other{{count} memories}}",
+  "@collectionMemoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addMenuTitle": "What would you like to add?",
+  "addMenuMemory": "Memory",
+  "addMenuSeries": "Series",
+  "addMenuJournal": "Journal entry",
+  "addMenuCollection": "Collection",
+  "addMenuPerson": "Person",
+  "seriesEmptyTitle": "No series yet",
+  "seriesEmptyMessage": "Tie the things that repeat every year into a series, and see the years side by side.",
+  "ritualEveryYearOn": "{month, select, 1{Every year on January {day}} 2{Every year on February {day}} 3{Every year on March {day}} 4{Every year on April {day}} 5{Every year on May {day}} 6{Every year on June {day}} 7{Every year on July {day}} 8{Every year on August {day}} 9{Every year on September {day}} 10{Every year on October {day}} 11{Every year on November {day}} 12{Every year on December {day}} other{Every year}}",
+  "@ritualEveryYearOn": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualEveryYearInSeason": "{season, select, spring{Every spring} summer{Every summer} autumn{Every autumn} winter{Every winter} other{Every year}}",
+  "@ritualEveryYearInSeason": {
+    "placeholders": {
+      "season": {
+        "type": "String"
+      }
+    }
+  },
+  "ritualCustomSchedule": "No fixed date",
+  "ritualEveryMonth": "Every month",
+  "ritualEveryWeek": "Every week",
+  "ritualNewTitle": "New Series",
+  "coverAdd": "Add Cover Image",
+  "coverChange": "Change Cover Image",
+  "coverIllustrationSemantics": "Drawing of mountains, a sun and an olive branch",
+  "ritualFieldName": "Series Name",
+  "ritualFieldNameHint": "Give your series a name",
+  "ritualFieldDescription": "Description",
+  "ritualFieldDescriptionHint": "Write a short note about this series",
+  "ritualFieldRecurrence": "Repeats",
+  "ritualFieldPeople": "Related People",
+  "ritualFieldPeopleHint": "Add people",
+  "ritualFieldCategory": "Category",
+  "ritualFieldCategoryHint": "Pick a category",
+  "ritualFieldMemories": "Add This Year's Memory",
+  "ritualFieldMemoriesHint": "Link memories to this series",
+  "ritualSelectedMemories": "{count} memories selected",
+  "@ritualSelectedMemories": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualDateRange": "Date range: {range}",
+  "@ritualDateRange": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "ritualCreateAction": "Create Series",
+  "ritualNameRequired": "We need a name before we can create it.",
+  "ritualCreated": "Your series is ready, waiting in My Series.",
+  "memoryPickerTitle": "Pick Memories",
+  "memoryPickerEmpty": "No memories left to link. A memory can belong to only one series.",
+  "memoryPickerDone": "Done",
+  "ritualStatYears": "{count} yr",
+  "@ritualStatYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatYearsLabel": "Together",
+  "ritualStatMemories": "{count} memories",
+  "@ritualStatMemories": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatMemoriesLabel": "In total",
+  "ritualStatCities": "{count} cities",
+  "@ritualStatCities": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ritualStatCitiesLabel": "Explored",
+  "ritualDetailMemories": "Memories in This Series",
+  "ritualDetailShowAll": "See All",
+  "ritualDetailShowLess": "Show Less",
+  "ritualDetailNoMemories": "No memories linked to this series yet. Every one you link will gather here, year by year.",
+  "ritualDetailActions": "Series actions",
+  "ritualEditAction": "Edit Series",
+  "ritualDeleteAction": "Delete Series",
+  "ritualDeleteTitle": "Delete this series?",
+  "ritualDeleteMessage": "This series will be removed. The memories stay — only their links to the series are broken.",
+  "ritualRecurrenceSectionSemantics": "Recurrence options",
+  "ritualYearCount": "{count, plural, =0{No years} =1{1 year} other{{count} years}}",
+  "@ritualYearCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryMoreActions": "Memory actions",
+  "memoryOpenDetail": "Open memory",
+  "commonFilter": "Filter",
+  "@myLifeTitle": {
+    "description": "Hayatim ekraninin basligi. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir."
+  },
+  "homeHeroTodayEyebrow": "TODAY'S TRACE",
+  "@homeHeroTodayEyebrow": {
+    "description": "Fotograf uzerindeki kucuk ust baslik. BUYUK HARFLE YAZILI: Dart'in toUpperCase() metodu dile duyarsizdir ve Turkce 'i' harfini 'I' yapar ('BUGUNUN IZI'). Dogru buyuk harf cevirmenin sorumlulugunda."
+  },
+  "homeHeroViewMemory": "View Memory",
+  "homeHeroEmptyTitle": "Leave Your First Trace",
+  "homeHeroEmptySubtitle": "Choose a moment you'll want to remember, and keep it.",
+  "homeHeroAddMemory": "Add Memory",
+  "homeRecentTitle": "RECENT TRACES",
+  "homeRecentEmptyTitle": "No traces here yet.",
+  "homeRecentEmptyMessage": "Your first memory will show up here once you add it.",
+  "@homeRecentTitle": {
+    "description": "Bolum basligi. BUYUK HARFLE yazili: Dart toUpperCase() dile duyarsizdir ve Turkce i harfini I yapar."
+  },
+  "homeStatJournal": "JOURNAL",
+  "homeStatJournalUnit": "{count, plural, =1{record} other{records}}",
+  "@homeStatJournalUnit": {
+    "description": "Sayacin altindaki birim. Turkcede sayidan sonra cogul eki gelmez, Ingilizcede gelir; bu yuzden cogul yapisi kullaniliyor.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatPeople": "PEOPLE",
+  "homeStatPeopleUnit": "{count, plural, =1{person} other{people}}",
+  "@homeStatPeopleUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatSeries": "SERIES",
+  "homeStatSeriesUnit": "{count, plural, =1{series} other{series}}",
+  "@homeStatSeriesUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeStatCollections": "COLLECTIONS",
+  "homeStatCollectionsUnit": "{count, plural, =1{collection} other{collections}}",
+  "@homeStatCollectionsUnit": {
+    "description": "Sayacin altindaki birim.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNotifications": "Notifications",
+  "screenComingSoon": "Coming soon",
+  "screenComingSoonMessage": "We're designing this screen. It'll be here soon.",
+  "navJournal": "Journal",
+  "navPeople": "People",
+  "navSettings": "Settings",
+  "memoriesTitle": "My Memories",
+  "memoryNew": "New Memory",
+  "memoryEdit": "Edit Memory",
+  "memoryFavorite": "Add to favorites",
+  "memoryUnfavorite": "Remove from favorites",
+  "memoryFilterFavoritesOff": "Show favorites only",
+  "memoryFilterFavoritesOn": "Clear favorites filter",
+  "memoryEmptyTitle": "No traces yet",
+  "memoryEmptyMessage": "Don't copy your whole gallery — collect only the moments worth keeping. Start with your first trace.",
+  "memoryEmptyAction": "Leave your first trace",
+  "memoryDeleteTitle": "Delete this memory?",
+  "memoryDeleteMessage": "It will be moved to trash. You can restore it within 30 days.",
+  "memoryDeleteConfirm": "Delete",
+  "memoryDeleted": "Memory moved to trash",
+  "memoryRestore": "Undo",
+  "memoryCount": "{count, plural, =0{No memories} =1{1 memory} other{{count} memories}}",
+  "@memoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryYearsAgo": "{years, plural, =0{Today} =1{One year ago today} other{{years} years ago today}}",
+  "@memoryYearsAgo": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryFieldTitle": "Title",
+  "memoryFieldTitleHint": "What was this moment?",
+  "memoryFieldNote": "Note",
+  "memoryFieldNoteHint": "What do you want to remember?",
+  "memoryFieldDate": "Date",
+  "memoryFieldCategory": "Category",
+  "memoryFieldCollection": "Collection",
+  "memoryFieldSeries": "Series",
+  "memoryFieldLocationHint": "Where was it?",
+  "memoryFieldEmpty": "Choose",
+  "memoryDetailsTitle": "Add Details",
+  "memoryDateInvalid": "I couldn't read that date. Example: {example}",
+  "@memoryDateInvalid": {
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryDateFuture": "You can't pick a future date.",
+  "pickerAddNew": "Add new",
+  "pickerEmpty": "Nothing here yet. You can add one below.",
+  "memoryPhotos": "Photos",
+  "memoryNoPhotos": "No photos added yet.",
+  "memoryDetailTitle": "Memory Detail",
+  "memoryActionCollage": "Create Collage",
+  "memoryNoteExpand": "Show the full note",
+  "memoryNoteCollapse": "Collapse the note",
+  "memoryPhotosPrompt": "Which frames should remain of this memory?",
+  "memoryPickFromGallery": "Choose from Gallery",
+  "memoryPhotoLimitHint": "You can choose up to {limit} photos.",
+  "@memoryPhotoLimitHint": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryPhotosIllustrationSemantics": "An illustration of photo frames and a sprig",
+  "commonSaveChanges": "Save Changes",
+  "memoryPhotoRemove": "Remove photo",
+  "memoryPhotoAdd": "Add photo",
+  "relationPeople": "People",
+  "relationCollections": "Collections",
+  "relationRitual": "Series",
+  "relationLocation": "Location",
+  "photoLimitReached": "On the free plan you can add up to {limit} photos to a memory.",
+  "@photoLimitReached": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "todaysTraceTitle": "Today's Trace",
+  "todaysTraceSubtitle": "Remind me what I lived on this day in past years",
+  "thenAndNowTitle": "Then / Now",
+  "onboardingCurateTitle": "Not your whole gallery —\njust what left a trace",
+  "onboardingCurateBody": "İZ is not a backup app. It's a personal memory where you choose the moments that truly matter to you and give them meaning.",
+  "onboardingContextTitle": "One memory,\nmany contexts",
+  "onboardingContextBody": "Link the same memory to people, categories, collections and rituals. Find it in seconds years later, without getting lost in folders.",
+  "onboardingLocalTitle": "Your data stays\non this device for now",
+  "onboardingLocalBody": "Your memories are stored on your phone and shared with no one. But if you lose your phone, they go with it — so we'll remind you to export regularly.",
+  "onboardingStart": "Leave your first trace",
+  "journalEmptyTitle": "What would you like to note today?",
+  "journalEmptyMessage": "A short note is enough. You can turn it into a lasting memory later.",
+  "journalNewTitle": "New Journal",
+  "journalGreeting": "Hello",
+  "journalPrompt1": "What tired you today, what made you smile? Leave a few lines; tomorrow you will be glad you did.",
+  "journalPrompt2": "Write it not to remember, but to find it when you want to.",
+  "journalPrompt3": "Small things count too: a coffee, a word, a glance. All of it is today's trace.",
+  "journalPrompt4": "Your words don't have to be polished. Telling it is enough.",
+  "journalPrompt5": "What would you like left from today? Write that, leave the rest to time.",
+  "journalMoodLow": "A hard day",
+  "journalMoodHigh": "A good day",
+  "journalIllustrationSemantics": "Drawing of an open notebook and an olive branch",
+  "journalMoodQuestion": "How are you feeling today?",
+  "journalMoodSemantics": "Your mood today: {value}",
+  "@journalMoodSemantics": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "journalFieldTitle": "Title",
+  "journalFieldTitleHint": "Give today a name",
+  "journalFieldNotes": "My Notes",
+  "journalFieldNotesHint": "Write whatever is on your mind…",
+  "journalPhotosLabel": "A frame from today",
+  "journalPhotosHint": "Add up to {count} photos if you like.",
+  "@journalPhotosHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journalCreateAction": "Create Entry",
+  "journalNotesRequired": "We need a few words before we can save.",
+  "journalCreated": "Today's trace is saved.",
+  "journalHeroGreeting": "Welcome",
+  "journalHeroGreetingNamed": "Welcome, {name}",
+  "@journalHeroGreetingNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "journalHeroBody": "Keep yourself company today, even with a few lines.",
+  "journalHeroAction": "Start Writing",
+  "journalHeroSemantics": "Drawing of an open notebook, a pen and a coffee on a desk",
+  "journalRecentTitle": "My Recent Entries",
+  "journalRecentEmptyTitle": "This is your quiet corner",
+  "journalRecentEmptyBody": "Every line you write becomes a trace you will come back to find.",
+  "journalEmptyIllustrationSemantics": "Drawing of a blank page, a pen and a sprig",
+  "journalAllTitle": "All Entries",
+  "journalFilterAll": "All",
+  "journalFilterThisWeek": "This Week",
+  "journalFilterThisMonth": "This Month",
+  "journalFilterFavorites": "Starred",
+  "journalAllEmptyWeek": "You haven't written this week yet. There is still time for a line.",
+  "journalAllEmptyMonth": "Nothing written this month. Pick a day before it closes and write.",
+  "journalAllEmptyFavorites": "You haven't starred anything yet. If there is a day you keep coming back to, mark it.",
+  "journalFavoriteAdd": "Star",
+  "journalFavoriteRemove": "Remove star",
+  "peopleEmptyTitle": "This page will fill up with them.",
+  "peopleEmptyMessage": "Your mother, your closest friend, maybe your cat… Add someone and everything you lived together starts gathering on a single thread.",
+  "peopleTitle": "My People",
+  "peopleSubtitle": "The people who left a trace in your life live here.",
+  "peopleEmptyAction": "Add Your First Person",
+  "peopleIllustrationSemantics": "Drawing of three people standing under a dome",
+  "relationTypeSelf": "Myself",
+  "relationTypePartner": "My partner",
+  "relationTypeParent": "Parent",
+  "relationTypeChild": "My child",
+  "relationTypeSibling": "My sibling",
+  "relationTypeGrandparent": "Grandparent",
+  "relationTypeGrandchild": "My grandchild",
+  "relationTypeRelative": "My relative",
+  "relationTypeFriend": "My friend",
+  "relationTypeColleague": "My colleague",
+  "relationTypePet": "My companion",
+  "relationTypeOther": "Close to me",
+  "peopleAddAction": "Add Person",
+  "peopleSearchHint": "Search people",
+  "peopleSearchClear": "Clear search",
+  "personNewTitle": "New Person",
+  "personPhotoAdd": "Add Photo",
+  "personPhotoChange": "Change photo",
+  "personPhotoRemove": "Remove photo",
+  "personFieldName": "Name",
+  "personFieldNameHint": "e.g. Elif",
+  "personFieldRelation": "Your relationship",
+  "personFieldRelationHint": "e.g. My mother",
+  "personFieldBirthDate": "Date of Birth",
+  "personFieldBirthDateHint": "Pick a date",
+  "personFieldNote": "Short Note",
+  "personFieldNoteHint": "Add a note about this person…",
+  "personSaveAction": "Save Person",
+  "personNameRequired": "We can't save without a name.",
+  "personBirthDateFuture": "A date of birth can't be in the future.",
+  "formOptional": "(Optional)",
+  "personDetailCollections": "Our Collections",
+  "personDetailRituals": "Our Series",
+  "personDetailNoCollections": "No collection you share with them yet.",
+  "personDetailNoRituals": "No series you repeat together yet.",
+  "personEditAction": "Edit Person",
+  "personDeleteAction": "Delete Person",
+  "personActions": "Person actions",
+  "personDeleteTitle": "Delete this person?",
+  "personDeleteMessage": "This person will be removed. The memories you shared stay — only the link is broken.",
+  "personEditTitle": "Edit Person",
+  "ritualDurationYears": "{count} yr",
+  "@ritualDurationYears": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myLifeFilteredByPerson": "with {name}",
+  "@myLifeFilteredByPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "myLifeClearFilter": "Clear filter",
+  "peopleSearchEmptyTitle": "I couldn't find that person",
+  "peopleSearchEmptyMessage": "No one matches \"{query}\". Try another name or relationship.",
+  "@peopleSearchEmptyMessage": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "peopleOpenDetail": "Open {name}'s page",
+  "@peopleOpenDetail": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPromptTitle": "Search your memories",
+  "searchPromptMessage": "You can search titles and notes. Search works without an internet connection too.",
+  "searchNoResultsTitle": "No results found",
+  "searchNoResultsMessage": "Try a different word, or clear your filters.",
+  "backupLocalOnly": "On this device only",
+  "backupLocalOnlyDetail": "Your data lives only on this phone. If you lose it, your memories go with it.",
+  "backupExportNow": "Export now",
+  "backupLastExport": "Last export: {date}",
+  "@backupLastExport": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "backupNeverExported": "You haven't exported yet",
+  "mediaMissingTitle": "Original photo not found",
+  "mediaMissingMessage": "This photo seems to have been deleted from your gallery. Showing the preview İZ kept.",
+  "paywallTitle": "Unlock with İZ+",
+  "paywallFeatureLocked": "This feature is available on the {plan} plan.",
+  "@paywallFeatureLocked": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorDatabase": "We can't reach your data right now.",
+  "errorNotFound": "We couldn't find that record.",
+  "errorPermission": "Permission is required to continue.",
+  "errorPermissionSettings": "You can grant it in Settings.",
+  "errorNetwork": "Couldn't connect.",
+  "errorOffline": "You appear to be offline.",
+  "errorValidationEmptyMemory": "A memory needs at least a note or one photo.",
+  "errorValidationFutureDate": "A memory can't be dated in the future.",
+  "errorValidationEmailRequired": "Enter your email address.",
+  "errorValidationEmailInvalid": "Enter a valid email address.",
+  "errorValidationPasswordRequired": "Enter your password.",
+  "errorValidationPasswordTooShort": "Password must be at least {min} characters.",
+  "@errorValidationPasswordTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "errorSignInFailed": "Email or password is incorrect.",
+  "errorValidationNameRequired": "Enter your full name.",
+  "errorValidationPasswordsDoNotMatch": "Passwords don't match.",
+  "routeNotFound": "Page not found",
+  "routeNotImplemented": "This screen isn't ready yet.",
+  "routeGoHome": "Back to home",
+  "categoryTravel": "Travel",
+  "categoryFamily": "Family",
+  "categoryRelationships": "Relationships",
+  "categoryCelebrations": "Celebrations",
+  "categoryEducation": "Education",
+  "categoryCareer": "Career",
+  "categoryHome": "Home",
+  "categoryDaily": "Daily Life",
+  "settingsAppearance": "Appearance",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System language",
+  "settingsNotifications": "Notifications",
+  "settingsPrivacy": "Privacy & Security",
+  "settingsBackup": "Backup Status",
+  "settingsStorage": "Storage Usage"
+}

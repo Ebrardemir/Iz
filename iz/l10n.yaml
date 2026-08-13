@@ -1,0 +1,8 @@
+# Çeviri üretimi yapılandırması.
+# `flutter gen-l10n` (veya `flutter run`) bu ayarlarla AppL10n sınıfını üretir.
+arb-dir: lib/core/l10n/arb
+template-arb-file: app_tr.arb
+output-localization-file: app_localizations.dart
+output-class: AppL10n
+output-dir: lib/core/l10n/generated
+nullable-getter: false
