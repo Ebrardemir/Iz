@@ -37,7 +37,9 @@ class JournalEntries extends Table with SyncableTable, OwnedTable {
 }
 
 /// Günlük ↔ medya bağı (FR-031).
+/// TERS YÖN İNDEKSİ — bkz. memory_tables.dart'taki aynı gerekçe.
 @DataClassName('JournalMediaRow')
+@TableIndex(name: 'idx_journal_media_media', columns: {#mediaId})
 class JournalMedia extends Table {
   TextColumn get journalEntryId =>
       text().references(JournalEntries, #id, onDelete: KeyAction.cascade)();

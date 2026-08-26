@@ -81,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   /// Artırmayı unutursan kullanıcının cihazındaki eski şema olduğu gibi
   /// kalır ve uygulama "no such column" hatasıyla çöker.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -120,6 +120,28 @@ class AppDatabase extends _$AppDatabase {
         // v4 — günlük yazılarının yıldızı. Varsayılanı false olan bir sütun;
         // var olan kayıtlar yıldızsız kalıyor ve bu doğru olan.
         await m.addColumn(journalEntries, journalEntries.isFavorite);
+      }
+
+      if (from < 5) {
+        // v5 — TERS YÖN İNDEKSLERİ.
+        //
+        // Join tablolarının birincil anahtarı `(memoryId, xId)` biçiminde.
+        // SQLite bileşik anahtarı yalnız SOLDAN eşleştirir: `memoryId` ile
+        // yapılan sorgu indeksi kullanır, `xId` ile yapılan sorgu TAM TARAMA
+        // yapar. Oysa kişi yaşam çizgisi, ritüel yıl karşılaştırması ve
+        // koleksiyon detayı tam da ters yönde sorguluyor.
+        //
+        // Sütun eklenmiyor, veri dönüşmüyor — yalnız indeks kuruluyor.
+        // Yeni kurulumlarda bunları `createAll()` zaten oluşturuyor;
+        // bu adım YÜKSELTEN cihazlar için.
+        await m.createIndex(idxMemoryPeoplePerson);
+        await m.createIndex(idxMemoryCollectionsCollection);
+        await m.createIndex(idxMemoryRitualsRitual);
+        await m.createIndex(idxMemoryMediaMedia);
+        await m.createIndex(idxJournalMediaMedia);
+
+        // FR-091 — filtre panelinin en sık kullandığı sütun.
+        await m.createIndex(idxMemoriesCategory);
       }
     },
 
