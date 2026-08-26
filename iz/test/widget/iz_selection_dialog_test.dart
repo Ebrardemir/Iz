@@ -206,11 +206,9 @@ void main() {
 
     expect(log, ['tapped']);
     expect(find.text('Kişiler'), findsNothing, reason: 'önce kapandı');
-    expect(
-      harness.results,
-      [null],
-      reason: 'ekleme bir SEÇİM değil; çağıran taraf seçimi değiştirmemeli',
-    );
+    expect(harness.results, [
+      null,
+    ], reason: 'ekleme bir SEÇİM değil; çağıran taraf seçimi değiştirmemeli');
   });
 
   testWidgets('geri çağırma verilmezse "+" satırı hiç çıkmıyor', (
