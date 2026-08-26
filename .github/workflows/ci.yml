@@ -1,0 +1,193 @@
+# İZ — sürekli entegrasyon (TR-B-02)
+#
+# Her PR'da statik analiz ve testler koşar. Amaç, "bende çalışıyordu"
+# cevabını imkânsız kılmak.
+#
+# Flutter sürümü .fvmrc ile AYNI olmalı (şu an 3.47.1). Yerelde fvm,
+# CI'da bu dosya — ikisi ayrışırsa "yerelde geçen test CI'da kalıyor"
+# durumu doğar. Sürümü değiştirirken İKİSİNİ BİRDEN güncelle.
+
+name: CI
+
+on:
+  push:
+    branches: [tasarim, main]
+  pull_request:
+
+concurrency:
+  # Aynı dala arka arkaya push atılırsa önceki koşuyu iptal et.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.1'
+
+defaults:
+  run:
+    working-directory: iz
+
+jobs:
+  analiz-ve-test:
+    name: Analiz ve testler
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıklar
+        run: flutter pub get
+
+      - name: Biçimlendirme
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Statik analiz
+        run: flutter analyze
+
+      - name: Testler
+        run: flutter test --reporter=compact
+
+  mimari-kurallar:
+    name: Mimari kuralları
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Bu iş Flutter gerektirmiyor: hepsi metin taraması.
+      # Hızlı olsun ki geliştirici geri bildirimi beklemesin.
+
+      - name: 'TR-C-20 — plan karşılaştırması yasak'
+        run: |
+          # Entitlement kararı yalnız merkezî matristen okunur.
+          # `if (plan == IzPlan.plus)` yazmak paketleme değiştiğinde
+          # bulunması imkânsız hatalar üretir.
+          if grep -rn --include='*.dart' \
+               -E '==\s*IzPlan\.(plus|family)|IzPlan\.(plus|family)\s*==' \
+               lib/ | grep -v 'core/entitlement/entitlement.dart'; then
+            echo "::error::Plan doğrudan karşılaştırılmış. entitlements.can(...) / .limit(...) kullan."
+            exit 1
+          fi
+
+      - name: 'TR-C-01 — domain katmanı saf kalmalı'
+        run: |
+          # domain/ yalnız Dart + core bilir. Flutter, Drift veya HTTP
+          # tipini import ederse katman sınırı delinmiş demektir.
+          if grep -rn --include='*.dart' \
+               -E "^import 'package:(flutter|drift|dio|http)/" \
+               lib/features/*/domain/ 2>/dev/null; then
+            echo "::error::domain/ katmanı dış dünya tipini import ediyor."
+            exit 1
+          fi
+
+      - name: 'TR-C-03 — feature sınırları'
+        run: |
+          # ARCHITECTURE.md: bir feature başka feature'ın YALNIZ domain/'ini
+          # görebilir. İki meşru istisna var ve ikisi de bilinçli:
+          #   • data/ → data/ : yabancı anahtar ve join için tablo referansı
+          #     (memory_tables.dart Categories/People/... tablolarını tanımalı)
+          #   • *_l10n.dart : entity'yi metne çeviren saf fonksiyonlar
+          ihlal=0
+
+          # A) domain/ ve presentation/, başka feature'ın data/'sını göremez.
+          for dir in lib/features/*/; do
+            ad=$(basename "$dir")
+            for sub in domain presentation; do
+              [ -d "$dir$sub" ] || continue
+              h=$(grep -rn "package:iz/features/[a-z_]*/data/" "$dir$sub" --include='*.dart' 2>/dev/null \
+                  | grep -v "features/$ad/data/" || true)
+              if [ -n "$h" ]; then echo "$h"; ihlal=1; fi
+            done
+          done
+
+          # B) Başka feature'ın ekranına doğrudan bağlanma — rota adıyla git.
+          for dir in lib/features/*/; do
+            ad=$(basename "$dir")
+            h=$(grep -rn "package:iz/features/[a-z_]*/presentation/" "$dir" --include='*.dart' 2>/dev/null \
+                | grep -v "features/$ad/presentation/" | grep -vE "_l10n\.dart" || true)
+            if [ -n "$h" ]; then echo "$h"; ihlal=1; fi
+          done
+
+          [ "$ihlal" -eq 0 ] || { echo "::error::Feature sınırı ihlal edildi (ARCHITECTURE.md §2)."; exit 1; }
+
+      - name: 'TR-C-41 — DateTime.now() doğrudan çağrılmaz'
+        run: |
+          # "Bugünün İzi" test edilebilir kalmalı: saat enjekte edilir.
+          if grep -rn --include='*.dart' 'DateTime\.now()' lib/ \
+             | grep -v 'core/utils/clock.dart' \
+             | grep -v '\.g\.dart'; then
+            echo "::warning::DateTime.now() doğrudan çağrılmış. Clock enjekte etmeyi düşün."
+          fi
+
+  uretilen-kod:
+    name: Üretilen kod güncel mi
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Bu iş build_runner koşuyor ve dakikalar sürüyor. Her PR'da koşmasının
+    # anlamı yok: üretilen kod yalnız tablo, DAO, .drift dosyası veya
+    # bağımlılık değiştiğinde bayatlar. Diğer PR'lar erken çıkar.
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Kod üretimini ilgilendiren bir değişiklik var mı
+        id: kapsam
+        run: |
+          taban="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$taban" ] || [ "$taban" = "0000000000000000000000000000000000000000" ]; then
+            echo "gerekli=true" >> "$GITHUB_OUTPUT"   # ilk push: temkinli davran
+            exit 0
+          fi
+          degisen=$(git diff --name-only "$taban" HEAD || echo "")
+          if echo "$degisen" | grep -qE 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
+            echo "gerekli=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gerekli=false" >> "$GITHUB_OUTPUT"
+            echo "Kod üretimini etkileyen değişiklik yok — atlanıyor."
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.kapsam.outputs.gerekli == 'true'
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıklar
+        if: steps.kapsam.outputs.gerekli == 'true'
+        run: flutter pub get
+
+      - name: Kodu yeniden üret
+        if: steps.kapsam.outputs.gerekli == 'true'
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Fark var mı
+        if: steps.kapsam.outputs.gerekli == 'true'
+        run: |
+          # Üretilen dosyalar commit'lenmiş hâlinden farklıysa, birisi
+          # tabloyu değiştirip build_runner koşmayı unutmuş demektir.
+          if ! git diff --exit-code; then
+            echo "::error::Üretilen kod güncel değil. 'dart run build_runner build' koşup commit'le."
+            exit 1
+          fi
+
+      - name: Şema anlık görüntüsü alınmış mı
+        if: steps.kapsam.outputs.gerekli == 'true'
+        run: |
+          # TR-A-02: schemaVersion artırıldıysa drift_schemas/ altında
+          # karşılığı olmalı. Olmazsa migration testi yazılamaz.
+          surum=$(grep -oE 'schemaVersion => [0-9]+' lib/app/database/app_database.dart | grep -oE '[0-9]+')
+          if [ ! -f "drift_schemas/drift_schema_v${surum}.json" ]; then
+            echo "::error::schemaVersion=$surum ama drift_schemas/drift_schema_v${surum}.json yok."
+            exit 1
+          fi
