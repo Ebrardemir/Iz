@@ -13,8 +13,8 @@ Bu doküman `iz/ARCHITECTURE.md`'nin backend karşılığıdır. Gereksinim numa
 | # | Karar | Seçim | Gerekçe |
 |---|---|---|---|
 | ADR-B01 | Backend stack | **ASP.NET Core 9 + PostgreSQL + EF Core** | Rapor 13.2'nin önerisi. Identity, BackgroundService, ProblemDetails yerleşik. Veri TR bölgesinde tutulabilir (KVKK). |
-| ADR-B02 | Repo | **Ayrı repo** (`iz-api`) | Bağımsız versiyonlama ve CI/CD. Karşılığı: sözleşme senkronunu disiplinle çözeceğiz → ADR-B03. |
-| ADR-B03 | Sözleşme | **OpenAPI, sunucu koddan üretilir; istemci client'ı ondan üretilir** | Rapor 22.1. Sözleşme kırılırsa istemci derlemesi kırılır — sessiz uyumsuzluk imkânsız. |
+| ADR-B02 | Repo | **Aynı repo** — `iz/` (Flutter) yanına `api/` (ASP.NET). | *Karar 26 Ağustos 2026'da ayrı repodan çevrildi.* Kök dizin zaten dile bağlı değil, sıfır yeniden yapılandırma. Asıl kazanç ADR-B03'te: sözleşme ve onu kullanan istemci kodu **aynı commit'te** değişiyor, arada tutarsızlık penceresi kalmıyor. Ayrılmak kolay (`git filter-repo`), birleşmek zor — belirsizlikte daha az bağlayıcı seçim. **Kararı çevirecek tek koşul:** mobil koda erişmemesi gereken dış geliştiriciyle çalışmak. |
+| ADR-B03 | Sözleşme | **OpenAPI, sunucu koddan üretilir; istemci client'ı ondan üretilir** | Rapor 22.1. Sözleşme kırılırsa istemci derlemesi kırılır — sessiz uyumsuzluk imkânsız. Monorepo sayesinde üretim ve tüketim tek CI koşusunda doğrulanır. |
 | ADR-B04 | Sync protokolü | **Delta / change-log tabanlı, cursor'lı pull + batch push** | Rapor ADR-004. Idempotency zorunlu. |
 | ADR-B05 | Çakışma politikası | **Alan bazlı LWW + uzun metinde kayıpsız çatallama** | Rapor 12.2: "günlük/anı metninde veri kaybetmeyen yaklaşım tercih edilmelidir". Detay §4.4. |
 | ADR-B06 | ~~Kimlik~~ | ~~ASP.NET Core Identity + JWT~~ → **ADR-B15 ile değiştirildi.** | Kendi Identity katmanımızı yazmak 2–3 hafta ve kimlik doğrulamayı yanlış yapmak geç fark edilen bir güvenlik olayıdır. |
@@ -85,7 +85,7 @@ büyüdükçe migration riski artar.
    │  Kimlik DOĞRULAMASI Google'da,                  │
    │  kimlik KARARI ve tüm içerik bizde.             │
    ▼                                                 ▼
-[iz-api — ASP.NET Core · Türkiye]
+[api/ — ASP.NET Core · Türkiye]
    ├─ Auth        → Firebase ID token doğrulama (Google açık anahtarları)
    ├─ Sync        → /sync/push, /sync/pull (change-log)
    ├─ Entitlement → plan durumu, store webhook'ları
@@ -97,21 +97,39 @@ büyüdükçe migration riski artar.
    (Faz 6+: Object Storage + CDN — bu haritanın dışında)
 ```
 
-**Solution yapısı** (`iz-api` reposu):
+**Depo yapısı** — tek repo, iki uygulama:
 
 ```
-src/
-├── Iz.Api/              → Minimal API endpoint'leri, DI, middleware, OpenAPI
-├── Iz.Domain/           → Entity'ler, değer tipleri, çakışma kuralları (bağımlılıksız)
-├── Iz.Application/      → Use-case'ler (SyncPushHandler, PullChangesHandler…)
-├── Iz.Infrastructure/   → EF Core, Identity, Redis, store doğrulama istemcileri
-└── Iz.Migrations/       → EF Core migration'ları
-tests/
-├── Iz.UnitTests/        → çakışma çözümü, versiyonlama — saf mantık
-└── Iz.IntegrationTests/ → Testcontainers ile gerçek Postgres, uçtan uca sync senaryoları
-contracts/
-└── openapi.v1.yaml      → CI'da üretilir; değişirse PR'da diff görünür
+Iz/
+├── .github/workflows/        → tek CI; işler yol filtresiyle ayrışır
+├── iz/                       → Flutter istemcisi (mevcut)
+│   └── lib/core/network/     → üretilen API istemcisi buraya iner
+├── api/                      → ASP.NET Core sunucusu (yeni)
+│   ├── src/
+│   │   ├── Iz.Api/              Minimal API endpoint'leri, DI, middleware
+│   │   ├── Iz.Domain/           Entity'ler, çakışma kuralları (bağımlılıksız)
+│   │   ├── Iz.Application/      Use-case'ler (SyncPushHandler, PullChangesHandler…)
+│   │   ├── Iz.Infrastructure/   EF Core, Redis, Firebase token doğrulama, RevenueCat
+│   │   └── Iz.Migrations/       EF Core migration'ları
+│   ├── tests/
+│   │   ├── Iz.UnitTests/        çakışma çözümü, versiyonlama — saf mantık
+│   │   └── Iz.IntegrationTests/ Testcontainers ile gerçek Postgres
+│   ├── docker-compose.yml       Postgres + Redis (yerel geliştirme)
+│   └── Iz.sln
+├── contracts/
+│   └── openapi.v1.yaml       → api CI'ında üretilir, PR diff'inde görünür
+├── BACKEND_YOL_HARITASI.md
+└── TEKNIK_GEREKSINIM_DOKUMANI.md
 ```
+
+**Sözleşme akışı monorepo'da:** `api/` derlenince `contracts/openapi.v1.yaml` yeniden üretilir.
+Aynı CI koşusu bu dosyadan Dart istemcisini üretir ve `iz/`nin derlendiğini doğrular.
+Bir alan adı değiştiğinde **aynı PR** hem sunucuyu hem istemciyi kırar — ayrı repolarda
+kaçınılmaz olan "yayınla, sonra karşı tarafta güncelle" penceresi hiç oluşmaz.
+
+**CI ayrımı:** işler yol filtresiyle çalışır — `iz/**` değişince Flutter işleri,
+`api/**` değişince .NET işleri, `contracts/**` değişince ikisi birden.
+Deseni `uretilen-kod` işinde zaten kurduk.
 
 **Neden istemci mimarisini aynalıyoruz:** `Iz.Domain` hiçbir şeyi bilmez, `Iz.Application`
 yalnız domain'i bilir. Flutter tarafındaki domain/data/presentation ayrımıyla aynı kural.
@@ -337,7 +355,8 @@ GET    /v1/config/flags               FeatureFlags.fromMap'i besler (NFR-061)
 ### Faz 0 — Temel atma (1–2 hafta)
 
 **Sunucu**
-- `iz-api` reposu, solution iskeleti, `docker-compose` (Postgres + Redis)
+- `api/` klasörü, solution iskeleti, `docker-compose` (Postgres + Redis)
+- Tek CI'a .NET işleri eklenir; **yol filtresi** ile ayrışır (`iz/**` → Flutter, `api/**` → .NET)
 - Health endpoint, ProblemDetails middleware, yapılandırılmış log (Serilog + redaksiyon)
 - CI: build + test + OpenAPI üretimi; `contracts/openapi.v1.yaml` PR diff'inde görünür
 - Ortamlar: `dev` / `staging` / `prod` — istemcideki `IZ_ENV` ile birebir
