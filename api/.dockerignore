@@ -1,0 +1,11 @@
+# Derleme çıktıları imaja girmemeli: hem şişirir hem yerel makinenin
+# çıktısını üretime taşır (yanlış mimari, eski dosya).
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/*.user
+
+# Sırlar asla imaja gömülmez.
+**/appsettings.*.local.json
+**/.env

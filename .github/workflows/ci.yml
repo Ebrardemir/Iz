@@ -1,11 +1,11 @@
 # İZ — sürekli entegrasyon (TR-B-02)
 #
-# Her PR'da statik analiz ve testler koşar. Amaç, "bende çalışıyordu"
-# cevabını imkânsız kılmak.
+# Depo iki uygulama barındırıyor (ADR-B02): iz/ Flutter istemcisi,
+# api/ ASP.NET sunucusu. Tek workflow, işler YOL FİLTRESİYLE ayrışıyor —
+# yalnız api/ değişen bir PR'da Flutter testleri koşmasın diye.
 #
-# Flutter sürümü .fvmrc ile AYNI olmalı (şu an 3.47.1). Yerelde fvm,
-# CI'da bu dosya — ikisi ayrışırsa "yerelde geçen test CI'da kalıyor"
-# durumu doğar. Sürümü değiştirirken İKİSİNİ BİRDEN güncelle.
+# Flutter sürümü .fvmrc ile AYNI olmak zorunda. Ayrışırsa "yerelde geçiyor,
+# CI'da kalıyor" durumu doğar; sürümü değiştirirken İKİSİNİ BİRDEN güncelle.
 
 name: CI
 
@@ -15,22 +15,67 @@ on:
   pull_request:
 
 concurrency:
-  # Aynı dala arka arkaya push atılırsa önceki koşuyu iptal et.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.47.1'
-
-defaults:
-  run:
-    working-directory: iz
+  DOTNET_VERSION: '9.0.x'
 
 jobs:
-  analiz-ve-test:
-    name: Analiz ve testler
+  # ---------------------------------------------------------------------
+  kapsam:
+    name: Ne değişti
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      flutter: ${{ steps.bak.outputs.flutter }}
+      api: ${{ steps.bak.outputs.api }}
+      kodüretimi: ${{ steps.bak.outputs.kodüretimi }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: bak
+        run: |
+          taban="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$taban" ] || [ "$taban" = "0000000000000000000000000000000000000000" ]; then
+            # İlk push veya taban bilinmiyor: temkinli davran, hepsini koş.
+            echo "flutter=true"     >> "$GITHUB_OUTPUT"
+            echo "api=true"         >> "$GITHUB_OUTPUT"
+            echo "kodüretimi=true"  >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          degisen=$(git diff --name-only "$taban" HEAD || echo "")
+          echo "Değişen dosyalar:"; echo "$degisen"
+
+          es() { echo "$degisen" | grep -qE "$1"; }
+
+          # contracts/ ikisini birden ilgilendirir: sözleşme değiştiyse hem
+          # sunucunun ürettiği hem istemcinin tükettiği taraf doğrulanmalı.
+          if es '^iz/' || es '^contracts/' ; then echo "flutter=true" >> "$GITHUB_OUTPUT"; else echo "flutter=false" >> "$GITHUB_OUTPUT"; fi
+          if es '^api/' || es '^contracts/' ; then echo "api=true"     >> "$GITHUB_OUTPUT"; else echo "api=false"     >> "$GITHUB_OUTPUT"; fi
+
+          # build_runner dakikalar sürüyor; yalnız üretimi etkileyen
+          # değişikliklerde koşsun.
+          if es 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
+            echo "kodüretimi=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "kodüretimi=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------
+  flutter-analiz-ve-test:
+    name: Flutter — analiz ve testler
+    needs: kapsam
+    if: needs.kapsam.outputs.flutter == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: iz
 
     steps:
       - uses: actions/checkout@v4
@@ -53,22 +98,25 @@ jobs:
       - name: Testler
         run: flutter test --reporter=compact
 
+  # ---------------------------------------------------------------------
   mimari-kurallar:
-    name: Mimari kuralları
+    name: Flutter — mimari kuralları
+    needs: kapsam
+    if: needs.kapsam.outputs.flutter == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: iz
 
     steps:
       - uses: actions/checkout@v4
 
-      # Bu iş Flutter gerektirmiyor: hepsi metin taraması.
-      # Hızlı olsun ki geliştirici geri bildirimi beklemesin.
+      # Bu iş Flutter kurmuyor: hepsi metin taraması, saniyeler sürüyor.
 
       - name: 'TR-C-20 — plan karşılaştırması yasak'
         run: |
           # Entitlement kararı yalnız merkezî matristen okunur.
-          # `if (plan == IzPlan.plus)` yazmak paketleme değiştiğinde
-          # bulunması imkânsız hatalar üretir.
           if grep -rn --include='*.dart' \
                -E '==\s*IzPlan\.(plus|family)|IzPlan\.(plus|family)\s*==' \
                lib/ | grep -v 'core/entitlement/entitlement.dart'; then
@@ -78,8 +126,6 @@ jobs:
 
       - name: 'TR-C-01 — domain katmanı saf kalmalı'
         run: |
-          # domain/ yalnız Dart + core bilir. Flutter, Drift veya HTTP
-          # tipini import ederse katman sınırı delinmiş demektir.
           if grep -rn --include='*.dart' \
                -E "^import 'package:(flutter|drift|dio|http)/" \
                lib/features/*/domain/ 2>/dev/null; then
@@ -89,14 +135,10 @@ jobs:
 
       - name: 'TR-C-03 — feature sınırları'
         run: |
-          # ARCHITECTURE.md: bir feature başka feature'ın YALNIZ domain/'ini
-          # görebilir. İki meşru istisna var ve ikisi de bilinçli:
-          #   • data/ → data/ : yabancı anahtar ve join için tablo referansı
-          #     (memory_tables.dart Categories/People/... tablolarını tanımalı)
-          #   • *_l10n.dart : entity'yi metne çeviren saf fonksiyonlar
+          # Bir feature başka feature'ın YALNIZ domain/'ini görebilir.
+          # İki meşru istisna: data/ -> data/ tablo referansı (yabancı anahtar
+          # ve join için zorunlu) ve *_l10n.dart köprüleri.
           ihlal=0
-
-          # A) domain/ ve presentation/, başka feature'ın data/'sını göremez.
           for dir in lib/features/*/; do
             ad=$(basename "$dir")
             for sub in domain presentation; do
@@ -105,89 +147,90 @@ jobs:
                   | grep -v "features/$ad/data/" || true)
               if [ -n "$h" ]; then echo "$h"; ihlal=1; fi
             done
-          done
-
-          # B) Başka feature'ın ekranına doğrudan bağlanma — rota adıyla git.
-          for dir in lib/features/*/; do
-            ad=$(basename "$dir")
             h=$(grep -rn "package:iz/features/[a-z_]*/presentation/" "$dir" --include='*.dart' 2>/dev/null \
                 | grep -v "features/$ad/presentation/" | grep -vE "_l10n\.dart" || true)
             if [ -n "$h" ]; then echo "$h"; ihlal=1; fi
           done
-
           [ "$ihlal" -eq 0 ] || { echo "::error::Feature sınırı ihlal edildi (ARCHITECTURE.md §2)."; exit 1; }
 
       - name: 'TR-C-41 — DateTime.now() doğrudan çağrılmaz'
         run: |
-          # "Bugünün İzi" test edilebilir kalmalı: saat enjekte edilir.
           if grep -rn --include='*.dart' 'DateTime\.now()' lib/ \
-             | grep -v 'core/utils/clock.dart' \
-             | grep -v '\.g\.dart'; then
+             | grep -v 'core/utils/clock.dart' | grep -v '\.g\.dart'; then
             echo "::warning::DateTime.now() doğrudan çağrılmış. Clock enjekte etmeyi düşün."
           fi
 
+  # ---------------------------------------------------------------------
   uretilen-kod:
-    name: Üretilen kod güncel mi
+    name: Flutter — üretilen kod güncel mi
+    needs: kapsam
+    if: needs.kapsam.outputs.kodüretimi == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
-    # Bu iş build_runner koşuyor ve dakikalar sürüyor. Her PR'da koşmasının
-    # anlamı yok: üretilen kod yalnız tablo, DAO, .drift dosyası veya
-    # bağımlılık değiştiğinde bayatlar. Diğer PR'lar erken çıkar.
+    defaults:
+      run:
+        working-directory: iz
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Kod üretimini ilgilendiren bir değişiklik var mı
-        id: kapsam
-        run: |
-          taban="${{ github.event.pull_request.base.sha || github.event.before }}"
-          if [ -z "$taban" ] || [ "$taban" = "0000000000000000000000000000000000000000" ]; then
-            echo "gerekli=true" >> "$GITHUB_OUTPUT"   # ilk push: temkinli davran
-            exit 0
-          fi
-          degisen=$(git diff --name-only "$taban" HEAD || echo "")
-          if echo "$degisen" | grep -qE 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
-            echo "gerekli=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "gerekli=false" >> "$GITHUB_OUTPUT"
-            echo "Kod üretimini etkileyen değişiklik yok — atlanıyor."
-          fi
 
       - uses: subosito/flutter-action@v2
-        if: steps.kapsam.outputs.gerekli == 'true'
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
-      - name: Bağımlılıklar
-        if: steps.kapsam.outputs.gerekli == 'true'
-        run: flutter pub get
+      - run: flutter pub get
 
       - name: Kodu yeniden üret
-        if: steps.kapsam.outputs.gerekli == 'true'
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Fark var mı
-        if: steps.kapsam.outputs.gerekli == 'true'
         run: |
-          # Üretilen dosyalar commit'lenmiş hâlinden farklıysa, birisi
-          # tabloyu değiştirip build_runner koşmayı unutmuş demektir.
+          # Üretilen dosyalar commit'lenmiş hâlinden farklıysa, birisi tabloyu
+          # değiştirip build_runner koşmayı unutmuş demektir.
           if ! git diff --exit-code; then
             echo "::error::Üretilen kod güncel değil. 'dart run build_runner build' koşup commit'le."
             exit 1
           fi
 
       - name: Şema anlık görüntüsü alınmış mı
-        if: steps.kapsam.outputs.gerekli == 'true'
         run: |
           # TR-A-02: schemaVersion artırıldıysa drift_schemas/ altında
-          # karşılığı olmalı. Olmazsa migration testi yazılamaz.
+          # karşılığı olmalı, yoksa migration testi yazılamaz.
           surum=$(grep -oE 'schemaVersion => [0-9]+' lib/app/database/app_database.dart | grep -oE '[0-9]+')
           if [ ! -f "drift_schemas/drift_schema_v${surum}.json" ]; then
             echo "::error::schemaVersion=$surum ama drift_schemas/drift_schema_v${surum}.json yok."
             exit 1
           fi
+
+  # ---------------------------------------------------------------------
+  api-derleme-ve-test:
+    name: API — derleme ve testler
+    needs: kapsam
+    if: needs.kapsam.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Bağımlılıklar
+        run: dotnet restore
+
+      - name: Biçimlendirme
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Derleme
+        # Uyarılar Directory.Build.props'ta hata sayılıyor; ayrıca bayrak gerekmiyor.
+        run: dotnet build --no-restore -c Release
+
+      - name: Testler
+        run: dotnet test --no-build -c Release --verbosity minimal

@@ -109,8 +109,8 @@ Iz/
 │   │   ├── Iz.Api/              Minimal API endpoint'leri, DI, middleware
 │   │   ├── Iz.Domain/           Entity'ler, çakışma kuralları (bağımlılıksız)
 │   │   ├── Iz.Application/      Use-case'ler (SyncPushHandler, PullChangesHandler…)
-│   │   ├── Iz.Infrastructure/   EF Core, Redis, Firebase token doğrulama, RevenueCat
-│   │   └── Iz.Migrations/       EF Core migration'ları
+│   │   └── Iz.Infrastructure/   EF Core (migration'lar dahil), Redis,
+│   │                             Firebase token doğrulama, RevenueCat
 │   ├── tests/
 │   │   ├── Iz.UnitTests/        çakışma çözümü, versiyonlama — saf mantık
 │   │   └── Iz.IntegrationTests/ Testcontainers ile gerçek Postgres
@@ -354,12 +354,25 @@ GET    /v1/config/flags               FeatureFlags.fromMap'i besler (NFR-061)
 
 ### Faz 0 — Temel atma (1–2 hafta)
 
-**Sunucu**
-- `api/` klasörü, solution iskeleti, `docker-compose` (Postgres + Redis)
-- Tek CI'a .NET işleri eklenir; **yol filtresi** ile ayrışır (`iz/**` → Flutter, `api/**` → .NET)
-- Health endpoint, ProblemDetails middleware, yapılandırılmış log (Serilog + redaksiyon)
-- CI: build + test + OpenAPI üretimi; `contracts/openapi.v1.yaml` PR diff'inde görünür
-- Ortamlar: `dev` / `staging` / `prod` — istemcideki `IZ_ENV` ile birebir
+**Sunucu** — ✅ *tamamlandı (26 Ağustos 2026)*
+- ✅ `api/` klasörü, .NET 9 solution: `Iz.Domain` → `Iz.Application` → `Iz.Infrastructure` → `Iz.Api`
+      (tek yönlü bağımlılık zinciri, Flutter tarafındaki katman ayrımının aynası)
+- ✅ `docker-compose` (Postgres 17 + Redis 7), sağlık koşuluyla başlatma sırası
+- ✅ Çok aşamalı `Dockerfile`, root olmayan kullanıcı. **Yapılandırma tamamen ortam
+      değişkeninden ve uygulama durumsuz** — aynı imaj VPS'te de yönetilen konteyner
+      servisinde de çalışır, barındırma kararı ertelenebilir kalıyor
+- ✅ `/health/live`, `/health/ready`, `/health` (ortam bildirimi)
+- ✅ ProblemDetails middleware: her hata `errorCode` ve `traceId` taşıyor
+- ✅ JSON konsol logu (ayrı log kütüphanesi eklenmedi — henüz gerek yok)
+- ✅ `/openapi/v1.json` yayınlanıyor
+- ✅ CI: `dotnet format` + derleme + test, **yol filtresiyle** (`api/**` veya `contracts/**`)
+- ✅ 5 entegrasyon testi: sağlık uçları, ProblemDetails biçimi, OpenAPI yayını
+
+**Not:** `Iz.Migrations` ayrı proje olarak açılmadı — EF migration'ları `Iz.Infrastructure`
+içinde yaşayacak. Bir proje az, aynı iş.
+
+**Doğrulanmadı:** Docker imajı yerelde derlenemedi (daemon çalışmıyordu).
+`COPY` yolları elle denetlendi ama ilk `docker compose up --build` gözle görülmeli.
 
 **İstemci**
 - `dio` + `core/network/`: `ApiClient`, auth interceptor, retry/backoff, `ProblemDetails → Failure` map'i
