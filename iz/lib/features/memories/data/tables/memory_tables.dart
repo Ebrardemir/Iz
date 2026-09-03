@@ -34,6 +34,9 @@ import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
 ///     arıyor (bkz. MemoryDao.findOnThisDay). Bu sorgu uygulama AÇILIŞINDA
 ///     çalışıyor; tarama maliyeti doğrudan açılış süresine yazılır.
 @DataClassName('MemoryRow')
+/// FR-091 — kategoriye göre filtreleme. Filtre paneli en sık bu sütunu
+/// kullanıyor ve kategori başına anı sayısı büyüdükçe tarama pahalılaşıyor.
+@TableIndex(name: 'idx_memories_category', columns: {#categoryId})
 @TableIndex(
   name: 'idx_memories_occurred_at',
   columns: {#occurredAt, #deletedAt},
@@ -102,7 +105,13 @@ class Locations extends Table with SyncableTable {
 
 /// FR-016 / BR-001: bir anı birden fazla kişiyle ilişkilendirilebilir;
 /// anının kopyaları kişi profillerinde çoğaltılmaz.
+/// TERS YÖN İNDEKSİ — NEDEN GEREKLİ?
+/// Birincil anahtar `(memoryId, personId)`. SQLite bileşik anahtarı yalnız
+/// SOLDAN eşleştirebilir: `memoryId` ile sorgu indeksi kullanır, `personId`
+/// ile sorgu **tam tarama** yapar. Ama kişi detayındaki yaşam çizgisi (MemoryDao.watchByPerson)
+/// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryPersonRow')
+@TableIndex(name: 'idx_memory_people_person', columns: {#personId})
 class MemoryPeople extends Table {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
@@ -117,7 +126,13 @@ class MemoryPeople extends Table {
 }
 
 /// FR-074 — bir anı birden fazla koleksiyona bağlanabilir.
+/// TERS YÖN İNDEKSİ — NEDEN GEREKLİ?
+/// Birincil anahtar `(memoryId, collectionId)`. SQLite bileşik anahtarı yalnız
+/// SOLDAN eşleştirebilir: `memoryId` ile sorgu indeksi kullanır, `collectionId`
+/// ile sorgu **tam tarama** yapar. Ama koleksiyon detayı
+/// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryCollectionRow')
+@TableIndex(name: 'idx_memory_collections_collection', columns: {#collectionId})
 class MemoryCollections extends Table {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
@@ -133,7 +148,13 @@ class MemoryCollections extends Table {
 
 /// BR-012 — anı ↔ ritüel bağı, hangi yılın tekrarı olduğu bilgisiyle.
 /// FR-076'daki "yılları yan yana karşılaştırma" bu sütuna dayanır.
+/// TERS YÖN İNDEKSİ — NEDEN GEREKLİ?
+/// Birincil anahtar `(memoryId, ritualId)`. SQLite bileşik anahtarı yalnız
+/// SOLDAN eşleştirebilir: `memoryId` ile sorgu indeksi kullanır, `ritualId`
+/// ile sorgu **tam tarama** yapar. Ama ritüel yıl karşılaştırması (MemoryDao.watchByRitual)
+/// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryRitualRow')
+@TableIndex(name: 'idx_memory_rituals_ritual', columns: {#ritualId})
 class MemoryRituals extends Table {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
@@ -146,7 +167,13 @@ class MemoryRituals extends Table {
 }
 
 /// Anı ↔ medya, sırasıyla birlikte.
+/// TERS YÖN İNDEKSİ — NEDEN GEREKLİ?
+/// Birincil anahtar `(memoryId, mediaId)`. SQLite bileşik anahtarı yalnız
+/// SOLDAN eşleştirebilir: `memoryId` ile sorgu indeksi kullanır, `mediaId`
+/// ile sorgu **tam tarama** yapar. Ama "bu fotoğraf hangi anılarda?" sorgusu ve medya silme
+/// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryMediaRow')
+@TableIndex(name: 'idx_memory_media_media', columns: {#mediaId})
 class MemoryMedia extends Table {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 ve öncesi için yedekleme kuralları (android:fullBackupContent).
+  Android 12+ karşılığı: data_extraction_rules.xml — İKİSİNİ BİRLİKTE GÜNCELLE.
+
+  DURUŞ (TR-M14-10/11):
+  Yedekleme AÇIK bırakılıyor. Bu bilinçli bir karar: bulut senkronizasyonu
+  1.5'e kadar gelmiyor ve o zamana dek telefonunu kaybeden kullanıcının tek
+  güvenlik ağı platformun kendi yedeği. Kapatmak, "anılarını koru" diyen bir
+  üründe savunulamazdı.
+
+  ANCAK "yalnız bu cihazda" işaretli günlük kayıtlarının (FR-035) sözü yedeğe
+  karşı da tutulmalı. Bunu veritabanını yedekten çıkararak DEĞİL, o kayıtların
+  ŞİFRELEME ANAHTARINI yedekten çıkararak yapıyoruz: anahtar yeni cihaza
+  gitmezse yedek geri yüklense bile o kayıtlar okunamaz.
+  (Anahtar flutter_secure_storage'ın EncryptedSharedPreferences dosyasında
+  durur; aşağıda hariç tutuluyor.)
+-->
+<full-backup-content>
+
+    <!-- Anı veritabanı ve uygulama dosyaları: YEDEKLENİR.
+         Kullanıcının 1.5'e kadar tek güvenlik ağı bu. -->
+    <include domain="database" path="." />
+    <include domain="file" path="." />
+    <include domain="sharedpref" path="." />
+
+    <!-- Güvenli depolama: YEDEKLENMEZ.
+         Buradaki anahtar başka cihaza taşınırsa "yalnız bu cihazda" sözü
+         anlamını yitirir. Oturum token'ları da burada; onların da yeni
+         cihaza taşınması istenmez (NFR-011). -->
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+
+    <!-- Önizleme/küçük resim önbelleği: YEDEKLENMEZ.
+         Orijinallerden yeniden üretilebilir; yedeği şişirmesi anlamsız. -->
+    <exclude domain="file" path="cache" />
+    <exclude domain="external" path="cache" />
+
+</full-backup-content>

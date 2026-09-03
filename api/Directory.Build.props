@@ -1,0 +1,28 @@
+<Project>
+  <!--
+    Tüm projeler için ortak derleme ayarları.
+
+    NEDEN TEK YERDE?
+    Her .csproj'a ayrı ayrı yazmak, bir gün birinin ötekilerden ayrışması
+    demek. Ayrışan proje uyarıyı yutar ve hata orada saklanır.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Null güvenliği açık: "olabilir mi?" sorusunu derleyici sorsun. -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Uyarılar HATA sayılır. Sert bir kural ama gerekçesi var: uyarı
+      biriktiren bir kod tabanında gerçek uyarı görünmez olur. CI'ın
+      "yeşil" demesi bir şey ifade etmeli.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Deterministik derleme: aynı kaynak, aynı çıktı. -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

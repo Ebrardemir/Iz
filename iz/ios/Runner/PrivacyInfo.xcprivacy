@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Apple Gizlilik Bildirimi (TR-M14-40).
+  2024'ten beri App Store yüklemesi için ZORUNLU; olmadan build reddedilir.
+
+  ŞU ANKİ DURUM: İZ hiçbir veriyi cihazdan dışarı göndermiyor.
+  Bu yüzden NSPrivacyCollectedDataTypes BOŞ.
+
+  ⚠️ AŞAĞIDAKİLER EKLENDİĞİNDE BU DOSYA GÜNCELLENMELİ.
+  Kararlar verildi (bkz. BACKEND_YOL_HARITASI.md ADR-B15/B16/B17), entegrasyon bekliyor:
+
+    • Firebase Crashlytics (1.0)
+        → "Crash Data"          linked: NO,  tracking: NO
+    • Firebase Analytics (1.0)
+        → "Product Interaction" linked: NO,  tracking: NO
+        → "Device ID"           linked: NO,  tracking: NO
+    • Firebase Authentication (1.5)
+        → "Email Address"       linked: YES, tracking: NO
+        → "User ID"             linked: YES, tracking: NO
+    • RevenueCat (1.5)
+        → "Purchase History"    linked: YES, tracking: NO
+        → "User ID"             linked: YES, tracking: NO
+    • Bulut yedeği (1.5)
+        → "Photos or Videos"    linked: YES, tracking: NO
+        → "Other User Content"  linked: YES, tracking: NO
+
+  Bu SDK'ların kendi PrivacyInfo dosyaları vardır ve pakete otomatik girer;
+  buradaki bildirim UYGULAMANIN kendi topladığı veriyi anlatır — ikisi ayrıdır.
+
+  Bildirim ile App Store Connect'teki gizlilik formu TUTARLI olmak zorundadır.
+  Tutarsızlık, yayındaki uygulamanın kaldırılma sebebidir.
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- İZ reklam takibi yapmaz ve hiçbir veriyi izleme amacıyla kullanmaz. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- Cihazdan çıkan veri yok. Yukarıdaki uyarıya bakın. -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <!-- Apple'ın "gerekçe bildirilmesi zorunlu" API'leri.
+         Her biri kullandığımız bir pakete karşılık gelir. -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+
+        <!-- Dosya zaman damgaları.
+             C617.1 — uygulamanın kendi konteynerindeki dosyalar (drift, path_provider)
+             3B52.1 — kullanıcının SEÇTİĞİ dosyalar (image_picker) -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+                <string>3B52.1</string>
+            </array>
+        </dict>
+
+        <!-- UserDefaults — shared_preferences (tema, dil, onboarding durumu).
+             CA92.1: yalnızca uygulamanın kendi verisi. -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+        <!-- Disk alanı — FR-046: "kullanıcı önizlemelerin kapladığı alanı görebilmelidir".
+             85F4.1: bilgiyi doğrudan kullanıcıya göstermek için. -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>85F4.1</string>
+            </array>
+        </dict>
+
+    </array>
+</dict>
+</plist>

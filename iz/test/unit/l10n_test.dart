@@ -75,6 +75,18 @@ const _scannedDirs = ['lib/features', 'lib/shared', 'lib/app/router'];
 
 /// Bilinçli istisnalar. Yeni bir satır eklerken NEDENİNİ de yaz.
 const _allowedFiles = <String>{
+  // ÇÖKME EKRANI — çeviri MEVCUT OLMAYABİLİR.
+  // Bu widget'ı `ErrorWidget.builder` döndürüyor, yani bir widget build
+  // sırasında patladığında. Hata `MaterialApp`in kendi ağacında oluşmuşsa
+  // `Localizations` da `Theme` de kurulmamış olur; `context.l10n` okumak
+  // hata ekranının kendisini patlatır ve kullanıcı sonsuz bir hata döngüsüne
+  // düşer. Bu yüzden metin gömülü ve renkler sabit.
+  //
+  // Bedeli bilinçli: İngilizce kullanan bir kullanıcı çökme anında Türkçe
+  // metin görür. Çökme zaten istisnai bir an; doğru çalışması çevrilmiş
+  // olmasından önemli.
+  'lib/shared/widgets/app_crash_view.dart',
+
   // Tasarım önizlemesi için yazılmış SAHTE KULLANICI VERİSİ ("Kahve
   // Molası", "3 gün önce"...). Bunlar arayüz metni değil, kullanıcının
   // gireceği içeriğin taklidi — çeviriden geçmemeleri gerekiyor.

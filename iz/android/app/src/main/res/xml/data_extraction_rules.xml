@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) yedekleme ve cihaz-transfer kuralları.
+  Android 11 ve öncesi karşılığı: backup_rules.xml — İKİSİNİ BİRLİKTE GÜNCELLE.
+
+  İKİ AYRI SENARYO VAR, ikisini de ele almak ZORUNLU:
+    <cloud-backup>    → Google Drive yedeği (buluta çıkar)
+    <device-transfer> → telefondan telefona doğrudan aktarım (buluta çıkmaz)
+
+  Şifreleme anahtarını İKİSİNDEN DE çıkarıyoruz. Cihaz transferi buluta
+  uğramasa bile "yalnız BU cihazda" sözü cihaz değişince de bozulur.
+-->
+<data-extraction-rules>
+
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+        <include domain="sharedpref" path="." />
+
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="file" path="cache" />
+        <exclude domain="external" path="cache" />
+    </cloud-backup>
+
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="." />
+        <include domain="sharedpref" path="." />
+
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="file" path="cache" />
+        <exclude domain="external" path="cache" />
+    </device-transfer>
+
+</data-extraction-rules>

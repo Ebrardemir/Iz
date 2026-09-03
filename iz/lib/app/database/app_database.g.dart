@@ -8060,6 +8060,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RitualsTable rituals = $RitualsTable(this);
   late final $MemoryRitualsTable memoryRituals = $MemoryRitualsTable(this);
   late final $MemoryMediaTable memoryMedia = $MemoryMediaTable(this);
+  late final Index idxMemoriesCategory = Index(
+    'idx_memories_category',
+    'CREATE INDEX idx_memories_category ON memories (category_id)',
+  );
   late final Index idxMemoriesOccurredAt = Index(
     'idx_memories_occurred_at',
     'CREATE INDEX idx_memories_occurred_at ON memories (occurred_at, deleted_at)',
@@ -8068,8 +8072,28 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_memories_on_this_day',
     'CREATE INDEX idx_memories_on_this_day ON memories (occurred_month, occurred_day)',
   );
+  late final Index idxMemoryPeoplePerson = Index(
+    'idx_memory_people_person',
+    'CREATE INDEX idx_memory_people_person ON memory_people (person_id)',
+  );
+  late final Index idxMemoryCollectionsCollection = Index(
+    'idx_memory_collections_collection',
+    'CREATE INDEX idx_memory_collections_collection ON memory_collections (collection_id)',
+  );
+  late final Index idxMemoryRitualsRitual = Index(
+    'idx_memory_rituals_ritual',
+    'CREATE INDEX idx_memory_rituals_ritual ON memory_rituals (ritual_id)',
+  );
+  late final Index idxMemoryMediaMedia = Index(
+    'idx_memory_media_media',
+    'CREATE INDEX idx_memory_media_media ON memory_media (media_id)',
+  );
   late final $JournalEntriesTable journalEntries = $JournalEntriesTable(this);
   late final $JournalMediaTable journalMedia = $JournalMediaTable(this);
+  late final Index idxJournalMediaMedia = Index(
+    'idx_journal_media_media',
+    'CREATE INDEX idx_journal_media_media ON journal_media (media_id)',
+  );
   late final MemoryDao memoryDao = MemoryDao(this as AppDatabase);
   Selectable<String> searchMemoryIds({required String query}) {
     return customSelect(
@@ -8116,10 +8140,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     rituals,
     memoryRituals,
     memoryMedia,
+    idxMemoriesCategory,
     idxMemoriesOccurredAt,
     idxMemoriesOnThisDay,
+    idxMemoryPeoplePerson,
+    idxMemoryCollectionsCollection,
+    idxMemoryRitualsRitual,
+    idxMemoryMediaMedia,
     journalEntries,
     journalMedia,
+    idxJournalMediaMedia,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([

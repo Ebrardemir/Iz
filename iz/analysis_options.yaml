@@ -10,7 +10,16 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.drift.dart"
     - "lib/core/l10n/generated/**"
+    # drift_dev'in şema anlık görüntülerinden ürettiği yardımcılar.
+    # Elle yazılmadı, elle düzeltilmeyecek (bkz. test/unit/migration_test.dart).
+    - "test/generated_migrations/**"
     - "build/**"
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
   language:
     strict-casts: true        # dynamic'ten örtük cast yok

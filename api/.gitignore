@@ -1,0 +1,9 @@
+# .NET derleme çıktıları
+bin/
+obj/
+*.user
+.vs/
+
+# Yerel sırlar — ASLA depoya girmez (TR-M14).
+.env
+appsettings.*.local.json

@@ -1,0 +1,59 @@
+# Yerel geliştirme ortamı: API + PostgreSQL + Redis.
+#
+# Üretim İÇİN DEĞİLDİR — şifreler burada düz metin ve portlar dışarı açık.
+# Üretimde bu üç servis ayrı yönetilir, yapılandırma ortamdan gelir.
+#
+#   docker compose up --build
+#   curl http://localhost:8080/health
+
+name: iz
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      IZ_Iz__Environment: dev
+      IZ_Iz__DatabaseConnection: "Host=postgres;Port=5432;Database=iz;Username=iz;Password=gelistirme"
+      IZ_Iz__RedisConnection: "redis:6379"
+      # Firebase proje kimliği yerelde boş kalabilir; kimlik Faz 1'de geliyor.
+      IZ_Iz__FirebaseProjectId: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: iz
+      POSTGRES_USER: iz
+      POSTGRES_PASSWORD: gelistirme
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-verisi:/var/lib/postgresql/data
+    healthcheck:
+      # API, veritabanı GERÇEKTEN hazır olmadan başlamasın. "Konteyner
+      # ayakta" ile "Postgres bağlantı kabul ediyor" aynı şey değil.
+      test: ["CMD-SHELL", "pg_isready -U iz -d iz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-verisi:

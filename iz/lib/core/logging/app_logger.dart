@@ -11,7 +11,9 @@ library;
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:iz/core/config/app_config.dart';
+import 'package:iz/shared/widgets/app_crash_view.dart';
 import 'package:logging/logging.dart';
 
 /// Bir kez çağrılır (bootstrap içinde).
@@ -79,6 +81,16 @@ void installGlobalErrorHandlers() {
       FlutterError.presentError(details);
     }
   };
+
+  // Bir widget build sırasında patlarsa kullanıcı ne görecek?
+  //
+  // Varsayılan: hata metnini ve yığın izini gösteren kırmızı ekran.
+  // Geliştirirken bunu İSTİYORUZ. Kullanıcının telefonunda İSTEMİYORUZ:
+  // hem korkutucu, hem de hata metni bir anının başlığını taşıyabilir
+  // (NFR-014 — kişisel içerik hata çıktısına sızmamalı).
+  if (!kDebugMode) {
+    ErrorWidget.builder = (details) => const AppCrashView();
+  }
 
   // Flutter framework dışındaki (isolate/platform) hatalar.
   PlatformDispatcher.instance.onError = (error, stack) {
