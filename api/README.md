@@ -14,9 +14,35 @@ curl http://localhost:8080/health
 Docker olmadan:
 
 ```bash
-dotnet run --project src/Iz.Api
+dotnet tool restore                     # dotnet-ef sürümü depoda sabit
+dotnet run --project src/Iz.Api         # IZ_Iz__DatabaseConnection ŞART
 dotnet test
 ```
+
+> **Docker gerekiyor.** Entegrasyon testleri Testcontainers ile gerçek bir
+> PostgreSQL kaldırıyor (yol haritası §8). Bellek içi sağlayıcı kullanmıyoruz:
+> benzersizlik kısıtı, yabancı anahtar ve migration'ın gerçekten çalışması
+> orada test edilemez — orada yeşil yanan test üretimde kırmızıya döner.
+
+## Veritabanı
+
+Şema EF Core migration'larıyla yönetilir; migration'lar `Iz.Infrastructure`
+içinde yaşar (ayrı bir `Iz.Migrations` projesi açılmadı — bir proje az, aynı iş).
+
+```bash
+# Yeni migration üret
+dotnet ef migrations add Adi \
+  --project src/Iz.Infrastructure --startup-project src/Iz.Infrastructure \
+  --output-dir Persistence/Migrations
+
+# Yereldeki veritabanına uygula
+dotnet ef database update \
+  --project src/Iz.Infrastructure --startup-project src/Iz.Infrastructure
+```
+
+Entity'yi değiştirip migration üretmeyi unutmak CI'da yakalanır
+(`migrations has-pending-model-changes`). Bu tür bir kaymanın ilk fark
+edileceği yer aksi hâlde üretim veritabanı olurdu.
 
 ## Yapı
 
@@ -44,6 +70,33 @@ Sırlar **yalnız ortam değişkeninden** gelir, `appsettings.json`'a yazılmaz
 | `IZ_Iz__DatabaseConnection` | PostgreSQL bağlantı dizesi |
 | `IZ_Iz__RedisConnection` | Redis bağlantı dizesi |
 | `IZ_Iz__FirebaseProjectId` | ID token doğrulaması için (Faz 1) |
+
+`IZ_Iz__DatabaseConnection` **olmadan uygulama açılmaz** — eksik yapılandırmayı
+ilk gerçek kullanıcının isteğinde değil, açılışta öğrenmek istiyoruz.
+
+`IZ_Iz__FirebaseProjectId` boşsa uygulama yine açılır (sağlık uçları ve OpenAPI
+çalışır) ama kimlik isteyen her uç **401** döner. "Yapılandırılmadı" hiçbir
+koşulda "herkese açık"a dönüşmez.
+
+## Kimlik (Faz 1)
+
+Kendi token'ımızı üretmiyoruz (ADR-B15). İstemci Firebase'den bir **ID token**
+alır, her isteğe `Authorization: Bearer <ID token>` koyar; biz Google'ın açık
+anahtarlarıyla **imza · `iss` · `aud` · `exp`** doğrularız (TR-M1-05).
+
+`register`/`login`/`refresh`/`logout`/`password-reset` uçları **yoktur** —
+bu altı işi Firebase yapıyor. İlk geçerli token geldiğinde kullanıcı kaydı
+kendiliğinden açılır; ayrı bir "kayıt ol" adımı yok.
+
+| Uç | Ne |
+|---|---|
+| `GET /v1/me` | Profil + plan özeti. İlk çağrıda `users` kaydını açar. |
+| `PATCH /v1/me` | `displayName`, `locale`. Boş bırakılan alan değişmez. |
+| `POST /v1/devices` | Cihazı kaydeder veya son görülmesini tazeler. |
+
+Cihaz kimliğini **sunucu üretir**. İstemci üretseydi başka bir cihazın
+kimliğini iddia edebilir, sync'teki "kendi değişikliğini atla" kuralını
+kurbanın değişikliklerini gizlemek için kullanabilirdi.
 
 ## Sağlık uçları
 

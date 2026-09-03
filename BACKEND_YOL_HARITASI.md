@@ -34,8 +34,10 @@ Bu doküman `iz/ARCHITECTURE.md`'nin backend karşılığıdır. Gereksinim numa
 
 ## 1. Başlangıç durumu (2026-08-26 itibarıyla)
 
-**İstemci:** 172 Dart dosyası, ~33.6k satır, `flutter analyze` temiz, 59 test dosyası.
-Drift `schemaVersion: 4`, 14 tablo. Backend'e dair **tek satır ağ kodu yok**.
+**İstemci:** 173 Dart dosyası, ~34k satır, `flutter analyze` temiz, 55 test dosyası.
+Drift `schemaVersion: 5`, 13 tablo + FTS5 sanal tablosu. Backend'e dair **tek satır ağ kodu yok**.
+Tablolardan yalnız `Memories` için DAO ve repository yazılmış — kalan 12 tablonun
+veri katmanı henüz yok (TRD → Ek D / TR-D-02).
 
 Lehimize olan hazırlıklar (bunlar bize haftalar kazandırıyor):
 
@@ -312,15 +314,18 @@ ama uygulama açılışında biyometri/PIN ister (FR-005). Sunucu için farklar�
 
 Rapor 22'deki taslak sınırların bu fazda gerçekleşen alt kümesi:
 
+> **Kimlik uçları yok — bilinçli.** ADR-B06 (kendi Identity katmanımız) ADR-B15 ile
+> düştüğü için `register` / `login` / `refresh` / `logout` / `password-reset` /
+> `social` uçlarının hiçbiri yazılmıyor. Bu altı işi Firebase yapıyor. İstemci
+> Firebase'den ID token alır ve her isteğe `Authorization: Bearer <ID token>`
+> koyar; bizim tarafımızda yalnız **doğrulama middleware'i** vardır (TR-M1-05).
+> Token yenilemeyi de Firebase SDK'sı yönetir — elle refresh mantığı yazılmaz (TR-M1-02).
+
 ```
-POST   /v1/auth/register              e-posta + parola
-POST   /v1/auth/login
-POST   /v1/auth/refresh               refresh rotation
-POST   /v1/auth/logout                refresh token iptali
-POST   /v1/auth/password-reset        (e-posta gönderimi)
-POST   /v1/auth/social/{apple|google} SSO token değişimi
+POST   /v1/devices                    cihaz kaydı (platform, push token)
 
 GET    /v1/me                         profil + plan özeti
+                                      (ilk çağrıda users kaydını token'daki uid ile açar)
 PATCH  /v1/me
 POST   /v1/me/delete-request          KVKK — 30 gün geri alınabilir
 DELETE /v1/me/delete-request          geri alma
@@ -329,13 +334,20 @@ POST   /v1/sync/push
 GET    /v1/sync/pull?cursor=&limit=
 GET    /v1/sync/state                 lastSyncAt, serverCursor (yedekleme sağlığı ekranı)
 
-GET    /v1/entitlements               plan, expiry, features[]
-POST   /v1/entitlements/verify        store receipt doğrulama
-POST   /v1/webhooks/appstore          App Store Server Notifications V2
-POST   /v1/webhooks/googleplay        Play RTDN
+GET    /v1/entitlements               plan, expiry, features[] — planın TEK kaynağı
+POST   /v1/entitlements/refresh       satın alma sonrası planı hemen tazele
+                                      (webhook'u beklemeden; doğrulama yine sunucuda)
+POST   /v1/webhooks/revenuecat        abonelik durumu değişimi — imza doğrulanır (ADR-B16)
 
 GET    /v1/config/flags               FeatureFlags.fromMap'i besler (NFR-061)
 ```
+
+**Store webhook'ları neden yok:** App Store Server Notifications ve Play RTDN
+doğrudan RevenueCat'e gidiyor, RevenueCat bize tek bir normalize edilmiş webhook
+atıyor. ADR-B16'dan geri dönülürse (kendi doğrulayıcımızı yazarsak)
+`/v1/webhooks/appstore` ve `/v1/webhooks/googleplay` o gün eklenir — bu yüzden
+Apple `originalTransactionId` ve Google `purchaseToken` bugünden bizim
+veritabanımızda tutuluyor (TR-M12-17).
 
 **Standartlar (rapor 22.1):**
 
@@ -371,8 +383,9 @@ GET    /v1/config/flags               FeatureFlags.fromMap'i besler (NFR-061)
 **Not:** `Iz.Migrations` ayrı proje olarak açılmadı — EF migration'ları `Iz.Infrastructure`
 içinde yaşayacak. Bir proje az, aynı iş.
 
-**Doğrulanmadı:** Docker imajı yerelde derlenemedi (daemon çalışmıyordu).
-`COPY` yolları elle denetlendi ama ilk `docker compose up --build` gözle görülmeli.
+**✅ Doğrulandı (3 Eylül 2026):** `docker compose up --build` çalıştırıldı. İmaj derlendi,
+üç konteyner de sağlıklı, `/health` gerçek yanıt verdi (`{"status":"ok","environment":"dev"}`),
+`/health/live`, `/health/ready` ve `/openapi/v1.json` 200 döndü.
 
 **İstemci**
 - `dio` + `core/network/`: `ApiClient`, auth interceptor, retry/backoff, `ProblemDetails → Failure` map'i
@@ -387,12 +400,25 @@ içinde yaşayacak. Bir proje az, aynı iş.
 > Süre 2–3 haftadan 1 haftaya indi: kimlik doğrulamayı Firebase yapıyor (ADR-B15).
 > Bize kalan iş **token doğrulamak ve kullanıcıyı kendi veritabanımıza yazmak**.
 
-**Sunucu**
-- Firebase ID token doğrulama middleware'i: Google'ın açık anahtarları, `aud`/`iss`/`exp` kontrolü.
-  Anahtarlar önbelleğe alınır; her istekte Google'a gidilmez.
-- `users` tablosu Firebase `uid` ile anahtarlanır. **E-posta bizde de tutulur** — hesap silme
-  ve destek için gerekir, ama tek gerçek kaynak Firebase'dir.
-- `/v1/me`, cihaz kaydı
+**Sunucu** — *3 Eylül 2026: ilk geçiş yazıldı, 24 entegrasyon testi yeşil.*
+- ✅ Firebase ID token doğrulaması: `JwtBearer` + `Authority` ile Google'ın anahtarları
+      indirilip önbelleğe alınıyor; `iss`/`aud`/`exp` ve imza doğrulanıyor. `ClockSkew`
+      varsayılan 5 dakikadan 30 saniyeye çekildi.
+- ✅ EF Core + PostgreSQL: `users` ve `devices` tabloları, snake_case, ilk migration.
+- ✅ **`users` Firebase `uid` ile anahtarlanmıyor, kendi UUID v7'miz birincil anahtar;
+      `firebase_uid` benzersiz sütun.** Karar Faz 1'de netleşti: `uid`'yi birincil anahtar
+      yapmak her satırın sahipliğini bir kimlik sağlayıcısının iç kimliğine bağlardı ve
+      ADR-B15'ten çıkmayı imkânsızlaştırırdı. Maliyeti bir sütun.
+- ✅ E-posta bizde de tutuluyor ve her istekte token'dakiyle tazeleniyor (TR-M1-06).
+- ✅ `GET /v1/me`, `PATCH /v1/me`, `POST /v1/devices`
+- ✅ IDOR'a karşı iki hat: repository'ler `userId` ile sorguluyor **ve** EF global sorgu
+      süzgeci sahipli kayıtları kullanıcıya bağlıyor (§7.2). Entegrasyon testinde
+      "saldırgan kurbanın cihaz kimliğiyle istek atar" senaryosu var.
+- ✅ Cihaz kimliğini **sunucu üretir** — istemci üretseydi başka cihazın kimliğini iddia
+      edip sync'teki echo kuralını kurbanın değişikliklerini gizlemek için kullanabilirdi.
+- ✅ CI'a migration kayması kontrolü eklendi (`has-pending-model-changes`).
+- ⏳ Kalan: rate limit (auth uçları), `/health/ready`'ye veritabanı kontrolü,
+      `POST /v1/me/delete-request` (sütunlar hazır: `deletion_requested_at`).
 
 **İstemci**
 - `FirebaseAuthRepository` yazılır; [stub_auth_repository.dart](iz/lib/features/auth/data/repositories/stub_auth_repository.dart) yerine geçer.
@@ -417,7 +443,14 @@ Bu akış atlanırsa mevcut kullanıcıların verisi **hiçbir zaman buluta çı
 
 Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 
-**Drift `schemaVersion: 4 → 5`:**
+**Drift `schemaVersion` → v7** (şema kütüğünün tek kaynağı: TRD **Ek A**):
+
+> ⚠️ *Bu bölüm 26 Ağustos'ta "v4 → v5" diye yazılmıştı; o sırada v5 zaten alınmıştı.*
+> Bugünkü doğru numara **v7**'dir: v5 ters yön indeksleriyle (✅ alındı), v6 ise
+> `journal_search` FTS tablosuyla (1.1) dolu. Sync tabloları 1.5'e ait olduğu için
+> sıradaki boş numara v7. Sürüm numarasını bu dokümandan değil **her zaman Ek A'dan**
+> oku — iki yerde tutulan numara bir gün ayrışır.
+
 - Join tablolarına (`MemoryPeople`, `MemoryCollections`, `MemoryRituals`, `MemoryMedia`, `JournalMedia`)
   `updatedAt`, `deletedAt`, `version` sütunları. Composite PK korunur — kimlik `(memoryId, personId)`
   çifti zaten deterministik, ayrı UUID gerekmez.
@@ -430,7 +463,7 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
   `memory_dao.dart` ve tüm feature DAO'ları tek tek gözden geçirilecek.
 - Repository yazma yolları outbox'a kayıt düşürür (henüz kimse okumuyor).
 
-**Çıkış kriteri:** v4 → v5 migration testi yeşil; mevcut 59 test dosyası hâlâ yeşil; outbox doluyor.
+**Çıkış kriteri:** v5 → v7 migration testi yeşil; mevcut test paketi hâlâ yeşil; outbox doluyor.
 
 ---
 

@@ -1,15 +1,19 @@
 using System.Text.Json;
 using Iz.Api;
-using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using Iz.Api.Authentication;
+using Iz.Api.Endpoints;
+using Iz.Api.ErrorHandling;
+using Iz.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- Yapılandırma ---------------------------------------------------------
 // Ortam değişkenleri appsettings'in ÜSTÜNE yazar. Sırlar yalnız oradan gelir.
 builder.Configuration.AddEnvironmentVariables(prefix: "IZ_");
-builder.Services.Configure<IzOptions>(
-    builder.Configuration.GetSection(IzOptions.SectionName));
+
+var izSection = builder.Configuration.GetSection(IzOptions.SectionName);
+builder.Services.Configure<IzOptions>(izSection);
+var izOptions = izSection.Get<IzOptions>() ?? new IzOptions();
 
 // --- Loglama --------------------------------------------------------------
 // Konsola JSON: hangi barındırmaya gidersek gidelim, satırlar yapılandırılmış
@@ -30,6 +34,7 @@ builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = context =>
     {
         // İstemcinin dallanacağı makine-okunur kod. Metin değişebilir, bu değişmez.
+        // TryAdd: AppExceptionHandler daha özel bir kod yazdıysa üzerine yazılmaz.
         context.ProblemDetails.Extensions.TryAdd(
             "errorCode",
             context.ProblemDetails.Status switch
@@ -48,6 +53,19 @@ builder.Services.AddProblemDetails(options =>
             "traceId", context.HttpContext.TraceIdentifier);
     };
 });
+
+builder.Services.AddExceptionHandler<AppExceptionHandler>();
+
+// --- Veri erişimi ve use-case'ler ----------------------------------------
+builder.Services.AddIzInfrastructure(RequireDatabaseConnection(izOptions));
+
+// --- Kimlik ---------------------------------------------------------------
+// ADR-B15: doğrulama Google'da, karar bizde.
+builder.Services.AddScoped<CurrentUserContext>();
+builder.Services.AddScoped<Iz.Application.Abstractions.ICurrentUser>(
+    sp => sp.GetRequiredService<CurrentUserContext>());
+builder.Services.AddIzFirebaseAuthentication(izOptions.FirebaseProjectId);
+builder.Services.AddAuthorization();
 
 // --- Sağlık kontrolleri ---------------------------------------------------
 // İki ayrı uç nokta, çünkü iki ayrı soru soruyorlar:
@@ -68,6 +86,14 @@ app.UseStatusCodePages();
 
 app.MapOpenApi();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Kimliği kendi kullanıcı kaydımıza bağlar. UseAuthentication'dan SONRA
+// olmak zorunda: doğrulanmamış bir token'dan uid okumak, hiç doğrulamamakla
+// aynı şeydir.
+app.UseMiddleware<CurrentUserMiddleware>();
+
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
@@ -80,7 +106,26 @@ app.MapGet("/health", (IConfiguration config) => Results.Ok(new
 .WithName("Health")
 .WithSummary("Servisin ayakta olduğunu ve hangi ortamda çalıştığını bildirir.");
 
+app.MapMeEndpoints();
+app.MapDeviceEndpoints();
+
 app.Run();
+
+/// <summary>
+/// Veritabanı bağlantı dizesi olmadan AÇILMAYIZ.
+/// </summary>
+/// <remarks>
+/// Alternatifi — eksikse boş geçip ilk sorguda patlamak — arızayı dağıtımdan
+/// saatler sonra, ilk gerçek kullanıcının isteğinde ortaya çıkarır. Sağlık
+/// yoklaması o sırada yeşil yanıyor olur; çünkü sağlık ucu veritabanına
+/// dokunmuyor. Yanlış yapılandırmanın en ucuz bulunduğu an açılış anıdır.
+/// </remarks>
+static string RequireDatabaseConnection(IzOptions options)
+    => string.IsNullOrWhiteSpace(options.DatabaseConnection)
+        ? throw new InvalidOperationException(
+            "Veritabanı bağlantı dizesi tanımlı değil. " +
+            "IZ_Iz__DatabaseConnection ortam değişkenini ayarlayın.")
+        : options.DatabaseConnection;
 
 /// <summary>
 /// Entegrasyon testleri <c>WebApplicationFactory&lt;Program&gt;</c> ile

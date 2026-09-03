@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Iz.IntegrationTests;
 
@@ -8,8 +7,8 @@ namespace Iz.IntegrationTests;
 /// Faz 0'ın çıkış kriteri: servis ayağa kalkıyor, sağlık uçları cevap
 /// veriyor ve hata gövdesi ProblemDetails biçiminde dönüyor.
 /// </summary>
-public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+[Collection(IzApiCollection.Name)]
+public sealed class HealthEndpointTests(IzApiFactory factory)
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -38,6 +37,20 @@ public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory)
         Assert.NotNull(payload);
         Assert.Equal("ok", payload.Status);
         Assert.False(string.IsNullOrWhiteSpace(payload.Environment));
+    }
+
+    [Fact]
+    public async Task Saglik_uclari_kimlik_istemez_ama_veri_uclari_ister()
+    {
+        // Kimlik doğrulama eklendikten sonra sağlık uçlarının açık kalması
+        // ŞART: kapanırsa yük dengeleyici servisi ölü sanar ve trafiği keser.
+        // Aynı istemciyle iki ucu birden sınıyoruz ki "her şey açık" ya da
+        // "her şey kapalı" durumu testten kaçamasın.
+        var saglik = await _client.GetAsync("/health/live");
+        var veri = await _client.GetAsync("/v1/me");
+
+        Assert.Equal(HttpStatusCode.OK, saglik.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, veri.StatusCode);
     }
 
     [Fact]

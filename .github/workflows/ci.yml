@@ -225,6 +225,12 @@ jobs:
       - name: Bağımlılıklar
         run: dotnet restore
 
+      - name: Araçlar
+        # dotnet-ef sürümü .config/dotnet-tools.json ile sabit. Global
+        # kuruluma güvenmiyoruz: geliştiricinin makinesindeki sürüm ile
+        # CI'ınki ayrıştığı gün migration üretimi sessizce farklılaşır.
+        run: dotnet tool restore
+
       - name: Biçimlendirme
         run: dotnet format --verify-no-changes --no-restore
 
@@ -232,5 +238,18 @@ jobs:
         # Uyarılar Directory.Build.props'ta hata sayılıyor; ayrıca bayrak gerekmiyor.
         run: dotnet build --no-restore -c Release
 
+      - name: Migration güncel mi
+        # Flutter tarafındaki "üretilen kod güncel mi" işinin karşılığı:
+        # entity'yi değiştirip migration üretmeyi unutmayı yakalar. Böyle bir
+        # değişiklik testlerde görünmez (testler migration'ı koşar, modeli
+        # değil) ve ilk fark edildiği yer üretim veritabanı olur.
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project src/Iz.Infrastructure
+          --startup-project src/Iz.Infrastructure
+          --no-build --configuration Release
+
       - name: Testler
+        # Entegrasyon testleri Testcontainers ile GERÇEK Postgres kaldırıyor.
+        # ubuntu-latest koşucusunda Docker hazır geliyor, ek kurulum gerekmiyor.
         run: dotnet test --no-build -c Release --verbosity minimal
