@@ -28,10 +28,16 @@ jobs:
     name: Ne değişti
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # ⚠️ ÇIKTI ADLARINDA TÜRKÇE HARF KULLANMA.
+    # GitHub Actions'ın ifade dili yalnız [A-Za-z0-9_] kabul ediyor. Buradaki
+    # ad "kodüretimi" idi ve workflow bu yüzden GEÇERSİZ sayılıyordu: koşu
+    # başlıyor, tek bir iş bile çalışmadan başarısız oluyordu. Hata mesajı
+    # iş loglarında görünmediği için "CI hiç koşmadı" sanılmıştı.
+    # Tire de kullanma: outputs.kod-uretimi ifadede "kod eksi uretimi" okunur.
     outputs:
       flutter: ${{ steps.bak.outputs.flutter }}
       api: ${{ steps.bak.outputs.api }}
-      kodüretimi: ${{ steps.bak.outputs.kodüretimi }}
+      kod_uretimi: ${{ steps.bak.outputs.kod_uretimi }}
 
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +51,7 @@ jobs:
             # İlk push veya taban bilinmiyor: temkinli davran, hepsini koş.
             echo "flutter=true"     >> "$GITHUB_OUTPUT"
             echo "api=true"         >> "$GITHUB_OUTPUT"
-            echo "kodüretimi=true"  >> "$GITHUB_OUTPUT"
+            echo "kod_uretimi=true"  >> "$GITHUB_OUTPUT"
             exit 0
           fi
           degisen=$(git diff --name-only "$taban" HEAD || echo "")
@@ -61,9 +67,9 @@ jobs:
           # build_runner dakikalar sürüyor; yalnız üretimi etkileyen
           # değişikliklerde koşsun.
           if es 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
-            echo "kodüretimi=true" >> "$GITHUB_OUTPUT"
+            echo "kod_uretimi=true" >> "$GITHUB_OUTPUT"
           else
-            echo "kodüretimi=false" >> "$GITHUB_OUTPUT"
+            echo "kod_uretimi=false" >> "$GITHUB_OUTPUT"
           fi
 
   # ---------------------------------------------------------------------
@@ -164,7 +170,7 @@ jobs:
   uretilen-kod:
     name: Flutter — üretilen kod güncel mi
     needs: kapsam
-    if: needs.kapsam.outputs.kodüretimi == 'true'
+    if: needs.kapsam.outputs.kod_uretimi == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
