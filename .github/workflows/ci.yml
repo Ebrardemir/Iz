@@ -59,14 +59,27 @@ jobs:
 
           es() { echo "$degisen" | grep -qE "$1"; }
 
+          # Workflow'un KENDİSİ değiştiyse her şey koşar.
+          #
+          # NEDEN: yol filtresi olmadan bu dosyayı değiştiren bir PR hiçbir iş
+          # tetiklemez ve "başarılı" der. Yani CI ayarını bozsan bile yeşil
+          # yanar — kendini doğrulayamayan bir doğrulayıcı. Nitekim ilk
+          # düzeltme PR'ı tam olarak böyle içi boş bir yeşil üretti.
+          # Workflow nadiren değişir; birkaç dakikalık bedeli buna değer.
+          if es '^\.github/workflows/'; then
+            kendisi=1
+          else
+            kendisi=0
+          fi
+
           # contracts/ ikisini birden ilgilendirir: sözleşme değiştiyse hem
           # sunucunun ürettiği hem istemcinin tükettiği taraf doğrulanmalı.
-          if es '^iz/' || es '^contracts/' ; then echo "flutter=true" >> "$GITHUB_OUTPUT"; else echo "flutter=false" >> "$GITHUB_OUTPUT"; fi
-          if es '^api/' || es '^contracts/' ; then echo "api=true"     >> "$GITHUB_OUTPUT"; else echo "api=false"     >> "$GITHUB_OUTPUT"; fi
+          if [ "$kendisi" = 1 ] || es '^iz/' || es '^contracts/' ; then echo "flutter=true" >> "$GITHUB_OUTPUT"; else echo "flutter=false" >> "$GITHUB_OUTPUT"; fi
+          if [ "$kendisi" = 1 ] || es '^api/' || es '^contracts/' ; then echo "api=true"     >> "$GITHUB_OUTPUT"; else echo "api=false"     >> "$GITHUB_OUTPUT"; fi
 
           # build_runner dakikalar sürüyor; yalnız üretimi etkileyen
           # değişikliklerde koşsun.
-          if es 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
+          if [ "$kendisi" = 1 ] || es 'iz/lib/.*/(data|tables)/|\.drift$|iz/lib/app/database/|iz/pubspec\.(yaml|lock)|build\.yaml'; then
             echo "kod_uretimi=true" >> "$GITHUB_OUTPUT"
           else
             echo "kod_uretimi=false" >> "$GITHUB_OUTPUT"
