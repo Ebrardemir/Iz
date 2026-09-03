@@ -211,8 +211,10 @@ Mevcut ve **değişmeyecek**: [`AuthRepository`](iz/lib/features/auth/domain/rep
 
 1. Uygulama ilk kurulumda hesap istemeden ilk anı kaydedilebilir.
 2. Hesap açan kullanıcının mevcut tüm verisi `ownerId` alır ve senkronizasyona girer.
-3. Uygulama kapanıp açıldığında oturum korunur; access token süresi dolunca sessizce yenilenir.
-4. Refresh token bir kez kullanıldıktan sonra tekrar kullanılamaz; kullanılırsa tüm oturum düşer.
+3. Uygulama kapanıp açıldığında oturum korunur; ID token süresi dolunca Firebase SDK'sı
+   sessizce yeniler — uygulama kodunda elle refresh yolu **bulunmaz** (TR-M1-02).
+4. Süresi geçmiş, imzası bozuk veya başka bir Firebase projesine ait bir token sunucuda
+   `401` alır; istemci oturumu düşürüp giriş ekranına döner.
 5. Uygulama kilidi açıkken görev değiştiricide anı içeriği görünmez.
 
 ---
@@ -289,6 +291,10 @@ Mevcut ve **değişmeyecek**: [`AuthRepository`](iz/lib/features/auth/domain/rep
   (NFR-035): “İlk anını ekle”.
 - **TR-M2-21 [1.5] Zorunlu.** Çakışma varsa detay ekranında bir şerit gösterilir:
   “Bu anının bu cihazda farklı bir sürümü var” + iki sürümü yan yana gösteren ekran.
+- **TR-M2-25 [1.0] Zorunlu.** Timeline **sayfalanır**: 10.000 anıda ilk ekran < 500 ms'de
+  çizilir (NFR-002). `watchMemories` tüm tabloyu stream etmez; ay bazlı yükleme veya
+  sonsuz kaydırma kullanılır. Açık iş: **Ek D / TR-D-04**.
+  *(Bu kimlik Ek D'den referans veriliyordu ama tanımı yoktu; buraya yazıldı.)*
 
 ### M2.5 Kabul kriterleri
 
@@ -807,11 +813,15 @@ doğrulayıcımıza güvenmek gereksiz bir risk.
 
 ### M12.4 Paywall davranışı
 
-- **TR-M12-20 [1.0] Zorunlu.** Paywall her zaman **tetikleyen özelliği** söyler
+> *Numaralandırma notu:* bu blok **TR-M12-20/21/22** iken **TR-M12-30/31/32**'ye taşındı —
+> `TR-M12-20` kimliği M12.2'deki webhook imza doğrulamasında da kullanılıyordu. Aynı kimlik
+> iki gereksinimde durursa test adları ve kod incelemesi hangisini kastettiğini söyleyemez.
+
+- **TR-M12-30 [1.0] Zorunlu.** Paywall her zaman **tetikleyen özelliği** söyler
   (`EntitlementFailure.featureKey` → “Video eklemek İZ+ ile gelir”). Genel bir satış ekranı açılmaz.
-- **TR-M12-21 [1.0] Zorunlu.** Paywall açıldığında kullanıcının girdiği veri kaybolmaz;
+- **TR-M12-31 [1.0] Zorunlu.** Paywall açıldığında kullanıcının girdiği veri kaybolmaz;
   kapatınca aynı forma döner.
-- **TR-M12-22 [1.0] Zorunlu.** Paywall'a düşen her tetikleyici analitikte `trigger_feature` ile
+- **TR-M12-32 [1.0] Zorunlu.** Paywall'a düşen her tetikleyici analitikte `trigger_feature` ile
   ölçülür (içerik gönderilmez).
 
 ### M12.5 Kabul kriterleri
@@ -833,7 +843,7 @@ doğrulayıcımıza güvenmek gereksiz bir risk.
 Kendi başına bir modül: diğer modüllerin hepsine dokunur. Protokol ayrıntısı
 `BACKEND_YOL_HARITASI.md` §4'te; burada **istemci tarafı** gereksinimler.
 
-### M13.1 Yeni tablolar (şema v5)
+### M13.1 Yeni tablolar (şema v7 — bkz. Ek A)
 
 | Tablo | Alanlar |
 |---|---|
