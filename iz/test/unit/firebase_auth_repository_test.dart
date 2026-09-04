@@ -15,7 +15,9 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/result/result.dart';
+import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
+import 'package:iz/features/auth/data/sources/account_api.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/usecases/sign_in_with_email.dart';
 import 'package:mocktail/mocktail.dart';
@@ -26,8 +28,58 @@ class _MockUser extends Mock implements fb.User {}
 
 class _MockUserCredential extends Mock implements fb.UserCredential {}
 
+/// Sunucuyu taklit eder: `/v1/me` ne döndürsün, kaç kez çağrıldı.
+final class _FakeAccountApi implements AccountApi {
+  Result<RemoteAccount> meResult = const Ok(
+    RemoteAccount(
+      id: '01a06c5a-33d0-7907-a814-806b39a3719e',
+      plan: 'free',
+      email: 'ebru@ornek.com',
+      displayName: 'Ebru',
+    ),
+  );
+
+  Result<RemoteAccount>? patchResult;
+
+  int fetchCount = 0;
+  final List<String?> patchedNames = [];
+
+  @override
+  Future<Result<RemoteAccount>> fetchMe() async {
+    fetchCount++;
+    return meResult;
+  }
+
+  @override
+  Future<Result<RemoteAccount>> updateProfile({
+    String? displayName,
+    String? locale,
+  }) async {
+    patchedNames.add(displayName);
+    return patchResult ?? meResult;
+  }
+}
+
+final class _FakeSecureStore implements SecureStore {
+  final Map<SecureKey, String> values = {};
+
+  @override
+  Future<String?> read(SecureKey key) async => values[key];
+
+  @override
+  Future<void> write(SecureKey key, String value) async => values[key] = value;
+
+  @override
+  Future<void> delete(SecureKey key) async => values.remove(key);
+
+  @override
+  Future<void> clear() async => values.clear();
+}
+
 void main() {
   late _MockFirebaseAuth auth;
+  late _FakeAccountApi account;
+  late _FakeSecureStore secureStore;
   late FirebaseAuthRepository repository;
 
   const credentials = AuthCredentials(
@@ -37,7 +89,13 @@ void main() {
 
   setUp(() {
     auth = _MockFirebaseAuth();
-    repository = FirebaseAuthRepository(auth: auth);
+    account = _FakeAccountApi();
+    secureStore = _FakeSecureStore();
+    repository = FirebaseAuthRepository(
+      auth: auth,
+      account: account,
+      secureStore: secureStore,
+    );
   });
 
   /// Firebase'in başarılı yanıtını taklit eder.
@@ -94,7 +152,14 @@ void main() {
 
       expect(result, isA<Ok<AuthSession>>());
       final session = (result as Ok<AuthSession>).value;
-      expect(session.userId, 'firebase-uid-1');
+
+      // ⚠️ BU SATIR BU DOSYADAKİ EN ÖNEMLİ İDDİA.
+      // Oturum SUNUCUDAKİ kimliği taşımalı, Firebase uid'sini değil. Bu
+      // değer `OwnedTable.ownerId`'ye yazılacak; Firebase uid'si yazılırsa
+      // ileride "anonim → hesap yükseltme" göçü yanlış kimlikten başlar.
+      expect(session.userId, '01a06c5a-33d0-7907-a814-806b39a3719e');
+      expect(session.userId, isNot('firebase-uid-1'));
+
       expect(session.email, 'ebru@ornek.com');
       expect(session.displayName, 'Ebru');
     });
@@ -222,8 +287,73 @@ void main() {
       confirmPassword: 'gizli123',
     );
 
-    test('hesap açılır ve ad yazılır', () async {
+    test('hesap açılır, ad yazılır ve token tazelenir', () async {
       final fake = credentialWith();
+      when(() => fake.user.getIdToken(any())).thenAnswer((_) async => 'taze');
+      when(
+        () => auth.createUserWithEmailAndPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => fake.credential);
+      // Token tazelendiği için sunucu adı görebildi.
+      account.meResult = const Ok(
+        RemoteAccount(
+          id: '01a06c5a-33d0-7907-a814-806b39a3719e',
+          plan: 'free',
+          email: 'ebru@ornek.com',
+          displayName: 'Ebru Demir',
+        ),
+      );
+
+      final result = await repository.signUpWithEmail(draft);
+
+      expect(result, isA<Ok<AuthSession>>());
+      // Ad artık SUNUCUDAN geliyor: profil bilgisinin tek kaynağı orası.
+      expect((result as Ok<AuthSession>).value.displayName, 'Ebru Demir');
+      // Formdaki baştaki/sondaki boşluklar temizlenmiş olmalı.
+      verify(() => fake.user.updateDisplayName('Ebru Demir')).called(1);
+      // Tazeleme olmasaydı token adı taşımaz ve sunucu kaydı ADSIZ açardı.
+      verify(() => fake.user.getIdToken(true)).called(1);
+    });
+
+    test('sunucu adı görememişse PATCH ile tamamlanır', () async {
+      // Token tazeleme başarısız olabilir. Kullanıcının forma yazdığı adı
+      // kaybetmemek için sunucudaki kaydı ayrıca güncelliyoruz.
+      final fake = credentialWith();
+      when(() => fake.user.getIdToken(any())).thenAnswer((_) async => 'taze');
+      when(
+        () => auth.createUserWithEmailAndPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => fake.credential);
+      account
+        ..meResult = const Ok(
+          RemoteAccount(
+            id: '01a06c5a-33d0-7907-a814-806b39a3719e',
+            plan: 'free',
+            email: 'ebru@ornek.com',
+          ),
+        )
+        ..patchResult = const Ok(
+          RemoteAccount(
+            id: '01a06c5a-33d0-7907-a814-806b39a3719e',
+            plan: 'free',
+            email: 'ebru@ornek.com',
+            displayName: 'Ebru Demir',
+          ),
+        );
+
+      final result = await repository.signUpWithEmail(draft);
+
+      expect(account.patchedNames, ['Ebru Demir']);
+      expect((result as Ok<AuthSession>).value.displayName, 'Ebru Demir');
+    });
+
+    test('sunucu adı zaten biliyorsa GEREKSİZ PATCH atılmaz', () async {
+      final fake = credentialWith();
+      when(() => fake.user.getIdToken(any())).thenAnswer((_) async => 'taze');
       when(
         () => auth.createUserWithEmailAndPassword(
           email: any(named: 'email'),
@@ -231,12 +361,9 @@ void main() {
         ),
       ).thenAnswer((_) async => fake.credential);
 
-      final result = await repository.signUpWithEmail(draft);
+      await repository.signUpWithEmail(draft);
 
-      expect(result, isA<Ok<AuthSession>>());
-      expect((result as Ok<AuthSession>).value.displayName, 'Ebru Demir');
-      // Formdaki baştaki/sondaki boşluklar temizlenmiş olmalı.
-      verify(() => fake.user.updateDisplayName('Ebru Demir')).called(1);
+      expect(account.patchedNames, isEmpty);
     });
 
     test('ad yazılamazsa kayıt YİNE DE başarılı sayılır', () async {
@@ -309,24 +436,71 @@ void main() {
       expect((result as Ok<AuthSession?>).value, isNull);
     });
 
-    test('açık oturum geri döner', () async {
+    test('önbellekteki kimlikle açılış AĞA ÇIKMAZ', () async {
+      // Uçak modunda açılan uygulama oturumunu kaybetmemeli.
       final user = _MockUser();
       when(() => user.uid).thenReturn('firebase-uid-9');
       when(() => user.email).thenReturn('ebru@ornek.com');
       when(() => user.displayName).thenReturn('Ebru');
       when(() => auth.currentUser).thenReturn(user);
+      secureStore.values[SecureKey.izUserId] = 'onbellekteki-kimlik';
 
       final result = await repository.currentSession();
 
-      expect((result as Ok<AuthSession?>).value?.userId, 'firebase-uid-9');
+      expect((result as Ok<AuthSession?>).value?.userId, 'onbellekteki-kimlik');
+      expect(account.fetchCount, 0, reason: 'sunucuya sorulmamalıydı');
     });
 
-    test('çıkış Firebase e devredilir', () async {
+    test(
+      'önbellek yoksa sunucuya sorulur ve kimlik önbelleğe yazılır',
+      () async {
+        final user = _MockUser();
+        when(() => user.uid).thenReturn('firebase-uid-9');
+        when(() => user.email).thenReturn('ebru@ornek.com');
+        when(() => user.displayName).thenReturn('Ebru');
+        when(() => auth.currentUser).thenReturn(user);
+
+        final result = await repository.currentSession();
+
+        expect(account.fetchCount, 1);
+        expect(
+          (result as Ok<AuthSession?>).value?.userId,
+          '01a06c5a-33d0-7907-a814-806b39a3719e',
+        );
+        expect(
+          secureStore.values[SecureKey.izUserId],
+          '01a06c5a-33d0-7907-a814-806b39a3719e',
+        );
+      },
+    );
+
+    test('önbellek yok + ağ yoksa "oturum yok" DENMEZ', () async {
+      // Bu testin varlık sebebi: Ok(null) demek "kullanıcı anonim" demektir.
+      // Uygulama o zaman kayıtları ownerId='local' ile damgalar ve gerçek
+      // hesabın verisi ileride buluta hiç çıkmaz. Sessiz veri kaybı.
+      final user = _MockUser();
+      when(() => user.uid).thenReturn('firebase-uid-9');
+      when(() => user.email).thenReturn('ebru@ornek.com');
+      when(() => user.displayName).thenReturn('Ebru');
+      when(() => auth.currentUser).thenReturn(user);
+      account.meResult = const Err(NetworkFailure(isOffline: true));
+
+      final result = await repository.currentSession();
+
+      expect(result, isA<Err<AuthSession?>>());
+      expect((result as Err<AuthSession?>).failure, isA<NetworkFailure>());
+    });
+
+    test('çıkışta kimlik önbelleği de temizlenir', () async {
+      // Kalsaydı, aynı cihazda başka bir hesap açan kullanıcıya ait olmayan
+      // bir kimlik cihazda durur ve bir sonraki açılışta okunurdu.
       when(auth.signOut).thenAnswer((_) async {});
+      secureStore.values[SecureKey.izUserId] = 'eski-kimlik';
 
       final result = await repository.signOut();
 
       expect(result, isA<Ok<Unit>>());
+      expect(secureStore.values.containsKey(SecureKey.izUserId), isFalse);
       verify(auth.signOut).called(1);
     });
 
@@ -341,6 +515,52 @@ void main() {
       verify(
         () => auth.sendPasswordResetEmail(email: 'ebru@ornek.com'),
       ).called(1);
+    });
+  });
+
+  group('sunucu bağlantısı', () {
+    setUp(() {
+      when(
+        () => auth.signInWithEmailAndPassword(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => credentialWith().credential);
+    });
+
+    test('kimlik güvenli depoya yazılır', () async {
+      await repository.signInWithEmail(credentials);
+
+      expect(
+        secureStore.values[SecureKey.izUserId],
+        '01a06c5a-33d0-7907-a814-806b39a3719e',
+      );
+    });
+
+    test('/v1/me başarısızsa GİRİŞ DE başarısız olur', () async {
+      // Kimliği bilinmeyen bir oturumla devam etmek, kayıtları yanlış
+      // sahiple damgalamak demekti. Ağ isteyen bir giriş, sessizce bozuk
+      // bir oturumdan iyidir.
+      account.meResult = const Err(NetworkFailure(isOffline: true));
+
+      final result = await repository.signInWithEmail(credentials);
+
+      expect(result, isA<Err<AuthSession>>());
+      expect((result as Err<AuthSession>).failure, isA<NetworkFailure>());
+      expect(secureStore.values, isEmpty, reason: 'kimlik yazılmamalıydı');
+    });
+
+    test('sunucu hatası Firebase hata sözlüğüne SOKULMAZ', () async {
+      // _mapError yalnız Firebase kodlarını tanır. Sunucu hatasını oraya
+      // sokarsak hepsi "beklenmeyen hata"ya düşer ve kullanıcı çevrimdışı
+      // olduğunu öğrenemez.
+      account.meResult = const Err(
+        ValidationFailure(code: ValidationCode.displayNameTooLong),
+      );
+
+      final result = await repository.signInWithEmail(credentials);
+
+      expect((result as Err<AuthSession>).failure, isA<ValidationFailure>());
     });
   });
 

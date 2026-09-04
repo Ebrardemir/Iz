@@ -1,39 +1,62 @@
-/// [AuthRepository]'nin Firebase Authentication ile gerçek implementasyonu
-/// (ADR-B15).
+/// [AuthRepository]'nin gerçek implementasyonu: kimlik Firebase'de
+/// doğrulanır, KİMLİK KARARI bizim sunucumuzda verilir (ADR-B15).
 ///
-/// NE YAPIYOR: kullanıcıyı Firebase'e doğrulatıyor ve Firebase'in hata
-/// kodlarını uygulamanın kendi hata sözlüğüne (`core/error/failure.dart`)
-/// çeviriyor.
+/// AKIŞ
+/// ```
+/// 1. Firebase'e e-posta + şifre                → doğrulandı, uid alındı
+/// 2. Firebase ID token'ıyla GET /v1/me         → BİZİM users.id'miz alındı
+/// 3. Kimlik güvenli depoya yazıldı             → çevrimdışı açılış için
+/// ```
+///
+/// NEDEN 2. ADIM ZORUNLU?
+/// [AuthSession.userId] `OwnedTable.ownerId`'ye yazılacak değerdir ve
+/// Firebase uid'si DEĞİL bizim UUID v7'miz olmalıdır. Yanlış kimlikle
+/// damgalanan kayıtlar, ileride "anonim → hesap yükseltme" göçünü bozar
+/// (BACKEND_YOL_HARITASI Faz 1, haritanın en riskli maddesi).
+///
+/// Bunun bedeli: **giriş ve kayıt ağ ister.** Bu bilinçli. Bulut hesabı
+/// zaten çevrimdışı açılamaz, ve kimliği bilinmeyen bir oturum
+/// senkronizasyonda kullanılamaz. Uygulamanın geri kalanı hesapsız tam
+/// çalışmaya devam ediyor (ADR-B12).
 ///
 /// NE YAPMIYOR:
-///   • **Form doğrulaması yapmıyor.** E-posta biçimi ve şifre uzunluğu
-///     kuralları `domain/usecases/` içinde yaşıyor ve oraya uğramadan bu
-///     sınıf hiç çağrılmıyor. Burada tekrar denetlemek, iki kuralın zamanla
-///     ayrışması demekti.
-///   • **Token saklamıyor, yenilemiyor.** Firebase SDK'sı ID token'ı kendi
-///     güvenli deposunda tutuyor ve süresi dolmadan yeniliyor (TR-M1-02).
-///     Elle refresh yazmak, doğru yapılmadığında sessiz oturum kayıplarına
-///     yol açan bir iştir; SDK'nın çözdüğü bir sorunu yeniden çözmüyoruz.
-///   • **Şifre görmüyor.** Şifre cihazdan doğrudan Google'a gidiyor; bizim
-///     sunucumuza hiç uğramıyor.
+///   • Form doğrulaması — kurallar `domain/usecases/` içinde.
+///   • Token saklama/yenileme — Firebase SDK'sının işi (TR-M1-02).
+///   • Şifre görme — şifre cihazdan doğrudan Google'a gidiyor.
 library;
+
+// Dart'ta isimli parametreler alt çizgiyle başlayamaz, bu yüzden private
+// alanlara `this._x` biçiminde initializing formal kullanamıyoruz (aynı
+// gerekçe sign_in_with_email.dart ve api_client.dart'ta da geçerli).
+// ignore_for_file: prefer_initializing_formals
 
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/core/error/failure.dart';
+import 'package:iz/core/network/network_providers.dart';
 import 'package:iz/core/result/result.dart';
+import 'package:iz/core/storage/secure_store.dart';
+import 'package:iz/features/auth/data/sources/account_api.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
 
 final class FirebaseAuthRepository implements AuthRepository {
+  const FirebaseAuthRepository({
+    required AccountApi account,
+    required SecureStore secureStore,
+    fb.FirebaseAuth? auth,
+  }) : _account = account,
+       _secureStore = secureStore,
+       _injected = auth;
+
+  final AccountApi _account;
+  final SecureStore _secureStore;
+
   /// [auth] yalnız testlerde verilir; üretimde varsayılan örnek kullanılır.
   ///
   /// Örnek TEMBEL okunuyor: `FirebaseAuth.instance`, `Firebase.initializeApp`
-  /// çağrılmadan erişilirse hata fırlatır. Bunu kurucuda okusaydık, hesap
-  /// hiç kullanmayan bir kullanıcıda bile uygulama açılışta çökebilirdi —
-  /// oysa ürünün duruşu "uygulama hesapsız tam çalışır" (ADR-B12).
-  const FirebaseAuthRepository({fb.FirebaseAuth? auth}) : _injected = auth;
-
+  /// çağrılmadan erişilirse hata fırlatır. Kurucuda okusaydık, hesap hiç
+  /// kullanmayan bir kullanıcıda bile uygulama açılışta çökebilirdi.
   final fb.FirebaseAuth? _injected;
 
   fb.FirebaseAuth get _auth => _injected ?? fb.FirebaseAuth.instance;
@@ -42,45 +65,56 @@ final class FirebaseAuthRepository implements AuthRepository {
   Future<Result<AuthSession>> signInWithEmail(
     AuthCredentials credentials,
   ) async {
+    final fb.User? user;
     try {
       final result = await _auth.signInWithEmailAndPassword(
         email: credentials.normalizedEmail,
         password: credentials.password,
       );
-      return _sessionFrom(result.user);
+      user = result.user;
     } on Object catch (error, stackTrace) {
       return Err(_mapError(error, stackTrace));
     }
+
+    // _establishSession BİLEREK try'ın dışında: içeride ağ katmanı çalışıyor
+    // ve o zaten hatalarını Result olarak döndürüyor. try içine alsaydık
+    // Firebase hata sözlüğü (_mapError) sunucu hatalarını da çevirmeye
+    // çalışırdı ve hepsini "beklenmeyen hata"ya düşürürdü.
+    return _establishSession(user);
   }
 
   @override
   Future<Result<AuthSession>> signUpWithEmail(SignUpDraft draft) async {
+    final fb.User? user;
+    final name = draft.normalizedName;
+
     try {
       final result = await _auth.createUserWithEmailAndPassword(
         email: draft.normalizedEmail,
         password: draft.password,
       );
-
-      final user = result.user;
-      final name = draft.normalizedName;
+      user = result.user;
 
       // Firebase hesabı adsız açıyor; adı ayrı bir çağrıyla yazıyoruz.
       // Bu çağrı başarısız olursa hesap YİNE DE açılmıştır — kullanıcıyı
       // "kayıt olamadın" diye geri çevirmek yanlış olur, çünkü ikinci
-      // denemesinde "bu e-posta kullanımda" hatası alırdı. Ad eksik kalır,
-      // profil ekranından düzeltilebilir.
+      // denemesinde "bu e-posta kullanımda" hatası alırdı.
       if (user != null && name.isNotEmpty) {
         try {
           await user.updateDisplayName(name);
+          // Elimizdeki token hesap AÇILIRKEN üretildi ve adı taşımıyor.
+          // Sunucu adı token'dan okuduğu için tazelemezsek kaydı adsız açar.
+          await user.getIdToken(true);
         } on Object {
-          // Bilinçli olarak yutuluyor; gerekçesi yukarıda.
+          // Bilinçli olarak yutuluyor; gerekçesi yukarıda. Ad eksik kalırsa
+          // aşağıdaki _establishSession onu PATCH ile tamamlıyor.
         }
       }
-
-      return _sessionFrom(user, displayNameOverride: name);
     } on Object catch (error, stackTrace) {
       return Err(_mapError(error, stackTrace));
     }
+
+    return _establishSession(user, expectedDisplayName: name);
   }
 
   @override
@@ -112,6 +146,10 @@ final class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<Unit>> signOut() async {
     try {
+      // Kimliği ÖNCE siliyoruz. Ters sırada olsaydı ve silme başarısız
+      // olsaydı, Firebase oturumu kapanmış ama bizim kimliğimiz cihazda
+      // kalmış olurdu — sonraki kullanıcıya ait olmayan bir kimlik.
+      await _secureStore.delete(SecureKey.izUserId);
       await _auth.signOut();
       return okUnit;
     } on Object catch (error, stackTrace) {
@@ -121,37 +159,47 @@ final class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<Result<AuthSession?>> currentSession() async {
+    final fb.User? user;
     try {
-      final user = _auth.currentUser;
-      // Oturum YOKLUĞU bir hata değildir: hesapsız kullanım normal durum.
-      if (user == null) {
-        return const Ok(null);
-      }
-
-      return switch (_sessionFrom(user)) {
-        Ok(:final value) => Ok(value),
-        Err(:final failure) => Err(failure),
-      };
+      user = _auth.currentUser;
     } on Object catch (error, stackTrace) {
       return Err(_mapError(error, stackTrace));
     }
+
+    // Oturum YOKLUĞU bir hata değildir: hesapsız kullanım normal durum.
+    if (user == null) {
+      return const Ok(null);
+    }
+
+    // Önbellekten okuyabiliyorsak AĞA ÇIKMIYORUZ. Uygulama her açılışta
+    // sunucuya sorsaydı, uçak modunda açan kullanıcı oturumunu kaybederdi.
+    final cachedId = await _readCachedId();
+    if (cachedId != null) {
+      return Ok(
+        AuthSession(
+          userId: cachedId,
+          email: user.email,
+          displayName: user.displayName,
+        ),
+      );
+    }
+
+    // Önbellek yoksa (uygulama silinip kurulmuş, depo temizlenmiş) sunucuya
+    // soruyoruz. Ağ yoksa HATA dönüyoruz — `Ok(null)` demek "oturum yok"
+    // anlamına gelirdi ve bu bir YALAN olurdu: oturum var, biz çözemiyoruz.
+    // Yalan söylersek uygulama kullanıcıyı anonim sanar ve kayıtları yanlış
+    // sahiple damgalar.
+    return switch (await _establishSession(user)) {
+      Ok(:final value) => Ok(value),
+      Err(:final failure) => Err(failure),
+    };
   }
 
-  /// Firebase kullanıcısını uygulamanın oturum nesnesine çevirir.
-  ///
-  /// ⚠️ [AuthSession.userId] şu an **Firebase uid'sini** taşıyor. Sunucudaki
-  /// `users.id` ise bizim kendi UUID v7'miz ve ikisi AYNI DEĞİL (bkz.
-  /// `api/src/Iz.Domain/Users/User.cs`). Ağ katmanı yazılıp `/v1/me`
-  /// çağrılmaya başlandığında oturum bizim kimliğimizi taşıyacak.
-  ///
-  /// O güne kadar bu değer `OwnedTable.ownerId`'ye **YAZILMAMALIDIR**:
-  /// yazılırsa yerel kayıtlar Firebase uid'siyle damgalanır ve ilerideki göç
-  /// (BACKEND_YOL_HARITASI Faz 1, "anonim → hesap yükseltme") yanlış
-  /// kimlikten başlar.
-  Result<AuthSession> _sessionFrom(
+  /// Firebase kullanıcısını, SUNUCUDAKİ kimliğiyle birlikte bir oturuma çevirir.
+  Future<Result<AuthSession>> _establishSession(
     fb.User? user, {
-    String? displayNameOverride,
-  }) {
+    String? expectedDisplayName,
+  }) async {
     if (user == null) {
       // Firebase başarı döndürüp kullanıcı vermiyorsa elimizde oturum yok.
       return const Err(
@@ -159,16 +207,54 @@ final class FirebaseAuthRepository implements AuthRepository {
       );
     }
 
-    final override = displayNameOverride;
+    final fetched = await _account.fetchMe();
+    if (fetched case Err(:final failure)) {
+      return Err(failure);
+    }
+
+    var account = (fetched as Ok<RemoteAccount>).value;
+
+    // Ad token'a henüz yansımamışsa sunucudaki kayıt adsız açılmış olabilir.
+    // Kullanıcının forma yazdığı adı kaybetmemek için tamamlıyoruz.
+    final wanted = expectedDisplayName;
+    if (wanted != null && wanted.isNotEmpty && account.displayName == null) {
+      final patched = await _account.updateProfile(displayName: wanted);
+      if (patched case Ok(:final value)) {
+        account = value;
+      }
+      // Başarısız olursa sessiz geçiyoruz: hesap açıldı, oturum geçerli.
+      // Adı profil ekranından düzeltmek mümkün; kayıt akışını burada
+      // kırmak kullanıcıyı çıkışsız bırakırdı.
+    }
+
+    await _cacheId(account.id);
+
     return Ok(
       AuthSession(
-        userId: user.uid,
-        email: user.email,
-        displayName: (override != null && override.isNotEmpty)
-            ? override
-            : user.displayName,
+        userId: account.id,
+        email: account.email ?? user.email,
+        displayName: account.displayName ?? user.displayName,
       ),
     );
+  }
+
+  Future<String?> _readCachedId() async {
+    try {
+      return await _secureStore.read(SecureKey.izUserId);
+    } on Object {
+      // Güvenli depo okunamıyorsa önbellek yok sayılır ve sunucuya sorulur.
+      // Bu bir hata değil, yavaş yol.
+      return null;
+    }
+  }
+
+  Future<void> _cacheId(String id) async {
+    try {
+      await _secureStore.write(SecureKey.izUserId, id);
+    } on Object {
+      // Yazamadıysak oturum yine geçerli; yalnız bir sonraki açılış ağ
+      // isteyecek. Kullanıcıyı bu yüzden geri çevirmek orantısız olurdu.
+    }
   }
 
   /// Firebase hata kodlarını uygulamanın hata sözlüğüne çevirir.
@@ -185,10 +271,10 @@ final class FirebaseAuthRepository implements AuthRepository {
     // yapılandırma eksiğidir.
     //
     // MESAJ NEDEN İNGİLİZCE? Bu metin loga gidiyor, kullanıcıya asla
-    // gösterilmiyor (TR-C-10). `l10n_test` ise Türkçe harf içeren HER
-    // literali yakalıyor; tek bir geliştirici mesajı için bu dosyayı
-    // istisna listesine eklemek, ileride buradaki gerçek ihlalleri de
-    // susturur. Türkçeye çevirme.
+    // gösterilmiyor (TR-C-10). `l10n_test` ise features/ altındaki Türkçe
+    // harf içeren HER literali yakalıyor; tek bir geliştirici mesajı için
+    // dosyayı istisna listesine eklemek, ileride buradaki gerçek ihlalleri
+    // de susturur. Türkçeye çevirme.
     if (error.code == 'no-app') {
       return UnexpectedFailure(
         message:
@@ -256,11 +342,7 @@ final class FirebaseAuthRepository implements AuthRepository {
   }
 
   /// Domain'deki `SignInWithEmail.minPasswordLength` ile aynı sayı olmalı.
-  ///
-  /// Buradan import edemiyoruz: `const` bir switch kolunda kullanmak için
-  /// derleme zamanı sabiti gerekiyor ve domain sabitini `const` bağlamında
-  /// kullanmak katman sırasını tersine çevirmezdi ama okunurluğu bozardı.
-  /// İki sayının ayrışmasını `firebase_auth_repository_test.dart` denetliyor.
+  /// İkisinin ayrışmasını `firebase_auth_repository_test.dart` denetliyor.
   static const int _minPasswordLength = 6;
 }
 
@@ -270,5 +352,8 @@ final class FirebaseAuthRepository implements AuthRepository {
 /// geçerken değişen tek satır bu oldu. Hiçbir View, ViewModel veya UseCase'e
 /// dokunulmadı.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return const FirebaseAuthRepository();
+  return FirebaseAuthRepository(
+    account: AccountApi(client: ref.watch(apiClientProvider)),
+    secureStore: ref.watch(secureStoreProvider),
+  );
 });
