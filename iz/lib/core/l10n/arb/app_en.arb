@@ -560,6 +560,8 @@
   "errorSessionExpired": "Your session has expired. Please sign in again.",
   "errorSignInProviderUnavailable": "This sign-in method isn't available yet.",
   "errorValidationEmailInUse": "An account already exists with this email. Try signing in.",
+  "errorValidationDisplayNameTooLong": "That name is too long. Try a shorter one.",
+  "errorValidationLocaleInvalid": "That language setting wasn't recognised.",
   "errorValidationNameRequired": "Enter your full name.",
   "errorValidationPasswordsDoNotMatch": "Passwords don't match.",
   "routeNotFound": "Page not found",

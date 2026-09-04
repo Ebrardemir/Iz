@@ -771,6 +771,8 @@
   "errorSessionExpired": "Oturumun sona erdi. Tekrar giriş yap.",
   "errorSignInProviderUnavailable": "Bu giriş yöntemi henüz kullanılamıyor.",
   "errorValidationEmailInUse": "Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.",
+  "errorValidationDisplayNameTooLong": "Adın çok uzun. Daha kısa bir ad dene.",
+  "errorValidationLocaleInvalid": "Dil ayarı tanınmadı.",
   "errorValidationNameRequired": "Adını ve soyadını gir.",
   "errorValidationPasswordsDoNotMatch": "Şifreler eşleşmiyor.",
   "routeNotFound": "Sayfa bulunamadı",

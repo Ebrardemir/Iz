@@ -1198,6 +1198,13 @@ class AppL10nTr extends AppL10n {
       'Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.';
 
   @override
+  String get errorValidationDisplayNameTooLong =>
+      'Adın çok uzun. Daha kısa bir ad dene.';
+
+  @override
+  String get errorValidationLocaleInvalid => 'Dil ayarı tanınmadı.';
+
+  @override
   String get errorValidationNameRequired => 'Adını ve soyadını gir.';
 
   @override

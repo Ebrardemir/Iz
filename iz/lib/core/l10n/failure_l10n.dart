@@ -38,6 +38,9 @@ extension FailureL10nX on Failure {
       ValidationCode.passwordsDoNotMatch =>
         l10n.errorValidationPasswordsDoNotMatch,
       ValidationCode.emailAlreadyInUse => l10n.errorValidationEmailInUse,
+      ValidationCode.displayNameTooLong =>
+        l10n.errorValidationDisplayNameTooLong,
+      ValidationCode.localeInvalid => l10n.errorValidationLocaleInvalid,
     },
     // Reddedilme sebebi kullanıcının atacağı adımı değiştiriyor, o yüzden
     // tek bir cümleye indirgemiyoruz (bkz. AuthFailureReason).

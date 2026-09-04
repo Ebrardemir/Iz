@@ -1206,6 +1206,14 @@ class AppL10nEn extends AppL10n {
       'An account already exists with this email. Try signing in.';
 
   @override
+  String get errorValidationDisplayNameTooLong =>
+      'That name is too long. Try a shorter one.';
+
+  @override
+  String get errorValidationLocaleInvalid =>
+      'That language setting wasn\'t recognised.';
+
+  @override
   String get errorValidationNameRequired => 'Enter your full name.';
 
   @override

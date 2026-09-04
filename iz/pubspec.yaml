@@ -57,6 +57,13 @@ dependencies:
   # token deposu gelmiyor.
   firebase_core: ^4.14.0
   firebase_auth: ^6.6.1
+
+  # --- Ağ katmanı ------------------------------------------------------------
+  # Neden dio, düz `http` değil: bize interceptor (her isteğe token eklemek),
+  # zaman aşımı ayrımı (bağlanma / alma) ve iptal edilebilir istek lazım.
+  # Bunları `http` üzerine elle yazmak, test edilmesi gereken yeni bir
+  # altyapı yazmak demekti.
+  dio: ^5.11.1
   uuid: ^4.6.0                    # cihazlar arası benzersiz id (sync'e hazır)
   intl: ^0.20.2                   # tarih/sayı biçimleme
   collection: ^1.19.1
