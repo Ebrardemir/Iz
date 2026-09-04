@@ -12,6 +12,8 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/repositories/memory_repository.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/domain/repositories/person_repository.dart';
 
 /// Her test için taze, boş bir veritabanı.
 ///
@@ -35,5 +37,13 @@ MemoryRepository createTestRepository(AppDatabase db, {DateTime? now}) {
     database: db,
     idGenerator: SequentialIdGenerator(prefix: 'mem-'),
     clock: FixedClock(now ?? DateTime(2026, 7, 26, 12)),
+  );
+}
+
+/// Kişi deposunu tahmin edilebilir kimliklerle kurar.
+PersonRepository createTestPersonRepository(AppDatabase db) {
+  return PersonRepositoryImpl(
+    dao: db.personDao,
+    idGenerator: SequentialIdGenerator(prefix: 'kisi-'),
   );
 }

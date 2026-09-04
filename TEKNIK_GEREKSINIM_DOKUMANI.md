@@ -1001,8 +1001,14 @@ Bu maddeler tamamlanmadan mağazaya yükleme yapılamaz:
 | v3 | Günlük başlık + ruh hâli puanı | ✅ |
 | v4 | Günlük yıldızı | ✅ |
 | **v5** | **Ters yön indeksleri**: `memory_people.personId`, `memory_collections.collectionId`, `memory_rituals.ritualId`, `memory_media.mediaId`, `journal_media.mediaId`, `memories.categoryId` | ✅ |
-| **v6** | `journal_search` FTS tablosu ve trigger'ları | ⏳ 1.1 |
-| **v7** | Join tablolarına `updatedAt/deletedAt/version` · `Users` · `OutboxEntries` · `SyncState` · `SyncConflicts` | ⏳ 1.5 |
+| **v6** | `people.relation_label` — kullanıcının kendi yazdığı ilişki adı ("Annem") | ✅ |
+| **v7** | `journal_search` FTS tablosu ve trigger'ları | ⏳ 1.1 |
+| **v8** | Join tablolarına `updatedAt/deletedAt/version` · `Users` · `OutboxEntries` · `SyncState` · `SyncConflicts` | ⏳ 1.5 |
+
+> **v6 neden plana girmemişti?** `Person.relationLabel` entity'de ve arayüzde
+> baştan beri vardı, eksik olan yalnız sütundu — yani editörde yazılan "Annem"
+> kayıt sırasında sessizce düşüyordu. Kişiler modülünün veri katmanı yazılırken
+> fark edildi. Sonraki iki sürüm bir sıra kaydı; içerikleri değişmedi.
 
 - **TR-A-01 Zorunlu.** Her şema değişikliğinde `schemaVersion` artırılır ve **eski migration adımları
   asla değiştirilmez** — kullanıcı v1'den v6'ya atlayabilir.
