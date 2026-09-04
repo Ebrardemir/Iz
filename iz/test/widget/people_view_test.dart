@@ -11,12 +11,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
 import 'package:iz/features/people/presentation/widgets/people_empty_illustration.dart';
 import 'package:iz/features/people/presentation/widgets/person_row.dart';
 import 'package:iz/shared/widgets/iz_screen_header.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_person_repository.dart';
+import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
 
 Future<void> pumpPeople(
@@ -31,8 +34,17 @@ Future<void> pumpPeople(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  // Ekran artık depodan okuyor; iki hâli deponun İÇERİĞİYLE kuruyoruz.
+  // Eskiden bir `hasPeople` bayrağı vardı ve veri kaynağı olmadığı için
+  // zorunluydu; şimdi gerçek yola daha yakınız.
+  final repository = FakePersonRepository(
+    hasPeople ? PeopleFixture.people : const [],
+  );
+  addTearDown(repository.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
+      overrides: [personRepositoryProvider.overrideWithValue(repository)],
       child: MaterialApp(
         theme: dark ? AppTheme.dark() : AppTheme.light(),
         locale: const Locale('tr'),
@@ -43,7 +55,7 @@ Future<void> pumpPeople(
           maxScaleFactor: textScale,
           child: child!,
         ),
-        home: PeopleView(hasPeople: hasPeople),
+        home: const PeopleView(),
       ),
     ),
   );

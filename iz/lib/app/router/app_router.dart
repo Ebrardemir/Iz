@@ -42,7 +42,7 @@ import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 import 'package:iz/features/onboarding/presentation/views/onboarding_view.dart';
-import 'package:iz/features/people/presentation/views/people_preview_data.dart';
+import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
 import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/views/person_detail_view.dart';
@@ -59,16 +59,23 @@ import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 
 /// `?person=` parametresini "Hayatım" ekranının anlayacağı süzgece çevirir.
 ///
-/// ⚠️ ÖNİZLEME VERİSİ OKUYOR (`PeoplePreviewData`, `PersonDetailPreviewData`).
-/// Kişi ve koleksiyon repository'leri yazıldığında burası onlardan okuyacak;
-/// `MyLifeView`in imzası değişmeyecek.
+/// KİŞİ ARTIK DEPODAN geliyor. Koleksiyon bağı hâlâ önizleme verisinde:
+/// `CollectionRepository` yazılmadı (M6). O gelince ikinci yarı da düşecek.
 ///
 /// TANINMAYAN KİMLİK null DÖNÜYOR: eski ya da elle yazılmış bir bağlantı
 /// kullanıcıyı boş bir listeyle karşılamasın — süzgeç hiç uygulanmıyor.
-({String label, Set<String> ids})? _collectionFilterFor(String? personId) {
+/// Liste henüz yüklenmediyse de null: bir kare süzgeçsiz göstermek,
+/// yanlış süzgeç göstermekten iyidir.
+({String label, Set<String> ids})? _collectionFilterFor(
+  WidgetRef ref,
+  String? personId,
+) {
   if (personId == null) return null;
 
-  final person = PeoplePreviewData.people
+  final person = ref
+      .watch(peopleListProvider)
+      .asData
+      ?.value
       .where((p) => p.id == personId)
       .firstOrNull;
   if (person == null) return null;
@@ -346,6 +353,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     // (bkz. ARCHITECTURE.md bölüm 2) — kişiyi burada çözüp
                     // ekrana hazır liste veriyoruz.
                     collectionFilter: _collectionFilterFor(
+                      ref,
                       state.uri.queryParameters['person'],
                     ),
                     // Süzgeci kaldırmak = aynı sekmeye kişisiz gitmek.

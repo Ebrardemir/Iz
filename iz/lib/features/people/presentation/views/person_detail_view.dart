@@ -24,10 +24,9 @@
 /// Sayfa böylece tek bir soruya cevap veriyor: bu kişiyle NELERİ paylaşıyoruz?
 /// Anıların kendisi koleksiyonların içinde ve anı listesinde duruyor.
 ///
-/// ⚠️ VERİ KAYNAĞI YOK. `PersonDao`/`CollectionDao`/`RitualDao` yazılmadı;
-/// kişi `PeoplePreviewData`dan, koleksiyon ve ritüeller
-/// `PersonDetailPreviewData`dan geliyor. Veri bağlandığında iki `ref.watch`
-/// eklenecek, ekranın geri kalanı aynı kalacak.
+/// KİŞİ DEPODAN geliyor ve akış canlı. KOLEKSİYON ve RİTÜELLER hâlâ
+/// önizleme verisinde: `CollectionDao` ve `RitualDao` yazılmadı (M6).
+/// O iki bölüm bağlandığında `PersonDetailPreviewData` da silinecek.
 library;
 
 import 'package:flutter/material.dart';
@@ -36,11 +35,14 @@ import 'package:go_router/go_router.dart';
 import 'package:iz/app/router/app_add_menu.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
+import 'package:iz/core/l10n/failure_l10n.dart';
+import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
-import 'package:iz/features/people/presentation/views/people_preview_data.dart';
+import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
 import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_header.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_rows.dart';
@@ -70,9 +72,19 @@ class _PersonDetailViewState extends ConsumerState<PersonDetailView> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final person = PeoplePreviewData.people
-        .where((p) => p.id == widget.personId)
-        .firstOrNull;
+
+    // Kişi DEPODAN geliyor ve akış canlı: düzenleme ekranında ad değişince
+    // bu ekran kendiliğinden güncelleniyor.
+    //
+    // `asData` kullanıyoruz çünkü yükleme karesinde `person` henüz yok ve
+    // aşağıdaki "bulunamadı" ekranı bir an için parlardı. Yüklenirken
+    // hiçbir şey göstermemek, yanlış bir şey göstermekten iyi.
+    final personAsync = ref.watch(personDetailProvider(widget.personId));
+    if (personAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final person = personAsync.asData?.value;
 
     if (person == null) {
       // Kimlik tanınmıyor (eski bağlantı, elle yazılmış rota). Çökmek yerine
@@ -230,12 +242,21 @@ class _PersonDetailViewState extends ConsumerState<PersonDetailView> {
     );
     if (!confirmed || !mounted) return;
 
-    // ⚠️ SİLME HATTI YOK (`PersonDao` yazılmadı). Onay akışı yine de
-    // kuruluyor ki hat geldiğinde davranış değişmesin.
-    _comingSoon();
-  }
+    final result = await ref
+        .read(personRepositoryProvider)
+        .softDelete(widget.personId);
+    if (!mounted) return;
 
-  void _comingSoon() => context.showSnack(context.l10n.screenComingSoonMessage);
+    switch (result) {
+      case Ok():
+        // Silinen kişinin detay sayfasında kalmanın anlamı yok; listeye
+        // dönüyoruz ve kişi orada da yok.
+        context.pop();
+      case Err(:final failure):
+        // Silinemedi: sayfada kalıyoruz ki kullanıcı tekrar deneyebilsin.
+        context.showSnack(failure.localizedMessage(l10n));
+    }
+  }
 }
 
 /// Bölüm başlığı — "Koleksiyonlarımız", "Ritüellerimiz".

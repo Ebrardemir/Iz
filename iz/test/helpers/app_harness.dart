@@ -21,10 +21,12 @@ import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_media_picker.dart';
 import 'fake_memory_repository.dart';
+import 'fake_person_repository.dart';
 
 /// Gecikmesiz sahte kimlik doğrulama — her girişi kabul eder.
 ///
@@ -89,6 +91,10 @@ Future<void> pumpApp(
   // `MissingPluginException` atar. Varsayılan olarak "kullanıcı vazgeçti"
   // davranışı veriyoruz; akışı sınayan testler kendi seçicisini geçiyor.
   FakeMediaPicker? mediaPicker,
+  // Kişi deposu. Varsayılan BOŞ: çoğu test kişilerle ilgilenmiyor ve boş
+  // liste gerçek bir yeni kullanıcının durumu. Kişi gerektiren testler
+  // kendi deposunu geçiyor.
+  FakePersonRepository? people,
 }) async {
   // Varsayılan test yüzeyi 800×600'dür — yani YATAY bir masaüstü ölçüsü.
   // İZ bir telefon uygulaması; düzen kararları (görsel yüksekliği, sosyal
@@ -116,6 +122,9 @@ Future<void> pumpApp(
         // Repository'yi override ettiğimiz için appDatabaseProvider hiç
         // okunmaz — gerçek veritabanı bu teste hiç karışmaz.
         memoryRepositoryProvider.overrideWithValue(repository),
+        personRepositoryProvider.overrideWithValue(
+          people ?? FakePersonRepository(),
+        ),
         authRepositoryProvider.overrideWithValue(InstantAuthRepository()),
         mediaPickerProvider.overrideWithValue(mediaPicker ?? FakeMediaPicker()),
       ],

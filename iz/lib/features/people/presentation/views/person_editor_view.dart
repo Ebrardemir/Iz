@@ -39,11 +39,15 @@
 /// Referansta ikisi de var: uzun bir formda kullanıcı ya sona iner ya da
 /// bitirdiğini düşündüğü an üstteki tikle kapatır. İkisi de aynı işi yapıyor.
 ///
-/// ⚠️ KAYIT VE SİLME HATTI YOK. `PersonDao`/`PersonRepository` yazılmadı;
-/// düzenlenecek kişi `PeoplePreviewData`dan okunuyor, doğrulama çalışıyor ama
-/// hiçbir şey yazılmıyor. Hat kurulduğunda `_save` ve `_delete` içindeki tek
-/// çağrı değişecek, formun geri kalanı aynı kalacak.
+/// KAYIT VE SİLME GERÇEK: form `PersonRepository`ye yazıyor, düzenlenecek
+/// kişi oradan okunuyor.
+///
+/// FOTOĞRAF HÂLÂ KAYDEDİLMİYOR — medya hattı (dosyayı uygulama alanına
+/// kopyalama, önizleme üretme) kurulmadı. Seçilen fotoğraf ekranda görünüyor
+/// ama `avatarMediaId` boş kalıyor; M4 ile bağlanacak.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,12 +56,14 @@ import 'package:intl/intl.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/l10n/failure_l10n.dart';
 import 'package:iz/core/media/media_picker.dart';
+import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/domain/repositories/person_repository.dart';
 import 'package:iz/features/people/presentation/person_l10n.dart';
-import 'package:iz/features/people/presentation/views/people_preview_data.dart';
 import 'package:iz/features/people/presentation/widgets/person_photo_picker.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
@@ -125,11 +131,26 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
     final personId = widget.personId;
     if (personId == null) return;
 
-    // ⚠️ ÖNİZLEME VERİSİ. `PersonDao` yazıldığında burası repository'den
-    // okuyacak; formun geri kalanı değişmeyecek.
-    final person = PeoplePreviewData.people
-        .where((p) => p.id == personId)
-        .firstOrNull;
+    // FORMU DEPODAN DOLDURUYORUZ. Okuma asenkron olduğu için ayrı bir
+    // metotta: ilk kare boş form, veri gelince alanlar doluyor.
+    unawaited(_loadPerson(personId));
+  }
+
+  /// Düzenlenecek kişiyi okuyup alanları doldurur.
+  ///
+  /// Kayıt bulunamazsa form BOŞ KALIYOR ve ekran kapanmıyor: kullanıcı
+  /// silinmiş bir kişinin bağlantısına tıklamış olabilir; onu boş bir
+  /// forma bırakmak, hata ekranına atmaktan daha az can sıkıcı.
+  Future<void> _loadPerson(String personId) async {
+    final result = await ref
+        .read(personRepositoryProvider)
+        .findPerson(personId);
+    if (!mounted) return;
+
+    final person = switch (result) {
+      Ok(:final value) => value,
+      Err() => null,
+    };
     if (person == null) return;
 
     // ALANLAR DOLU GELİYOR: kullanıcı düzeltmek istediğini siler, olduğu gibi
@@ -147,6 +168,11 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
       _birthDate = birthDate;
       _birthDateController.text = _formatBirthDate(birthDate);
     }
+
+    // Denetleyicilere yazmak widget'ı kendiliğinden yeniden çizmiyor;
+    // metin alanları dinliyor ama tarih alanı ve kaydet düğmesi çizilmiş
+    // durumda kalırdı.
+    setState(() {});
   }
 
   @override
@@ -391,22 +417,41 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
       return;
     }
 
-    // ⚠️ BURADA KAYIT YOK. `PersonDao`/`PersonRepository` yazılmadı; yazılan
-    // kişi hiçbir yere gitmiyor. Doğrulamayı yine de çalıştırıyoruz ki hat
-    // hazır olduğunda davranış değişmesin.
-    //
-    // Hat kurulduğunda buraya gelecek olan:
-    //   final person = person.copyWith(
-    //     name: name,
-    //     relationLabel: _relationController.text.trim(),
-    //     relationType: guessRelationType(_relationController.text),
-    //     birthDate: _birthDate,
-    //     note: _noteController.text.trim(),
-    //   );
-    //   await ref.read(savePersonProvider)(person);
-    context
-      ..pop()
-      ..showSnack(l10n.screenComingSoonMessage);
+    unawaited(_persist(name));
+  }
+
+  /// Kaydeder ve ekranı kapatır.
+  ///
+  /// BAŞARIDA BİLDİRİM YOK — bilinçli. Kullanıcı listeye dönüyor ve kişiyi
+  /// orada görüyor; asıl onay bu. Üstüne bir de "kaydedildi" balonu
+  /// göstermek, kullanıcının zaten gördüğü şeyi tekrar söylemek olurdu.
+  ///
+  /// HATADA ekran KAPANMIYOR: form dolu kalıyor ki kullanıcı yazdıklarını
+  /// kaybetmesin (TR-C-12'nin paywall için söylediğinin aynısı).
+  Future<void> _persist(String name) async {
+    final result = await ref
+        .read(personRepositoryProvider)
+        .save(
+          PersonDraft(
+            id: widget.personId,
+            name: name,
+            // İlişki TÜRÜ burada hesaplanmıyor: bu bir veri yorumlama
+            // kuralı ve `PersonMapper` içinde yaşıyor. Ekran yalnız
+            // kullanıcının YAZDIĞINI taşıyor.
+            relationLabel: _relationController.text,
+            birthDate: _birthDate,
+            note: _noteController.text,
+          ),
+        );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok():
+        context.pop();
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 
   /// NFR-034: kritik silme işleminde açık onay.
@@ -427,10 +472,24 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
     );
     if (!confirmed || !mounted) return;
 
-    // ⚠️ SİLME HATTI YOK (`PersonDao` yazılmadı). Onay akışı yine de
-    // kuruluyor ki hat geldiğinde davranış değişmesin.
-    context
-      ..pop()
-      ..showSnack(l10n.screenComingSoonMessage);
+    final personId = widget.personId;
+    if (personId == null) {
+      // Henüz kaydedilmemiş bir kişi: silinecek bir şey yok, formdan çık.
+      context.pop();
+      return;
+    }
+
+    final result = await ref
+        .read(personRepositoryProvider)
+        .softDelete(personId);
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok():
+        context.pop();
+      case Err(:final failure):
+        // Silinemedi: ekranda kalıyoruz ki kullanıcı tekrar deneyebilsin.
+        context.showSnack(failure.localizedMessage(l10n));
+    }
   }
 }

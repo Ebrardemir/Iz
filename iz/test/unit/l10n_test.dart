@@ -118,10 +118,11 @@ const _allowedFiles = <String>{
   // YOK — o gerçekten çeviriden geliyor (bkz. category_l10n.dart).
   'lib/features/memories/presentation/views/memory_form_preview_data.dart',
 
-  // Aynı gerekçe, kişi listesi için: sahte kişi adları ("Annem", "Elif").
-  // İLİŞKİ TÜRLERİ bu dosyada metin OLARAK GEÇMİYOR — enum kullanılıyor ve
-  // adları çeviriden geliyor (bkz. person_l10n.dart).
-  'lib/features/people/presentation/views/people_preview_data.dart',
+  // NOT: kişi listesinin sahte verisi buradaydı ve KALDIRILDI. Dosya
+  // `test/helpers/people_fixture.dart`a taşındı — sahte kullanıcı verisinin
+  // yeri `lib/` değil test. Tarayıcı yalnız `lib/` altına baktığı için
+  // istisnaya da gerek kalmadı. Kalan üç önizleme dosyası kendi modülleri
+  // veriye bağlandıkça aynı yolu izleyecek (TR-D-02).
 
   // BAMBAŞKA BİR GEREKÇE: burada Türkçe kelimeler var ama hiçbiri kullanıcıya
   // GÖSTERİLMİYOR. Dosyanın tek işi kullanıcının yazdığı ilişki metnini
