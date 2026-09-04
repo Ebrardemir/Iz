@@ -122,13 +122,22 @@ Prod'da ayrıntılı log kapanır (NFR-014).
 docker compose -f api/docker-compose.yml up -d
 dotnet run --project api/src/Iz.Api --urls http://0.0.0.0:5163
 
-# 2) Uygulamayı emülatörün gördüğü adrese yönlendir
-flutter run --dart-define=IZ_API=http://10.0.2.2:5163
+# 2) Uygulamayı çalıştır — bayrak GEREKMEZ
+flutter run
 ```
 
-`10.0.2.2`, Android emülatöründen ana makinenin (host) `localhost`'una
-karşılık gelen özel adrestir; `localhost` yazarsan emülatörün KENDİSİNİ
-kastetmiş olursun.
+Geliştirme ortamında `IZ_API` verilmezse uygulama yerel API'ye düşer:
+Android'de `http://10.0.2.2:5163`, iOS simülatörü ve masaüstünde
+`http://localhost:5163`. `10.0.2.2`, Android emülatöründen ana makinenin
+(host) `localhost`'una karşılık gelen özel adrestir; `localhost` yazmak
+emülatörün KENDİSİNİ kastetmek olurdu.
+
+GERÇEK TELEFONDA çalışıyorsan bu varsayılan işe yaramaz — makinenin LAN
+adresini açıkça geç:
+
+```bash
+flutter run --dart-define=IZ_API=http://192.168.1.x:5163
+```
 
 Şifresiz (`http://`) trafik Android 9'dan beri varsayılan olarak engelli.
 `android/app/src/debug/res/xml/network_security_config.xml` bu üç yerel
