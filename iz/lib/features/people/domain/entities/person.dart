@@ -83,10 +83,15 @@ final class Person extends Equatable {
     return age;
   }
 
+  /// ⚠️ [relationLabel] BU LİSTEDE OLMAK ZORUNDA.
+  /// Eksikti: `copyWith` çağıran her yer kullanıcının yazdığı "Annem"i
+  /// sessizce düşürüyordu. Yeni bir alan eklerken buraya da eklemeyi unutma —
+  /// derleyici bunu yakalamaz.
   Person copyWith({
     String? name,
     PersonKind? kind,
     RelationType? relationType,
+    String? relationLabel,
     DateTime? birthDate,
     String? avatarMediaId,
     String? note,
@@ -96,6 +101,7 @@ final class Person extends Equatable {
     name: name ?? this.name,
     kind: kind ?? this.kind,
     relationType: relationType ?? this.relationType,
+    relationLabel: relationLabel ?? this.relationLabel,
     birthDate: birthDate ?? this.birthDate,
     avatarMediaId: avatarMediaId ?? this.avatarMediaId,
     note: note ?? this.note,

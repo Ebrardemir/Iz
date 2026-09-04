@@ -36,6 +36,7 @@ import 'package:iz/features/media/data/tables/media_tables.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/daos/memory_dao.dart';
 import 'package:iz/features/memories/data/tables/memory_tables.dart';
+import 'package:iz/features/people/data/daos/person_dao.dart';
 import 'package:iz/features/people/data/tables/person_tables.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
@@ -63,7 +64,7 @@ part 'app_database.g.dart';
     JournalEntries,
     JournalMedia,
   ],
-  daos: [MemoryDao],
+  daos: [MemoryDao, PersonDao],
   // FTS5 sanal tablosu ve trigger'ları SQL ile tanımlanır (Dart API'si
   // sanal tabloyu ifade edemez).
   include: {'package:iz/features/search/data/search.drift'},
@@ -81,7 +82,7 @@ class AppDatabase extends _$AppDatabase {
   /// Artırmayı unutursan kullanıcının cihazındaki eski şema olduğu gibi
   /// kalır ve uygulama "no such column" hatasıyla çöker.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -142,6 +143,19 @@ class AppDatabase extends _$AppDatabase {
 
         // FR-091 — filtre panelinin en sık kullandığı sütun.
         await m.createIndex(idxMemoriesCategory);
+      }
+
+      if (from < 6) {
+        // v6 — kişinin KENDİ YAZDIĞI ilişki adı ("Annem", "Kankam").
+        //
+        // Alan `Person` entity'sinde ve arayüzde baştan beri vardı; eksik
+        // olan yalnız sütundu. Yani editörde yazılan metin kaydedilirken
+        // sessizce düşüyordu. Veri katmanı yazılırken fark edildi.
+        //
+        // NULLABLE: var olan kayıtlarda karşılığı yok ve olmaması bir
+        // eksiklik değil — o kişiler için ekranda `relationType`ın çevirisi
+        // gösterilmeye devam eder (bkz. person_l10n.dart).
+        await m.addColumn(people, people.relationLabel);
       }
     },
 

@@ -3623,6 +3623,18 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PersonRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant('other'),
   ).withConverter<RelationType>($PeopleTable.$converterrelationType);
+  static const VerificationMeta _relationLabelMeta = const VerificationMeta(
+    'relationLabel',
+  );
+  @override
+  late final GeneratedColumn<String> relationLabel = GeneratedColumn<String>(
+    'relation_label',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 60),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _birthDateMeta = const VerificationMeta(
     'birthDate',
   );
@@ -3680,6 +3692,7 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PersonRow> {
     name,
     kind,
     relationType,
+    relationLabel,
     birthDate,
     avatarMediaId,
     note,
@@ -3739,6 +3752,15 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PersonRow> {
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('relation_label')) {
+      context.handle(
+        _relationLabelMeta,
+        relationLabel.isAcceptableOrUnknown(
+          data['relation_label']!,
+          _relationLabelMeta,
+        ),
+      );
     }
     if (data.containsKey('birth_date')) {
       context.handle(
@@ -3816,6 +3838,10 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PersonRow> {
           data['${effectivePrefix}relation_type'],
         )!,
       ),
+      relationLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relation_label'],
+      ),
       birthDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}birth_date'],
@@ -3866,6 +3892,17 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
   final String name;
   final PersonKind kind;
   final RelationType relationType;
+
+  /// Kullanıcının KENDİ YAZDIĞI ilişki adı: "Annem", "Kankam", "Komşu Ayla".
+  ///
+  /// [relationType] makine için, bu insan için — gerekçesi
+  /// [Person.relationLabel] doc'unda. İkisi ayrı sütun çünkü tür yazılandan
+  /// TÜRETİLİYOR ve tahmin yanlış olsa bile kullanıcının yazdığı metin
+  /// ekranda aynen kalmalı.
+  ///
+  /// v6'da eklendi. Öncesinde entity'de vardı ama sütunu yoktu: kullanıcı
+  /// "Annem" yazsa kayıt sırasında sessizce kaybolurdu.
+  final String? relationLabel;
   final DateTime? birthDate;
   final String? avatarMediaId;
   final String? note;
@@ -3880,6 +3917,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     required this.name,
     required this.kind,
     required this.relationType,
+    this.relationLabel,
     this.birthDate,
     this.avatarMediaId,
     this.note,
@@ -3904,6 +3942,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       map['relation_type'] = Variable<String>(
         $PeopleTable.$converterrelationType.toSql(relationType),
       );
+    }
+    if (!nullToAbsent || relationLabel != null) {
+      map['relation_label'] = Variable<String>(relationLabel);
     }
     if (!nullToAbsent || birthDate != null) {
       map['birth_date'] = Variable<DateTime>(birthDate);
@@ -3931,6 +3972,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       name: Value(name),
       kind: Value(kind),
       relationType: Value(relationType),
+      relationLabel: relationLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(relationLabel),
       birthDate: birthDate == null && nullToAbsent
           ? const Value.absent()
           : Value(birthDate),
@@ -3961,6 +4005,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       relationType: $PeopleTable.$converterrelationType.fromJson(
         serializer.fromJson<String>(json['relationType']),
       ),
+      relationLabel: serializer.fromJson<String?>(json['relationLabel']),
       birthDate: serializer.fromJson<DateTime?>(json['birthDate']),
       avatarMediaId: serializer.fromJson<String?>(json['avatarMediaId']),
       note: serializer.fromJson<String?>(json['note']),
@@ -3984,6 +4029,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       'relationType': serializer.toJson<String>(
         $PeopleTable.$converterrelationType.toJson(relationType),
       ),
+      'relationLabel': serializer.toJson<String?>(relationLabel),
       'birthDate': serializer.toJson<DateTime?>(birthDate),
       'avatarMediaId': serializer.toJson<String?>(avatarMediaId),
       'note': serializer.toJson<String?>(note),
@@ -4001,6 +4047,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     String? name,
     PersonKind? kind,
     RelationType? relationType,
+    Value<String?> relationLabel = const Value.absent(),
     Value<DateTime?> birthDate = const Value.absent(),
     Value<String?> avatarMediaId = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -4015,6 +4062,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     name: name ?? this.name,
     kind: kind ?? this.kind,
     relationType: relationType ?? this.relationType,
+    relationLabel: relationLabel.present
+        ? relationLabel.value
+        : this.relationLabel,
     birthDate: birthDate.present ? birthDate.value : this.birthDate,
     avatarMediaId: avatarMediaId.present
         ? avatarMediaId.value
@@ -4035,6 +4085,9 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
       relationType: data.relationType.present
           ? data.relationType.value
           : this.relationType,
+      relationLabel: data.relationLabel.present
+          ? data.relationLabel.value
+          : this.relationLabel,
       birthDate: data.birthDate.present ? data.birthDate.value : this.birthDate,
       avatarMediaId: data.avatarMediaId.present
           ? data.avatarMediaId.value
@@ -4058,6 +4111,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           ..write('name: $name, ')
           ..write('kind: $kind, ')
           ..write('relationType: $relationType, ')
+          ..write('relationLabel: $relationLabel, ')
           ..write('birthDate: $birthDate, ')
           ..write('avatarMediaId: $avatarMediaId, ')
           ..write('note: $note, ')
@@ -4077,6 +4131,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     name,
     kind,
     relationType,
+    relationLabel,
     birthDate,
     avatarMediaId,
     note,
@@ -4095,6 +4150,7 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
           other.name == this.name &&
           other.kind == this.kind &&
           other.relationType == this.relationType &&
+          other.relationLabel == this.relationLabel &&
           other.birthDate == this.birthDate &&
           other.avatarMediaId == this.avatarMediaId &&
           other.note == this.note &&
@@ -4111,6 +4167,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
   final Value<String> name;
   final Value<PersonKind> kind;
   final Value<RelationType> relationType;
+  final Value<String?> relationLabel;
   final Value<DateTime?> birthDate;
   final Value<String?> avatarMediaId;
   final Value<String?> note;
@@ -4126,6 +4183,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
     this.name = const Value.absent(),
     this.kind = const Value.absent(),
     this.relationType = const Value.absent(),
+    this.relationLabel = const Value.absent(),
     this.birthDate = const Value.absent(),
     this.avatarMediaId = const Value.absent(),
     this.note = const Value.absent(),
@@ -4142,6 +4200,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
     required String name,
     this.kind = const Value.absent(),
     this.relationType = const Value.absent(),
+    this.relationLabel = const Value.absent(),
     this.birthDate = const Value.absent(),
     this.avatarMediaId = const Value.absent(),
     this.note = const Value.absent(),
@@ -4159,6 +4218,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
     Expression<String>? name,
     Expression<String>? kind,
     Expression<String>? relationType,
+    Expression<String>? relationLabel,
     Expression<DateTime>? birthDate,
     Expression<String>? avatarMediaId,
     Expression<String>? note,
@@ -4175,6 +4235,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
       if (name != null) 'name': name,
       if (kind != null) 'kind': kind,
       if (relationType != null) 'relation_type': relationType,
+      if (relationLabel != null) 'relation_label': relationLabel,
       if (birthDate != null) 'birth_date': birthDate,
       if (avatarMediaId != null) 'avatar_media_id': avatarMediaId,
       if (note != null) 'note': note,
@@ -4193,6 +4254,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
     Value<String>? name,
     Value<PersonKind>? kind,
     Value<RelationType>? relationType,
+    Value<String?>? relationLabel,
     Value<DateTime?>? birthDate,
     Value<String?>? avatarMediaId,
     Value<String?>? note,
@@ -4209,6 +4271,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
       name: name ?? this.name,
       kind: kind ?? this.kind,
       relationType: relationType ?? this.relationType,
+      relationLabel: relationLabel ?? this.relationLabel,
       birthDate: birthDate ?? this.birthDate,
       avatarMediaId: avatarMediaId ?? this.avatarMediaId,
       note: note ?? this.note,
@@ -4251,6 +4314,9 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
         $PeopleTable.$converterrelationType.toSql(relationType.value),
       );
     }
+    if (relationLabel.present) {
+      map['relation_label'] = Variable<String>(relationLabel.value);
+    }
     if (birthDate.present) {
       map['birth_date'] = Variable<DateTime>(birthDate.value);
     }
@@ -4281,6 +4347,7 @@ class PeopleCompanion extends UpdateCompanion<PersonRow> {
           ..write('name: $name, ')
           ..write('kind: $kind, ')
           ..write('relationType: $relationType, ')
+          ..write('relationLabel: $relationLabel, ')
           ..write('birthDate: $birthDate, ')
           ..write('avatarMediaId: $avatarMediaId, ')
           ..write('note: $note, ')
@@ -8095,6 +8162,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'CREATE INDEX idx_journal_media_media ON journal_media (media_id)',
   );
   late final MemoryDao memoryDao = MemoryDao(this as AppDatabase);
+  late final PersonDao personDao = PersonDao(this as AppDatabase);
   Selectable<String> searchMemoryIds({required String query}) {
     return customSelect(
       'SELECT memory_id FROM memory_search WHERE memory_search MATCH ?1 ORDER BY rank',
@@ -11087,6 +11155,7 @@ typedef $$PeopleTableCreateCompanionBuilder =
       required String name,
       Value<PersonKind> kind,
       Value<RelationType> relationType,
+      Value<String?> relationLabel,
       Value<DateTime?> birthDate,
       Value<String?> avatarMediaId,
       Value<String?> note,
@@ -11104,6 +11173,7 @@ typedef $$PeopleTableUpdateCompanionBuilder =
       Value<String> name,
       Value<PersonKind> kind,
       Value<RelationType> relationType,
+      Value<String?> relationLabel,
       Value<DateTime?> birthDate,
       Value<String?> avatarMediaId,
       Value<String?> note,
@@ -11188,6 +11258,11 @@ class $$PeopleTableFilterComposer
   get relationType => $composableBuilder(
     column: $table.relationType,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get relationLabel => $composableBuilder(
+    column: $table.relationLabel,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get birthDate => $composableBuilder(
@@ -11290,6 +11365,11 @@ class $$PeopleTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get relationLabel => $composableBuilder(
+    column: $table.relationLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get birthDate => $composableBuilder(
     column: $table.birthDate,
     builder: (column) => ColumnOrderings(column),
@@ -11349,6 +11429,11 @@ class $$PeopleTableAnnotationComposer
         column: $table.relationType,
         builder: (column) => column,
       );
+
+  GeneratedColumn<String> get relationLabel => $composableBuilder(
+    column: $table.relationLabel,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get birthDate =>
       $composableBuilder(column: $table.birthDate, builder: (column) => column);
@@ -11429,6 +11514,7 @@ class $$PeopleTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<PersonKind> kind = const Value.absent(),
                 Value<RelationType> relationType = const Value.absent(),
+                Value<String?> relationLabel = const Value.absent(),
                 Value<DateTime?> birthDate = const Value.absent(),
                 Value<String?> avatarMediaId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -11444,6 +11530,7 @@ class $$PeopleTableTableManager
                 name: name,
                 kind: kind,
                 relationType: relationType,
+                relationLabel: relationLabel,
                 birthDate: birthDate,
                 avatarMediaId: avatarMediaId,
                 note: note,
@@ -11461,6 +11548,7 @@ class $$PeopleTableTableManager
                 required String name,
                 Value<PersonKind> kind = const Value.absent(),
                 Value<RelationType> relationType = const Value.absent(),
+                Value<String?> relationLabel = const Value.absent(),
                 Value<DateTime?> birthDate = const Value.absent(),
                 Value<String?> avatarMediaId = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -11476,6 +11564,7 @@ class $$PeopleTableTableManager
                 name: name,
                 kind: kind,
                 relationType: relationType,
+                relationLabel: relationLabel,
                 birthDate: birthDate,
                 avatarMediaId: avatarMediaId,
                 note: note,

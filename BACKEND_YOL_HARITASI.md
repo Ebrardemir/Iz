@@ -71,7 +71,7 @@ düz `Table`, composite primary key, `updatedAt`/`deletedAt`/`version` yok.
 Satır fiziksel silindiği için değişiklik günlüğüne yazılacak bir şey kalmaz; diğer cihaz
 ilişkiyi hâlâ görür ve bir sonraki push'ta geri yazar. **Silinen ilişki geri gelir.**
 
-Bunu Faz 2'de şema v5 ile kapatıyoruz. Ne kadar erken, o kadar ucuz: kullanıcı tabanı
+Bunu Faz 2'de şema v8 ile kapatıyoruz (TRD → Ek A). Ne kadar erken, o kadar ucuz: kullanıcı tabanı
 büyüdükçe migration riski artar.
 
 ---
@@ -443,13 +443,13 @@ Bu akış atlanırsa mevcut kullanıcıların verisi **hiçbir zaman buluta çı
 
 Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 
-**Drift `schemaVersion` → v7** (şema kütüğünün tek kaynağı: TRD **Ek A**):
+**Drift `schemaVersion` → v8** (şema kütüğünün tek kaynağı: TRD **Ek A**):
 
 > ⚠️ *Bu bölüm 26 Ağustos'ta "v4 → v5" diye yazılmıştı; o sırada v5 zaten alınmıştı.*
-> Bugünkü doğru numara **v7**'dir: v5 ters yön indeksleriyle (✅ alındı), v6 ise
-> `journal_search` FTS tablosuyla (1.1) dolu. Sync tabloları 1.5'e ait olduğu için
-> sıradaki boş numara v7. Sürüm numarasını bu dokümandan değil **her zaman Ek A'dan**
-> oku — iki yerde tutulan numara bir gün ayrışır.
+> Numara o günden beri iki kez kaydı (v6 `people.relation_label` ile doldu),
+> bu yüzden burada bir sayı sabitlemek yerine kuralı yazıyoruz:
+> **sürüm numarasını bu dokümandan değil her zaman TRD → Ek A'dan oku.**
+> İki yerde tutulan numara bir gün ayrışır; bugünkü değeri Ek A söylüyor.
 
 - Join tablolarına (`MemoryPeople`, `MemoryCollections`, `MemoryRituals`, `MemoryMedia`, `JournalMedia`)
   `updatedAt`, `deletedAt`, `version` sütunları. Composite PK korunur — kimlik `(memoryId, personId)`
@@ -463,7 +463,7 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
   `memory_dao.dart` ve tüm feature DAO'ları tek tek gözden geçirilecek.
 - Repository yazma yolları outbox'a kayıt düşürür (henüz kimse okumuyor).
 
-**Çıkış kriteri:** v5 → v7 migration testi yeşil; mevcut test paketi hâlâ yeşil; outbox doluyor.
+**Çıkış kriteri:** v6 → v8 migration testi yeşil; mevcut test paketi hâlâ yeşil; outbox doluyor.
 
 ---
 
