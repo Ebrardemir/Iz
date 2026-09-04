@@ -19,8 +19,15 @@ services:
       IZ_Iz__Environment: dev
       IZ_Iz__DatabaseConnection: "Host=postgres;Port=5432;Database=iz;Username=iz;Password=gelistirme"
       IZ_Iz__RedisConnection: "redis:6379"
-      # Firebase proje kimliği yerelde boş kalabilir; kimlik Faz 1'de geliyor.
-      IZ_Iz__FirebaseProjectId: ""
+      # Firebase proje kimliği. SIR DEĞİL — her mobil uygulamanın içine gömülü
+      # olarak dağıtılıyor, herkes görebilir. Gizli olan şey servis hesabı
+      # dosyasıdır; bizim sunucumuzun ona ihtiyacı yok, çünkü token'ı Google'ın
+      # AÇIK anahtarlarıyla doğruluyor (ADR-B15).
+      #
+      # ⚠️ Bu GELİŞTİRME projesi. §7.4 "ortamlar fiziksel olarak ayrı" diyor:
+      # staging ve prod kendi Firebase projelerini almalı, yoksa bir test
+      # hesabı üretim kullanıcılarının arasına karışır.
+      IZ_Iz__FirebaseProjectId: "izuygulama-6fa20"
     depends_on:
       postgres:
         condition: service_healthy
