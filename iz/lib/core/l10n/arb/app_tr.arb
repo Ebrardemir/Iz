@@ -766,6 +766,11 @@
     }
   },
   "errorSignInFailed": "E-posta veya şifre hatalı.",
+  "errorSignInTooManyAttempts": "Çok fazla deneme yapıldı. Biraz bekleyip tekrar dene.",
+  "errorSignInAccountDisabled": "Bu hesap kullanıma kapatılmış.",
+  "errorSessionExpired": "Oturumun sona erdi. Tekrar giriş yap.",
+  "errorSignInProviderUnavailable": "Bu giriş yöntemi henüz kullanılamıyor.",
+  "errorValidationEmailInUse": "Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.",
   "errorValidationNameRequired": "Adını ve soyadını gir.",
   "errorValidationPasswordsDoNotMatch": "Şifreler eşleşmiyor.",
   "routeNotFound": "Sayfa bulunamadı",

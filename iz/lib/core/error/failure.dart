@@ -88,6 +88,13 @@ enum ValidationCode {
   // --- Kayıt ---------------------------------------------------------------
   nameRequired(field: AuthFormField.fullName),
 
+  /// Bu e-postayla zaten bir hesap var (TRD M1.5 — kayıt ekranı durumu).
+  ///
+  /// Sunucudan gelmesine rağmen [ValidationFailure]: kullanıcının
+  /// düzeltebileceği bir ALAN var ve hata o alanın altında gösterilmeli.
+  /// [AuthFailure] olsaydı formun tepesinde genel bir uyarı olarak çıkardı.
+  emailAlreadyInUse(field: AuthFormField.email),
+
   /// Hata İKİNCİ şifre alanında gösterilir: kullanıcının düzeltmesi gereken
   /// alan odaktakidir, ilk şifre değil.
   passwordsDoNotMatch(field: AuthFormField.confirmPassword);
@@ -115,15 +122,51 @@ abstract final class AuthFormField {
   static const String confirmPassword = 'confirmPassword';
 }
 
+/// Kimlik doğrulamanın reddedilme sebebi.
+///
+/// NEDEN TEK BİR AuthFailure YETMİYOR?
+/// Firebase üç ayrı durumu ayrı ayrı bildiriyor ve üçünde kullanıcının
+/// yapması gereken şey FARKLI:
+///   • yanlış şifre       → tekrar dene
+///   • çok fazla deneme   → **bekle**, tekrar denemek işe yaramaz
+///   • kapatılmış hesap   → destekle iletişime geç
+/// Üçüne birden "e-posta veya şifre hatalı" demek, geçici olarak kilitlenmiş
+/// kullanıcıyı şifresini değiştirmeye iter — yani sorunu büyütür.
+enum AuthFailureReason {
+  /// E-posta veya şifre tutmuyor. Varsayılan.
+  invalidCredentials,
+
+  /// Firebase hız sınırı devrede; hesap geçici olarak kilitli.
+  tooManyAttempts,
+
+  /// Hesap yönetici tarafından devre dışı bırakılmış.
+  accountDisabled,
+
+  /// Oturum düştü veya token artık geçerli değil; yeniden giriş gerekiyor.
+  sessionExpired,
+
+  /// İstenen giriş yöntemi bu sürümde bağlanmadı (Apple/Google).
+  ///
+  /// Kullanıcıya "şifren yanlış" demektense "bu yöntem şu an kullanılamıyor"
+  /// demek dürüst olanı. Yöntem bağlandığında bu değer kullanılmaz olur.
+  providerUnavailable,
+}
+
 /// Kimlik doğrulama başarısız (kullanıcı adı/şifre hatalı, oturum süresi
 /// dolmuş). [ValidationFailure]'dan AYRI bir tip çünkü bu bir form hatası
 /// değil: kullanıcı doğru biçimde doldurdu ama sunucu reddetti.
 final class AuthFailure extends Failure {
   const AuthFailure({
+    this.reason = AuthFailureReason.invalidCredentials,
     super.message = 'authentication failed',
     super.cause,
     super.stackTrace,
   });
+
+  final AuthFailureReason reason;
+
+  @override
+  List<Object?> get props => [...super.props, reason];
 }
 
 /// İş kuralı ihlali. Örn. FR-012: "boş anı kaydedilemez".

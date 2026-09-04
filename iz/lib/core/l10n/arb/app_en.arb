@@ -555,6 +555,11 @@
     }
   },
   "errorSignInFailed": "Email or password is incorrect.",
+  "errorSignInTooManyAttempts": "Too many attempts. Wait a moment and try again.",
+  "errorSignInAccountDisabled": "This account has been disabled.",
+  "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "errorSignInProviderUnavailable": "This sign-in method isn't available yet.",
+  "errorValidationEmailInUse": "An account already exists with this email. Try signing in.",
   "errorValidationNameRequired": "Enter your full name.",
   "errorValidationPasswordsDoNotMatch": "Passwords don't match.",
   "routeNotFound": "Page not found",

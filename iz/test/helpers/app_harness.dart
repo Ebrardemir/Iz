@@ -17,7 +17,7 @@ import 'package:iz/app/app.dart';
 import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/app_preferences.dart';
-import 'package:iz/features/auth/data/repositories/stub_auth_repository.dart';
+import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
@@ -28,8 +28,9 @@ import 'fake_memory_repository.dart';
 
 /// Gecikmesiz sahte kimlik doğrulama — her girişi kabul eder.
 ///
-/// Gerçek [StubAuthRepository] 900 ms ağ gecikmesi taklit ediyor (yükleniyor
-/// durumunu tasarlayabilmek için); testin onu beklemesi anlamsız.
+/// Gerçeği ([FirebaseAuthRepository]) ağa çıkıyor ve `Firebase.initializeApp`
+/// istiyor; widget testinde ikisi de istenmez. Buradaki amaç kimlik
+/// doğrulamayı değil, EKRANIN oturum açılınca ne yaptığını sınamak.
 class InstantAuthRepository implements AuthRepository {
   static const _session = AuthSession(userId: 'test-user');
 

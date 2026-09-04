@@ -14,6 +14,7 @@ library;
 
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/app/app.dart';
@@ -33,6 +34,8 @@ Future<void> bootstrap() async {
   final log = appLogger('bootstrap');
   log.info('İZ başlatılıyor…');
 
+  await _initFirebase(log);
+
   // Async bağımlılıkları burada çözüyoruz; provider'lara hazır veriyoruz.
   final preferences = await SharedPreferences.getInstance();
 
@@ -48,6 +51,33 @@ Future<void> bootstrap() async {
   unawaited(_runMaintenance(container, log));
 
   runApp(UncontrolledProviderScope(container: container, child: const IzApp()));
+}
+
+/// Firebase'i başlatır — ama başlatamazsa uygulamayı DURDURMAZ.
+///
+/// NEDEN HATA FIRLATMIYORUZ?
+/// Ürünün duruşu "uygulama hesap dayatmaz, hesapsız tam çalışır"
+/// (ADR-B12). Anılar cihazda; Firebase yalnız bulut isteyen kullanıcı için
+/// gerekli. Başlatma hatasında uygulamayı açılmaz hâle getirmek, hesabı
+/// hiç kullanmayan birinin anılarına erişimini bir bulut servisinin
+/// durumuna bağlamak olurdu.
+///
+/// Bu durumda kimlik uçları çalışmaz; [FirebaseAuthRepository] gelen
+/// `no-app` hatasını yakalayıp geliştiriciye ne yapması gerektiğini söyler.
+///
+/// Platform yapılandırması (Android'de `google-services.json`) eksikse
+/// yerelde tam olarak buraya düşülür — beklenen ve zararsız bir durum.
+Future<void> _initFirebase(Logger log) async {
+  try {
+    await Firebase.initializeApp();
+    log.info('Firebase hazır.');
+  } on Object catch (e, s) {
+    log.warning(
+      'Firebase başlatılamadı; uygulama yalnız-cihaz kipinde devam ediyor.',
+      e,
+      s,
+    );
+  }
 }
 
 /// Açılışta yapılan temizlik işleri.
