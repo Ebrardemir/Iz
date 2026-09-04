@@ -27,6 +27,13 @@ istemci kodu **aynı commit'te** değişebiliyor.
 
 ## Çalıştırma
 
+**İlk kurulumda bir kez** — fvm yoksa istemci derlenmez:
+
+```bash
+dart pub global activate fvm
+cd iz && fvm install        # .fvmrc'deki sürümü indirir (3.47.1)
+```
+
 ```bash
 # İstemci
 cd iz && fvm flutter pub get && fvm flutter run
@@ -38,6 +45,16 @@ curl http://localhost:8080/health
 
 Flutter sürümü `iz/.fvmrc` ile **3.47.1**'e sabit. CI aynı sürümü kullanıyor;
 değiştirirsen ikisini birden güncelle.
+
+> ⚠️ **`fvm` önekini atlama.** Düz `flutter pub get` makinendeki genel sürümle
+> koşar ve o sürüm 3.47.1 değilse bağımlılıklar **çözülmez.** Aldığın hata
+> yanıltıcıdır: `pub`, sorunu paketlerde sanıp `drift_dev`'i düşürmeni önerir.
+> Gerçek sebep Flutter'ın `test_api`'yi çivilediği sürümdür — 3.44 onu 0.7.11'e,
+> 3.47 ise 0.7.12'ye çiviler; `drift_dev 2.34.5`'in ihtiyaç duyduğu
+> analyzer 13 yalnız ikincisinde çözülebiliyor. Paketleri düşürmek sorunu
+> çözmez, yerelini CI'dan ayırır.
+>
+> VS Code için `iz/.vscode/settings.json` aynı sürümü editöre de gösteriyor.
 
 ## Hangi belge ne için
 

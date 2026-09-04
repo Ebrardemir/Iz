@@ -1180,6 +1180,24 @@ class AppL10nTr extends AppL10n {
   String get errorSignInFailed => 'E-posta veya şifre hatalı.';
 
   @override
+  String get errorSignInTooManyAttempts =>
+      'Çok fazla deneme yapıldı. Biraz bekleyip tekrar dene.';
+
+  @override
+  String get errorSignInAccountDisabled => 'Bu hesap kullanıma kapatılmış.';
+
+  @override
+  String get errorSessionExpired => 'Oturumun sona erdi. Tekrar giriş yap.';
+
+  @override
+  String get errorSignInProviderUnavailable =>
+      'Bu giriş yöntemi henüz kullanılamıyor.';
+
+  @override
+  String get errorValidationEmailInUse =>
+      'Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.';
+
+  @override
   String get errorValidationNameRequired => 'Adını ve soyadını gir.';
 
   @override

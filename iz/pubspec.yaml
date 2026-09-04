@@ -46,6 +46,17 @@ dependencies:
   image_picker: ^1.2.0
   shared_preferences: ^2.5.5      # basit tercihler (onboarding görüldü mü, tema)
   flutter_secure_storage: ^10.3.1 # NFR-010/011: token, anahtar → Keychain/Keystore
+
+  # --- Kimlik (ADR-B15) ------------------------------------------------------
+  # Kimlik DOĞRULAMASI Google'da, kimlik KARARI bizde. Firebase kullanıcıyı
+  # doğrulayıp bir ID token imzalıyor; sunucumuz o token'ı Google'ın AÇIK
+  # anahtarlarıyla doğruluyor. Şifreler bizim sunucumuza hiç uğramıyor.
+  #
+  # Token saklama ve yenileme İŞİ FIREBASE SDK'SINDA (TR-M1-02): elle refresh
+  # mantığı yazmıyoruz. Bu yüzden burada firebase_auth'un yanına ayrı bir
+  # token deposu gelmiyor.
+  firebase_core: ^4.14.0
+  firebase_auth: ^6.6.1
   uuid: ^4.6.0                    # cihazlar arası benzersiz id (sync'e hazır)
   intl: ^0.20.2                   # tarih/sayı biçimleme
   collection: ^1.19.1

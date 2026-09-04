@@ -2095,6 +2095,36 @@ abstract class AppL10n {
   /// **'E-posta veya şifre hatalı.'**
   String get errorSignInFailed;
 
+  /// No description provided for @errorSignInTooManyAttempts.
+  ///
+  /// In tr, this message translates to:
+  /// **'Çok fazla deneme yapıldı. Biraz bekleyip tekrar dene.'**
+  String get errorSignInTooManyAttempts;
+
+  /// No description provided for @errorSignInAccountDisabled.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu hesap kullanıma kapatılmış.'**
+  String get errorSignInAccountDisabled;
+
+  /// No description provided for @errorSessionExpired.
+  ///
+  /// In tr, this message translates to:
+  /// **'Oturumun sona erdi. Tekrar giriş yap.'**
+  String get errorSessionExpired;
+
+  /// No description provided for @errorSignInProviderUnavailable.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu giriş yöntemi henüz kullanılamıyor.'**
+  String get errorSignInProviderUnavailable;
+
+  /// No description provided for @errorValidationEmailInUse.
+  ///
+  /// In tr, this message translates to:
+  /// **'Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.'**
+  String get errorValidationEmailInUse;
+
   /// No description provided for @errorValidationNameRequired.
   ///
   /// In tr, this message translates to:

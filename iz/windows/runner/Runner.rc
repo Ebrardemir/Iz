@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
+            VALUE "CompanyName", "Ebrar Demir" "\0"
             VALUE "FileDescription", "iz" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "iz" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Ebrar Demir. All rights reserved." "\0"
             VALUE "OriginalFilename", "iz.exe" "\0"
             VALUE "ProductName", "iz" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

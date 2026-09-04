@@ -46,3 +46,21 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+# Firebase platform yapılandırması — DEPOYA GİRMEZ.
+#
+# İçindeki API anahtarı kriptografik anlamda bir sır DEĞİL: uygulamanın
+# içinde dağıtılıyor, isteyen APK'dan çıkarabiliyor. Güvenlik oradan değil,
+# Firebase kurallarından ve kimlik doğrulamadan geliyor.
+#
+# Yine de depoya koymuyoruz çünkü depo AÇIK: dosyayı bulan biri kendi
+# istemcisini bizim Firebase projemize yöneltip hesap açabilir. Kotayı
+# tüketir ve kullanıcı listesini kirletir. Bunu zorlaştırmanın bedeli
+# sıfır — CI Android derlemiyor.
+#
+# Yeni bir geliştirici bu dosyayı Firebase konsolundan kendisi indirir;
+# adımlar README'de.
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+/macos/Runner/GoogleService-Info.plist
+lib/firebase_options.dart

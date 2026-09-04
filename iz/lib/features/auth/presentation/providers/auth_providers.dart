@@ -12,7 +12,7 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iz/features/auth/data/repositories/stub_auth_repository.dart';
+import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/usecases/sign_in_with_email.dart';
 import 'package:iz/features/auth/domain/usecases/sign_up_with_email.dart';
 

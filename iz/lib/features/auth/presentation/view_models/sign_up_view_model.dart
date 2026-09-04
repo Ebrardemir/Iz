@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/core/error/failure.dart';
-import 'package:iz/features/auth/data/repositories/stub_auth_repository.dart';
+import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/presentation/providers/auth_providers.dart';
 

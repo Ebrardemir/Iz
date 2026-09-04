@@ -1,0 +1,19 @@
+{
+  // FVM: editör de projenin sabitlediği Flutter'ı kullansın (.fvmrc → 3.47.1).
+  //
+  // NEDEN GEREKLİ? Bu satır olmadan VS Code makinedeki genel Flutter'ı
+  // kullanır. O sürüm .fvmrc'dekinden farklıysa editör bir şey, terminal
+  // başka bir şey söyler — "analiz temiz görünüyor ama testler kalıyor"
+  // gibi açıklanamayan durumlar buradan doğar.
+  "dart.flutterSdkPath": ".fvm/flutter_sdk",
+
+  // Üretilen dosyalar arama ve dosya izleme dışında: build_runner çıktısı
+  // aramayı boğuyor ve gereksiz yeniden analiz tetikliyor.
+  "search.exclude": {
+    "**/.fvm": true,
+    "**/*.g.dart": true
+  },
+  "files.watcherExclude": {
+    "**/.fvm/**": true
+  }
+}

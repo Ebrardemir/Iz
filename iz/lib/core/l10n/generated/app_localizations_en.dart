@@ -1187,6 +1187,25 @@ class AppL10nEn extends AppL10n {
   String get errorSignInFailed => 'Email or password is incorrect.';
 
   @override
+  String get errorSignInTooManyAttempts =>
+      'Too many attempts. Wait a moment and try again.';
+
+  @override
+  String get errorSignInAccountDisabled => 'This account has been disabled.';
+
+  @override
+  String get errorSessionExpired =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get errorSignInProviderUnavailable =>
+      'This sign-in method isn\'t available yet.';
+
+  @override
+  String get errorValidationEmailInUse =>
+      'An account already exists with this email. Try signing in.';
+
+  @override
   String get errorValidationNameRequired => 'Enter your full name.';
 
   @override

@@ -37,8 +37,18 @@ extension FailureL10nX on Failure {
       ValidationCode.nameRequired => l10n.errorValidationNameRequired,
       ValidationCode.passwordsDoNotMatch =>
         l10n.errorValidationPasswordsDoNotMatch,
+      ValidationCode.emailAlreadyInUse => l10n.errorValidationEmailInUse,
     },
-    AuthFailure() => l10n.errorSignInFailed,
+    // Reddedilme sebebi kullanıcının atacağı adımı değiştiriyor, o yüzden
+    // tek bir cümleye indirgemiyoruz (bkz. AuthFailureReason).
+    AuthFailure(:final reason) => switch (reason) {
+      AuthFailureReason.invalidCredentials => l10n.errorSignInFailed,
+      AuthFailureReason.tooManyAttempts => l10n.errorSignInTooManyAttempts,
+      AuthFailureReason.accountDisabled => l10n.errorSignInAccountDisabled,
+      AuthFailureReason.sessionExpired => l10n.errorSessionExpired,
+      AuthFailureReason.providerUnavailable =>
+        l10n.errorSignInProviderUnavailable,
+    },
     PermissionFailure(:final permanentlyDenied) =>
       permanentlyDenied
           ? '${l10n.errorPermission} ${l10n.errorPermissionSettings}'
