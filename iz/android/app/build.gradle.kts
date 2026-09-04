@@ -3,6 +3,10 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+
+    // Firebase yapılandırmasını derlemeye dahil eder; sürümü
+    // android/settings.gradle.kts içinde sabit (ADR-B15).
+    id("com.google.gms.google-services")
 }
 
 android {

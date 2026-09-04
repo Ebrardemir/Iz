@@ -21,6 +21,17 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+
+    // Google Services: derleme sırasında app/google-services.json dosyasını
+    // okuyup Firebase yapılandırmasını uygulamaya gömer (ADR-B15).
+    //
+    // Bu eklenti OLMADAN Firebase.initializeApp() Android'de "no default app"
+    // hatası verir — dosya klasörde dursa bile. Dosyayı koymak yetmiyor,
+    // derlemenin onu okuması gerekiyor.
+    //
+    // `apply false`: burada yalnız SÜRÜM sabitleniyor; eklenti asıl olarak
+    // app/build.gradle.kts içinde uygulanıyor.
+    id("com.google.gms.google-services") version "4.4.4" apply false
 }
 
 include(":app")
