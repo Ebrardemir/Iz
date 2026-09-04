@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- İZ ağa çıkar: Firebase Authentication kimliği doğrular ve kendi
+         API'mize (ADR-B11) senkronizasyon yapılır. Flutter şablonu bu izni
+         yalnız `src/debug/` altına koyar; orası SADECE geliştirme derlemesine
+         girdiği için, burada olmazsa mağaza sürümü ağsız kalırdı. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="iz"
         android:name="${applicationName}"
