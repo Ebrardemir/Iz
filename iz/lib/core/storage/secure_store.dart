@@ -19,13 +19,26 @@ abstract interface class SecureStore {
   Future<void> clear();
 }
 
+/// ⚠️ BURAYA `authAccessToken` / `authRefreshToken` EKLEME.
+/// İkisi de vardı ve kaldırıldı: kimlik doğrulamayı Firebase yapıyor
+/// (ADR-B15) ve token'ı kendi güvenli deposunda tutup kendi yeniliyor
+/// (TR-M1-02). Token'ı bir de biz saklasaydık iki kopya olurdu ve biri
+/// bayatladığında hangisinin doğru olduğunu bilemezdik.
 enum SecureKey {
   /// FR-005 — uygulama kilidi PIN'inin hash'i (PIN'in kendisi DEĞİL).
   appLockPinHash('app_lock_pin_hash'),
 
-  /// V1.5 — bulut oturumu.
-  authAccessToken('auth_access_token'),
-  authRefreshToken('auth_refresh_token'),
+  /// Sunucudaki `users.id` — BİZİM UUID v7'miz, Firebase uid'si değil.
+  ///
+  /// NEDEN SAKLANIYOR? Uygulama çevrimdışı açıldığında oturumu geri
+  /// yükleyebilmek için. Firebase kimin giriş yaptığını kendi deposundan
+  /// biliyor ama BİZİM kimliğimizi bilmiyor; onu `/v1/me` söylüyor ve o
+  /// çağrı ağ ister. Önbellek olmasaydı uçak modunda açılan uygulama,
+  /// oturumu açık olan kullanıcıyı çözemezdi.
+  ///
+  /// Neden güvenli depoda: kimliğin kendisi sır değil ama kullanıcıyı
+  /// tekilleştiren bir değer ve `shared_preferences` düz metin dosyadır.
+  izUserId('iz_user_id'),
 
   /// NFR-016 — istemci tarafı şifreleme anahtarı (V1.5 teknik keşif).
   contentEncryptionKey('content_encryption_key');
