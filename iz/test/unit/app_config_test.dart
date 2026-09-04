@@ -26,19 +26,22 @@ void main() {
       expect(config.apiBaseUrl, 'https://sunucu.test');
     });
 
-    test('dev + adres verilmemiş + Android → emülatörün gördüğü ana makine', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    test(
+      'dev + adres verilmemiş + Android → emülatörün gördüğü ana makine',
+      () {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
-      const config = AppConfig(
-        environment: AppEnvironment.dev,
-        apiBaseUrl: '',
-        enableVerboseLogging: true,
-      );
+        const config = AppConfig(
+          environment: AppEnvironment.dev,
+          apiBaseUrl: '',
+          enableVerboseLogging: true,
+        );
 
-      // 10.0.2.2, emülatörden ana makinenin loopback'idir. "localhost"
-      // olsaydı emülatörün KENDİSİNE gidilirdi.
-      expect(config.apiBaseUrl, 'http://10.0.2.2:5163');
-    });
+        // 10.0.2.2, emülatörden ana makinenin loopback'idir. "localhost"
+        // olsaydı emülatörün KENDİSİNE gidilirdi.
+        expect(config.apiBaseUrl, 'http://10.0.2.2:5163');
+      },
+    );
 
     test('dev + adres verilmemiş + iOS → localhost', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
