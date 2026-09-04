@@ -20,7 +20,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/app/app.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/core/logging/app_logger.dart';
+import 'package:iz/core/network/auth_token_provider.dart';
 import 'package:iz/core/storage/app_preferences.dart';
+import 'package:iz/features/auth/data/repositories/firebase_auth_token_provider.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,6 +46,11 @@ Future<void> bootstrap() async {
       // Provider tanımında `throw UnimplementedError` vardı —
       // gerçek örneği burada enjekte ediyoruz.
       appPreferencesProvider.overrideWithValue(AppPreferences(preferences)),
+
+      // Ağ katmanının kimlik kaynağı. `core/` Firebase'i tanımıyor
+      // (ARCHITECTURE.md §2); somut örneği bilen tek yer burası —
+      // her şeyi bilmeye yetkili composition root.
+      authTokenProviderProvider.overrideWithValue(FirebaseAuthTokenProvider()),
     ],
   );
 

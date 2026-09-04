@@ -95,6 +95,14 @@ enum ValidationCode {
   /// [AuthFailure] olsaydı formun tepesinde genel bir uyarı olarak çıkardı.
   emailAlreadyInUse(field: AuthFormField.email),
 
+  // --- Profil (FR-003) -----------------------------------------------------
+  //
+  // Bu ikisinin karşılığı sunucuda da var (`UpdateProfileHandler`). İstemci
+  // aynı kuralı ÖNCE kendi uygular; sunucudaki kontrol ona güvenmediğimiz
+  // için değil, istemcinin kendisi kırılabildiği için vardır (TR-C-23).
+  displayNameTooLong(field: ProfileFormField.displayName),
+  localeInvalid(field: ProfileFormField.locale),
+
   /// Hata İKİNCİ şifre alanında gösterilir: kullanıcının düzeltmesi gereken
   /// alan odaktakidir, ilk şifre değil.
   passwordsDoNotMatch(field: AuthFormField.confirmPassword);
@@ -120,6 +128,14 @@ abstract final class AuthFormField {
   static const String email = 'email';
   static const String password = 'password';
   static const String confirmPassword = 'confirmPassword';
+}
+
+/// Profil formu alanları. Adlar sunucunun ProblemDetails'te döndürdüğü
+/// `field` değerleriyle BİREBİR aynı olmalı — eşleşmezse hata doğru alanın
+/// altında gösterilemez.
+abstract final class ProfileFormField {
+  static const String displayName = 'displayName';
+  static const String locale = 'locale';
 }
 
 /// Kimlik doğrulamanın reddedilme sebebi.

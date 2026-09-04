@@ -2125,6 +2125,18 @@ abstract class AppL10n {
   /// **'Bu e-postayla bir hesap zaten var. Giriş yapmayı dene.'**
   String get errorValidationEmailInUse;
 
+  /// No description provided for @errorValidationDisplayNameTooLong.
+  ///
+  /// In tr, this message translates to:
+  /// **'Adın çok uzun. Daha kısa bir ad dene.'**
+  String get errorValidationDisplayNameTooLong;
+
+  /// No description provided for @errorValidationLocaleInvalid.
+  ///
+  /// In tr, this message translates to:
+  /// **'Dil ayarı tanınmadı.'**
+  String get errorValidationLocaleInvalid;
+
   /// No description provided for @errorValidationNameRequired.
   ///
   /// In tr, this message translates to:
