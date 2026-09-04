@@ -20,7 +20,7 @@ library;
 
 import 'package:iz/features/people/domain/entities/person.dart';
 
-abstract final class PeoplePreviewData {
+abstract final class PeopleFixture {
   /// Referans tasarımdaki altı kişi.
   ///
   /// İlişki türleri BİLEREK çeşitli: arama hem adda hem ilişkide çalışıyor ve

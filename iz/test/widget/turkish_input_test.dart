@@ -22,6 +22,7 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';
@@ -29,6 +30,8 @@ import 'package:iz/shared/widgets/iz_labeled_field.dart';
 import '../helpers/app_harness.dart';
 import '../helpers/fake_media_picker.dart';
 import '../helpers/fake_memory_repository.dart';
+import '../helpers/fake_person_repository.dart';
+import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
 
 /// Türkçenin İngilizcede olmayan harfleri, iki kasada.
@@ -51,11 +54,17 @@ Future<void> pumpScreen(WidgetTester tester, Widget screen) async {
   repository = FakeMemoryRepository();
   addTearDown(repository.dispose);
 
+  // Kişi arama alanı yalnız DOLU listede çiziliyor; boş listede ekran
+  // boş durum davetini gösterir ve aranacak bir alan olmaz.
+  final people = FakePersonRepository(PeopleFixture.people);
+  addTearDown(people.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(DateTime(2026, 8, 12))),
         memoryRepositoryProvider.overrideWithValue(repository),
+        personRepositoryProvider.overrideWithValue(people),
         mediaPickerProvider.overrideWithValue(FakeMediaPicker()),
       ],
       child: MaterialApp.router(

@@ -7,10 +7,12 @@
 /// adımı atmaya davet ediyor. O yüzden bir "yakında" yer tutucusu değil, tam
 /// tasarlanmış bir hâl.
 ///
-/// ⚠️ VERİ KAYNAĞI YOK. `PersonDao`/`PersonRepository` yazılmadı; liste
-/// `PeoplePreviewData`dan geliyor. Veri bağlandığında iki şey değişecek
-/// ([hasPeople] bir `ref.watch` olacak ve liste kaynağı repository'ye
-/// dönecek); ekranın geri kalanı aynı kalacak.
+/// Liste `PersonRepository`den geliyor ve Drift stream'i sayesinde
+/// kendiliğinden tazeleniyor — elle yenileme yok (TR-M2-05 ile aynı ilke).
+///
+/// BOŞ / DOLU AYRIMINI [AsyncValueView] YAPIYOR: yükleme ve hata hâlleri de
+/// onun içinde. Ekran boş listeyi HATA olarak görmüyor; kişisi olmayan
+/// kullanıcı doğal bir durum ve karşılığı tasarlanmış bir davet.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,28 +23,29 @@ import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/people/presentation/person_l10n.dart';
-import 'package:iz/features/people/presentation/views/people_preview_data.dart';
+import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
 import 'package:iz/features/people/presentation/widgets/people_empty_illustration.dart';
 import 'package:iz/features/people/presentation/widgets/people_search_field.dart';
 import 'package:iz/features/people/presentation/widgets/person_row.dart';
+import 'package:iz/shared/widgets/async_value_view.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_divided_card.dart';
 import 'package:iz/shared/widgets/iz_screen_header.dart';
 
 class PeopleView extends ConsumerWidget {
-  const PeopleView({this.hasPeople = true, super.key});
-
-  /// Kullanıcının kaydedilmiş kişisi var mı?
-  ///
-  /// ⚠️ GEÇİCİ. Veri kaynağı yok; testler iki hâli de açıkça kurabilsin diye
-  /// parametre — yoksa boş hâli sınamak imkânsız olurdu (aynı desen
-  /// `HomeView.hasMemories`ta da var).
-  final bool hasPeople;
+  const PeopleView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final people = ref.watch(peopleListProvider);
+
+    // Başlıktaki "+ Kişi Ekle" yalnız DOLU listede duruyor (gerekçesi
+    // aşağıda). Yükleme ve hata hâllerinde de gizli: `valueOrNull` henüz
+    // veri yokken null döner.
+    final hasPeople = people.asData?.value.isNotEmpty ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -79,7 +82,13 @@ class PeopleView extends ConsumerWidget {
             ),
 
             Expanded(
-              child: hasPeople ? const _PeopleList() : const _EmptyState(),
+              child: AsyncValueView<List<Person>>(
+                value: people,
+                // Boş liste bir HATA DEĞİL: kişisi olmayan kullanıcı doğal
+                // bir durum ve karşılığı tasarlanmış bir davet.
+                emptyBuilder: () => const _EmptyState(),
+                data: (list) => _PeopleList(people: list),
+              ),
             ),
           ],
         ),
@@ -121,7 +130,13 @@ void _openNewPerson(BuildContext context) =>
 
 /// Arama + kişi listesi.
 class _PeopleList extends StatefulWidget {
-  const _PeopleList();
+  const _PeopleList({required this.people});
+
+  /// Depodan gelen liste. Arama BU LİSTE ÜZERİNDE yapılıyor, veritabanında
+  /// değil: kişi sayısı bir insanın hayatındaki insan sayısıyla sınırlı,
+  /// yani bellekte süzmek hem yeterince hızlı hem de yazarken anında sonuç
+  /// veriyor. (Anılarda durum farklı; orada arama FTS5 ile SQL tarafında.)
+  final List<Person> people;
 
   @override
   State<_PeopleList> createState() => _PeopleListState();
@@ -149,7 +164,7 @@ class _PeopleListState extends State<_PeopleList> {
     // Süzme SAF bir fonksiyonda (`filterPeople`); ilişki adı dile bağlı
     // olduğu için oraya geri çağırma olarak geçiyor.
     final people = filterPeople(
-      PeoplePreviewData.people,
+      widget.people,
       query: _query,
       // Aramada da EKRANDA GÖRÜNEN metin aranıyor: kullanıcı "Annem" yazıp
       // bulamıyorsa arama bozuktur.

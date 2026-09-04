@@ -27,18 +27,29 @@ import 'package:iz/shared/widgets/iz_radial_menu.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_memory_repository.dart';
+import '../helpers/fake_person_repository.dart';
+import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
 
 void main() {
   setUpAll(loadRealFonts);
 
   late FakeMemoryRepository repository;
+  late FakePersonRepository people;
 
-  setUp(() => repository = FakeMemoryRepository());
-  tearDown(() => repository.dispose());
+  setUp(() {
+    repository = FakeMemoryRepository();
+    // Gezinme testleri kişi satırına dokunup detaya gidiyor; liste boş
+    // olsaydı dokunacak satır olmazdı.
+    people = FakePersonRepository(PeopleFixture.people);
+  });
+  tearDown(() {
+    repository.dispose();
+    people.dispose();
+  });
 
   Future<void> pump(WidgetTester tester) =>
-      pumpApp(tester, repository: repository);
+      pumpApp(tester, repository: repository, people: people);
 
   /// Uygulamayı kurar, "Hayatım" sekmesine geçip istenen alt sekmeyi açar.
   Future<void> openMyLifeTab(WidgetTester tester, String tabLabel) async {

@@ -18,6 +18,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
+import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/features/people/presentation/widgets/person_photo_picker.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';
@@ -25,11 +26,14 @@ import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_person_repository.dart';
+import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 12);
 
 late FakeMediaPicker picker;
+late FakePersonRepository repository;
 
 Future<void> pumpEditor(
   WidgetTester tester, {
@@ -45,11 +49,15 @@ Future<void> pumpEditor(
   addTearDown(tester.view.reset);
 
   picker = FakeMediaPicker(paths: pickerReturns);
+  // Düzenleme kipi kişiyi DEPODAN okuyor; kaydetme de oraya yazıyor.
+  repository = FakePersonRepository(PeopleFixture.people);
+  addTearDown(repository.dispose);
 
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         clockProvider.overrideWithValue(FixedClock(_today)),
+        personRepositoryProvider.overrideWithValue(repository),
         mediaPickerProvider.overrideWithValue(picker),
       ],
       child: MaterialApp.router(
