@@ -116,8 +116,10 @@ List<SeriesCardData> _createdSeries(
           for (final memory in ritual.memories)
             (
               memoryId: memory.id,
-              year: memory.year,
-              imageAsset: memory.imageAsset,
+              year: memory.occurredAt.year,
+              // Görsel yer tutucu: medya hattı (kimlikten `MediaItem` çözme)
+              // yazılmadı, kart bugün `Image.asset` çiziyor.
+              imageAsset: 'assets/images/home/hero_today.jpg',
               placeLabel: null,
             ),
         ],
@@ -149,10 +151,11 @@ RitualDetailData? _ritualDetail(
         for (final memory in own.memories)
           (
             id: memory.id,
-            imageAsset: memory.imageAsset,
-            title: memory.title,
-            dateLabel: memory.dateLabel,
-            year: memory.year,
+            // Görsel yer tutucu — yukarıdaki notun aynısı.
+            imageAsset: 'assets/images/home/hero_today.jpg',
+            title: memory.displayTitle(l10n.memoryNew),
+            dateLabel: AppDateFormats.long(memory.occurredAt),
+            year: memory.occurredAt.year,
             // Kategori ve konum seri formunda SORULMUYOR: ikisi de anının
             // kendi alanları ve veri hattı kurulduğunda oradan gelecek.
             categoryLabel: null,

@@ -51,12 +51,14 @@ import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/categories/domain/entities/memory_category.dart';
 import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
 import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
 import 'package:iz/features/rituals/presentation/view_models/created_rituals_view_model.dart';
 import 'package:iz/shared/preview/form_preview_data.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
+import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 
 /// Formdaki açılabilir satırlar.
@@ -98,7 +100,7 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   String? _categoryId;
 
   /// Seçilen anılar — tarih aralığı bunlardan türetiliyor.
-  List<FormMemoryOption> _memories = const [];
+  List<Memory> _memories = const [];
 
   /// Açık olan satır; hiçbiri açık değilse null.
   _RitualSection? _openSection;
@@ -365,7 +367,8 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   String? _dateRangeLabel(AppL10n l10n) {
     if (_memories.isEmpty) return null;
 
-    final years = [for (final memory in _memories) memory.year]..sort();
+    final years = [for (final memory in _memories) memory.occurredAt.year]
+      ..sort();
     final from = years.first;
     final to = years.last;
 
@@ -413,10 +416,11 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
     if (selected == null || !mounted) return;
 
     setState(() {
-      // Sıra ÖNİZLEME VERİSİNDEKİ sıra: kullanıcının işaretleme sırası değil,
-      // listenin kendi sırası. Böylece aynı seçim her zaman aynı görünüyor.
+      // Seçilenleri GERÇEK anı listesinden çözüyoruz. Sıra listenin kendi
+      // sırası: aynı seçim her zaman aynı görünsün.
       _memories = [
-        for (final memory in FormPreviewData.unlinkedMemories)
+        for (final memory
+            in ref.read(pickableMemoriesProvider).value ?? const <Memory>[])
           if (selected.contains(memory.id)) memory,
       ];
     });

@@ -15,12 +15,19 @@
 ///   │ └──────────────────────────┘ │
 ///   └──────────────────────────────┘
 ///
-/// ⚠️ BURADA LİSTELENEN ANILAR "BAĞSIZ" OLMAK ZORUNDA.
-/// BR — bir anı yalnızca BİR ritüele bağlanabilir. Bu yüzden liste "tüm
-/// anılar" değil, "hiçbir ritüele bağlı olmayan anılar". Şimdilik önizleme
-/// verisi bunu temsil ediyor; veri hattı kurulduğunda sorgunun
-/// `WHERE ritual_id IS NULL` koşulunu taşıması gerekiyor — yoksa kullanıcı bir
-/// anıyı iki ritüele bağlayıp sessizce ilk bağı koparır.
+/// LİSTE GERÇEK ANILARDAN GELİYOR (`MemoryRepository`).
+///
+/// Önce önizleme verisi gösteriyordu ve kimlikleri (`preview-kahve` gibi)
+/// veritabanında yoktu: koleksiyona böyle bir anı bağlamaya çalışmak yabancı
+/// anahtar kısıtını düşürüyor ve kullanıcı "Verilerine şu anda
+/// ulaşılamıyor" hatası alıyordu.
+///
+/// ⚠️ RİTÜEL İÇİN EKSİK KOŞUL VAR.
+/// BR — bir anı yalnızca BİR ritüele bağlanabilir; ritüel formu bu ekranı
+/// açtığında listenin "hiçbir ritüele bağlı olmayan anılar" olması gerekiyor.
+/// `MemoryFilter` bugün "ritüeli boş olanlar" diye bir koşul ifade edemiyor;
+/// ritüel veri hattı yazılırken o koşul eklenmeli, yoksa kullanıcı bir anıyı
+/// iki ritüele bağlayıp sessizce ilk bağı koparar.
 ///
 /// SEÇİM EKRANDA YAŞIYOR, çağıran formda değil.
 /// Kullanıcı burada işaretleyip "Bitti"ye basıyor; ekran seçilen kimlikleri
@@ -29,15 +36,34 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/core/extensions/context_x.dart';
+import 'package:iz/core/extensions/date_x.dart';
+import 'package:iz/core/result/result_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/shared/preview/form_preview_data.dart';
+import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
+import 'package:iz/features/memories/domain/entities/memory_filter.dart';
 import 'package:iz/shared/widgets/app_empty_state.dart';
+import 'package:iz/shared/widgets/async_value_view.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
-class IzMemoryPickerView extends StatefulWidget {
+/// Seçilebilir anılar.
+///
+/// `memoryListProvider` KULLANMIYORUZ bilerek: o, zaman tünelinin AKTİF
+/// süzgecine bağlı. Kullanıcı zaman tünelinde "yalnız favoriler" seçtiyse
+/// seçici de yarım liste gösterirdi ve sebebi anlaşılmazdı.
+final pickableMemoriesProvider = StreamProvider<List<Memory>>((ref) {
+  return ref
+      .watch(memoryRepositoryProvider)
+      .watchMemories(MemoryFilter.all)
+      .unwrap();
+});
+
+class IzMemoryPickerView extends ConsumerStatefulWidget {
   const IzMemoryPickerView({this.initialSelection = const {}, super.key});
 
   /// Formda ZATEN seçili olan anılar: ekran ikinci kez açıldığında kullanıcı
@@ -45,16 +71,16 @@ class IzMemoryPickerView extends StatefulWidget {
   final Set<String> initialSelection;
 
   @override
-  State<IzMemoryPickerView> createState() => _IzMemoryPickerViewState();
+  ConsumerState<IzMemoryPickerView> createState() => _IzMemoryPickerViewState();
 }
 
-class _IzMemoryPickerViewState extends State<IzMemoryPickerView> {
+class _IzMemoryPickerViewState extends ConsumerState<IzMemoryPickerView> {
   late final Set<String> _selected = {...widget.initialSelection};
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const memories = FormPreviewData.unlinkedMemories;
+    final memories = ref.watch(pickableMemoriesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -80,33 +106,38 @@ class _IzMemoryPickerViewState extends State<IzMemoryPickerView> {
         ],
       ),
 
-      body: memories.isEmpty
-          ? AppEmptyState(icon: AppIcons.memory, title: l10n.memoryPickerEmpty)
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xxl,
-              ),
-              itemCount: memories.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final memory = memories[index];
+      body: AsyncValueView<List<Memory>>(
+        value: memories,
+        // Hiç anı yoksa bu bir HATA DEĞİL: henüz anı biriktirmemiş kullanıcı
+        // doğal bir durum. Koleksiyona bağlanacak bir şey yok, o kadar.
+        emptyBuilder: () =>
+            AppEmptyState(icon: AppIcons.memory, title: l10n.memoryPickerEmpty),
+        data: (list) => ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.xxl,
+          ),
+          itemCount: list.length,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, index) {
+            final memory = list[index];
 
-                return _MemoryPickTile(
-                  memory: memory,
-                  isSelected: _selected.contains(memory.id),
-                  onTap: () => setState(() {
-                    // Dokunmak AÇIP KAPIYOR: ayrı bir "kaldır" yolu yok,
-                    // aynı satır iki işi de yapıyor.
-                    _selected.contains(memory.id)
-                        ? _selected.remove(memory.id)
-                        : _selected.add(memory.id);
-                  }),
-                );
-              },
-            ),
+            return _MemoryPickTile(
+              memory: memory,
+              isSelected: _selected.contains(memory.id),
+              onTap: () => setState(() {
+                // Dokunmak AÇIP KAPIYOR: ayrı bir "kaldır" yolu yok,
+                // aynı satır iki işi de yapıyor.
+                _selected.contains(memory.id)
+                    ? _selected.remove(memory.id)
+                    : _selected.add(memory.id);
+              }),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -119,7 +150,7 @@ class _MemoryPickTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final FormMemoryOption memory;
+  final Memory memory;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -133,7 +164,7 @@ class _MemoryPickTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: memory.title,
+      label: memory.displayTitle(context.l10n.memoryNew),
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -154,19 +185,12 @@ class _MemoryPickTile extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(AppRadius.sm),
-                  child: Image.asset(
-                    memory.imageAsset,
-                    width: _kCoverSize,
-                    height: _kCoverSize,
-                    fit: BoxFit.cover,
-                    // Kapak bulunamazsa liste çökmesin (NFR-021).
-                    errorBuilder: (context, error, stack) => ColoredBox(
-                      color: colors.surfaceContainerHighest,
-                      child: const SizedBox.square(dimension: _kCoverSize),
-                    ),
-                  ),
+                // `MediaThumbnail` kapağı olmayanı ve dosyası kaybolanı
+                // kendi içinde çiziyor (NFR-021) — burada ayrıca ele almıyoruz.
+                MediaThumbnail(
+                  media: memory.coverMedia,
+                  size: _kCoverSize,
+                  borderRadius: AppRadius.sm,
                 ),
                 const SizedBox(width: AppSpacing.md - 4),
 
@@ -176,7 +200,7 @@ class _MemoryPickTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        memory.title,
+                        memory.displayTitle(context.l10n.memoryNew),
                         style: context.text.titleMedium?.copyWith(
                           color: colors.onSurface,
                           fontWeight: FontWeight.w600,
@@ -186,7 +210,7 @@ class _MemoryPickTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        memory.dateLabel,
+                        AppDateFormats.long(memory.occurredAt),
                         style: context.text.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),

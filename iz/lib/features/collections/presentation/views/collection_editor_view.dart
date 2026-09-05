@@ -60,9 +60,11 @@ import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/preview/form_preview_data.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
+import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 
 /// Formdaki açılabilir satırlar.
@@ -98,7 +100,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
   final Set<String> _personIds = {};
   String? _categoryId;
 
-  List<FormMemoryOption> _memories = const [];
+  List<Memory> _memories = const [];
 
   _CollectionSection? _openSection;
 
@@ -368,9 +370,11 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
     if (selected == null || !mounted) return;
 
     setState(() {
-      // Sıra LİSTENİN kendi sırası: aynı seçim her zaman aynı görünsün.
+      // Seçilenleri GERÇEK anı listesinden çözüyoruz. Sıra listenin kendi
+      // sırası: aynı seçim her zaman aynı görünsün.
       _memories = [
-        for (final memory in FormPreviewData.unlinkedMemories)
+        for (final memory
+            in ref.read(pickableMemoriesProvider).value ?? const <Memory>[])
           if (selected.contains(memory.id)) memory,
       ];
     });
