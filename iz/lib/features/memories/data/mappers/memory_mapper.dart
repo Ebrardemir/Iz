@@ -12,7 +12,7 @@ library;
 
 import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
-import 'package:iz/features/collections/domain/entities/memory_collection.dart';
+import 'package:iz/features/collections/data/mappers/collection_mapper.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/daos/memory_dao.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
@@ -139,18 +139,6 @@ abstract final class PersonMapper {
     avatarMediaId: row.avatarMediaId,
     note: row.note,
     isFavorite: row.isFavorite,
-  );
-}
-
-abstract final class CollectionMapper {
-  static MemoryCollection toDomain(CollectionRow row) => MemoryCollection(
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    coverMediaId: row.coverMediaId,
-    visibility: row.visibility,
-    startDate: row.startDate,
-    endDate: row.endDate,
   );
 }
 

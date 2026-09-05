@@ -21,19 +21,22 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
-import 'package:iz/features/collections/presentation/view_models/created_collections_view_model.dart';
+import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
 import 'package:iz/shared/widgets/iz_cover_illustration.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_media_picker.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 13);
 
 late ProviderContainer container;
+late FakeCollectionRepository collections;
 
 Future<void> pumpForm(
   WidgetTester tester, {
@@ -46,9 +49,13 @@ Future<void> pumpForm(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  collections = FakeCollectionRepository();
+  addTearDown(collections.dispose);
+
   container = ProviderContainer(
     overrides: [
       clockProvider.overrideWithValue(FixedClock(_today)),
+      collectionRepositoryProvider.overrideWithValue(collections),
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
@@ -224,7 +231,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Bir isim yazmadan oluşturamayız.'), findsOneWidget);
-      expect(container.read(createdCollectionsProvider), isEmpty);
+      expect(collections.saved, isEmpty);
       expect(find.byType(CollectionEditorView), findsOneWidget);
     });
 
@@ -257,10 +264,9 @@ void main() {
       await tester.tap(find.text('Koleksiyonu Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdCollectionsProvider).single;
+      final created = collections.saved.single;
       expect(created.title, 'Kapadokya 2026');
       expect(created.description, 'Balonlar ve vadi');
-      expect(created.personIds, {'person-annem'});
       expect(find.byType(CollectionEditorView), findsNothing);
     });
 
@@ -273,11 +279,8 @@ void main() {
       await tester.tap(find.text('Koleksiyonu Oluştur'));
       await settle(tester);
 
-      final collection = container
-          .read(createdCollectionsProvider)
-          .single
-          .toCollection();
-      expect(collection.isShared, isFalse);
+      expect(collections.saved.single.visibility, CollectionVisibility.private);
+      expect(collections.collections.single.isShared, isFalse);
     });
   });
 

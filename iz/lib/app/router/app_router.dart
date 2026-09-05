@@ -23,7 +23,7 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/auth/presentation/views/sign_in_view.dart';
 import 'package:iz/features/auth/presentation/views/sign_up_view.dart';
-import 'package:iz/features/collections/presentation/view_models/created_collections_view_model.dart';
+import 'package:iz/features/collections/presentation/view_models/collections_list_view_model.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
 import 'package:iz/features/home/presentation/views/home_preview_data.dart';
 import 'package:iz/features/home/presentation/views/home_view.dart';
@@ -192,43 +192,51 @@ MemoryDetail? _previewMemoryDetail(String memoryId) =>
     MyLifePreviewData.collectionMemoryDetail(memoryId) ??
     HomePreviewData.detailFor(memoryId);
 
-/// Bu oturumda oluşturulan koleksiyonları "Hayatım" kartlarına çevirir.
+/// Veritabanındaki koleksiyonları "Hayatım" kartlarına çevirir.
 ///
-/// ⚠️ GEÇİCİ: `CollectionDao` yazıldığında liste repository'den gelecek ve bu
-/// fonksiyon silinecek (bkz. `created_collections_view_model.dart`).
+/// NEDEN BURADA, "Hayatım" EKRANINDA DEĞİL?
+/// Kart hem koleksiyonu hem anılarını gösteriyor; ikisi ayrı feature.
+/// "Hayatım" koleksiyonları import edemez (ARCHITECTURE.md §2), ama
+/// composition root her şeyi bilebilir — dönüşüm burada.
 ///
 /// ÖZET SATIRI ("3 anı • 10-14 Mayıs 2026") burada kuruluyor çünkü hem
 /// çoğullama hem tarih biçimi bir SUNUM kararı; kart onu hazır metin bekliyor.
-List<CollectionCardData> _createdCollections(
+List<CollectionCardData> _collectionCards(
   BuildContext context,
-  List<CreatedCollection> collections,
+  List<CollectionWithMemories> collections,
 ) {
   final l10n = context.l10n;
   final locale = l10n.localeName;
 
+  // ⚠️ GÖRSELLER HENÜZ GERÇEK DEĞİL — eksik, bilinçli tercih değil.
+  // Kapak `coverMediaId` olarak KAYDEDİLİYOR ama medya hattı (kimlikten
+  // `MediaItem` çözme) yazılmadı; kart bugün `Image.asset` çiziyor
+  // (bkz. collection_card.dart `_Cover`, kendi notu da bunu söylüyor).
+  // O widget `MediaThumbnail`e geçtiğinde burası gerçek kapağı verecek.
+  const placeholderCover = 'assets/images/home/hero_today.jpg';
+
   return [
-    for (final collection in collections)
+    for (final entry in collections)
       (
-        id: collection.id,
-        // Kapağı yoksa ilk anının görseli; o da yoksa uygulamanın kendi
-        // görseli. Kart kapaksız bir satır çizemiyor.
-        coverAsset:
-            collection.cover?.localPreviewPath ??
-            collection.memories.firstOrNull?.imageAsset ??
-            'assets/images/home/hero_today.jpg',
-        title: collection.title,
+        id: entry.collection.id,
+        coverAsset: placeholderCover,
+        title: entry.collection.title,
         summary: [
-          l10n.memoryCount(collection.memories.length),
-          if (collection.startDate case final start?)
-            AppDateFormats.range(start, collection.endDate, locale: locale),
+          l10n.memoryCount(entry.memories.length),
+          if (entry.collection.startDate case final start?)
+            AppDateFormats.range(
+              start,
+              entry.collection.endDate,
+              locale: locale,
+            ),
         ].join(' • '),
         memories: [
-          for (final memory in collection.memories)
+          for (final memory in entry.memories)
             (
               id: memory.id,
-              imageAsset: memory.imageAsset,
-              title: memory.title,
-              dateLabel: memory.dateLabel,
+              imageAsset: placeholderCover,
+              title: memory.displayTitle(l10n.memoryNew),
+              dateLabel: AppDateFormats.long(memory.occurredAt, locale: locale),
             ),
         ],
       ),
@@ -341,9 +349,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       context,
                       ref.watch(createdRitualsProvider),
                     ),
-                    extraCollections: _createdCollections(
+                    collections: _collectionCards(
                       context,
-                      ref.watch(createdCollectionsProvider),
+                      ref.watch(collectionsWithMemoriesProvider).value ??
+                          const [],
                     ),
                     // KİŞİYİ KOLEKSİYON KİMLİKLERİNE ÇEVİREN YER BURASI.
                     //

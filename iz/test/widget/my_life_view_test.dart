@@ -17,6 +17,7 @@ import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/day_memories_panel.dart';
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 
+import '../helpers/collections_fixture.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 12);
@@ -35,7 +36,14 @@ Future<void> pumpMyLife(WidgetTester tester) async {
         locale: const Locale('tr'),
         localizationsDelegates: AppL10n.localizationsDelegates,
         supportedLocales: AppL10n.supportedLocales,
-        home: const MyLifeView(),
+        home: Builder(
+          builder: (context) => MyLifeView(
+            collections: CollectionsFixture.cards(
+              AppL10n.of(context),
+              locale: 'tr',
+            ),
+          ),
+        ),
       ),
     ),
   );

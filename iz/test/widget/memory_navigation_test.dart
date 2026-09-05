@@ -26,6 +26,8 @@ import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_radial_menu.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/collections_fixture.dart';
+import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/fake_person_repository.dart';
 import '../helpers/people_fixture.dart';
@@ -36,9 +38,14 @@ void main() {
 
   late FakeMemoryRepository repository;
   late FakePersonRepository people;
+  late FakeCollectionRepository collections;
 
   setUp(() {
-    repository = FakeMemoryRepository();
+    // Koleksiyon kartları anılarını `MemoryRepository`den alıyor; sahte anı
+    // deposu koleksiyon fikstürünün anılarını da taşımalı.
+    repository = FakeMemoryRepository(CollectionsFixture.memories);
+    collections = FakeCollectionRepository(CollectionsFixture.collections)
+      ..links.addAll(CollectionsFixture.links);
     // Gezinme testleri kişi satırına dokunup detaya gidiyor; liste boş
     // olsaydı dokunacak satır olmazdı.
     people = FakePersonRepository(PeopleFixture.people);
@@ -46,10 +53,17 @@ void main() {
   tearDown(() {
     repository.dispose();
     people.dispose();
+    collections.dispose();
   });
 
-  Future<void> pump(WidgetTester tester) =>
-      pumpApp(tester, repository: repository, people: people);
+  Future<void> pump(WidgetTester tester) => pumpApp(
+    tester,
+    repository: repository,
+    people: people,
+    // Koleksiyon sekmesi testleri karta ve içindeki anı satırına dokunuyor;
+    // liste boş olsaydı dokunacak bir şey olmazdı.
+    collections: collections,
+  );
 
   /// Uygulamayı kurar, "Hayatım" sekmesine geçip istenen alt sekmeyi açar.
   Future<void> openMyLifeTab(WidgetTester tester, String tabLabel) async {

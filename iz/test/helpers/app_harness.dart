@@ -20,10 +20,12 @@ import 'package:iz/core/storage/app_preferences.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
+import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'fake_collection_repository.dart';
 import 'fake_media_picker.dart';
 import 'fake_memory_repository.dart';
 import 'fake_person_repository.dart';
@@ -95,6 +97,13 @@ Future<void> pumpApp(
   // liste gerçek bir yeni kullanıcının durumu. Kişi gerektiren testler
   // kendi deposunu geçiyor.
   FakePersonRepository? people,
+  // Koleksiyon deposu. Varsayılan BOŞ: çoğu test koleksiyonla ilgilenmiyor
+  // ve boş liste gerçek bir yeni kullanıcının durumu.
+  //
+  // DEPO seviyesinde sahteliyoruz, hesaplanmış listeyi override etmiyoruz:
+  // aksi hâlde formdan kaydedilen koleksiyon listeye hiç ULAŞMAZDI ve
+  // "oluştur → listede gör" akışı test edilemezdi.
+  FakeCollectionRepository? collections,
 }) async {
   // Varsayılan test yüzeyi 800×600'dür — yani YATAY bir masaüstü ölçüsü.
   // İZ bir telefon uygulaması; düzen kararları (görsel yüksekliği, sosyal
@@ -124,6 +133,9 @@ Future<void> pumpApp(
         memoryRepositoryProvider.overrideWithValue(repository),
         personRepositoryProvider.overrideWithValue(
           people ?? FakePersonRepository(),
+        ),
+        collectionRepositoryProvider.overrideWithValue(
+          collections ?? FakeCollectionRepository(),
         ),
         authRepositoryProvider.overrideWithValue(InstantAuthRepository()),
         mediaPickerProvider.overrideWithValue(mediaPicker ?? FakeMediaPicker()),

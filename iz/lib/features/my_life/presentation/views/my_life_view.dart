@@ -39,7 +39,7 @@ class MyLifeView extends ConsumerStatefulWidget {
     this.collectionFilter,
     this.onClearFilter,
     this.extraSeries = const [],
-    this.extraCollections = const [],
+    this.collections = const [],
     super.key,
   });
 
@@ -102,7 +102,8 @@ class MyLifeView extends ConsumerStatefulWidget {
 
   /// Listeye ÖNCE eklenecek koleksiyonlar — [extraSeries] ile aynı gerekçe:
   /// kullanıcı formu bitirdiğinde koleksiyonunu burada görmeli.
-  final List<CollectionCardData> extraCollections;
+  /// Veritabanından gelen koleksiyonlar (composition root çeviriyor).
+  final List<CollectionCardData> collections;
 
   @override
   ConsumerState<MyLifeView> createState() => _MyLifeViewState();
@@ -298,14 +299,8 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
 
   /// Görünecek koleksiyonlar — süzgeç varsa daraltılmış.
   List<CollectionCardData> _visibleCollections(BuildContext context) {
-    final all = [
-      // Yeni oluşturulanlar EN ÜSTTE.
-      ...widget.extraCollections,
-      ...MyLifePreviewData.collections(
-        context.l10n,
-        locale: Localizations.localeOf(context).toLanguageTag(),
-      ),
-    ];
+    // Artık SAHTE VERİ YOK: liste tamamen veritabanından geliyor.
+    final all = widget.collections;
 
     final filter = widget.collectionFilter;
     if (filter == null) return all;
