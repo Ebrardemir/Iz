@@ -44,6 +44,8 @@ dependencies:
   # Kendi galeri arayüzünü çizen paketler (photo_manager gibi) tam erişim
   # izni isterdi; bilinçli olarak onları seçmedik.
   image_picker: ^1.2.0
+  # Medya dosyalarinin kalici evi: uygulama belgeler dizini (TR-M4-11).
+  path_provider: ^2.1.5
   shared_preferences: ^2.5.5      # basit tercihler (onboarding görüldü mü, tema)
   flutter_secure_storage: ^10.3.1 # NFR-010/011: token, anahtar → Keychain/Keystore
 

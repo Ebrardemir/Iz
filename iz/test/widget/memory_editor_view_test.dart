@@ -20,6 +20,7 @@ import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_editor_view_model.dart';
@@ -31,6 +32,7 @@ import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_media_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/real_fonts.dart';
 
@@ -95,6 +97,9 @@ MemoryDetail existingMemory({int photoCount = 2}) => MemoryDetail(
   location: const MemoryLocation(id: 'l1', label: 'Kordon, İzmir'),
 );
 
+/// Son kurulan sahte medya deposu — testler içe aktarılanı doğrulayabilsin.
+late FakeMediaRepository media;
+
 Future<ProviderContainer> pumpForm(
   WidgetTester tester, {
   List<String> photos = const [],
@@ -110,6 +115,8 @@ Future<ProviderContainer> pumpForm(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  media = FakeMediaRepository();
+
   repository = existing == null
       ? FakeMemoryRepository()
       : (FakeMemoryRepository([existing.memory])..detail = existing);
@@ -123,6 +130,7 @@ Future<ProviderContainer> pumpForm(
       clockProvider.overrideWithValue(FixedClock(_today)),
       memoryRepositoryProvider.overrideWithValue(repository),
       mediaPickerProvider.overrideWithValue(picker),
+      mediaRepositoryProvider.overrideWithValue(media),
       currentPlanProvider.overrideWithValue(plan),
     ],
   );
@@ -665,9 +673,11 @@ void main() {
       await tester.tap(find.byIcon(AppIcons.clear).at(1));
       await settle(tester);
 
+      // Yollar artık KAYNAK değil, uygulama alanındaki kopya
+      // (`FakeMediaFileStore` bunu `/sahte/medya/...` diye taklit ediyor).
       expect(readState(container).photos.map((p) => p.localPreviewPath), [
-        'a.jpg',
-        'c.jpg',
+        '/sahte/medya/a.jpg',
+        '/sahte/medya/c.jpg',
       ]);
     });
 
@@ -958,35 +968,42 @@ void main() {
       expect(readState(container).draft.locationId, isNull);
     });
 
-    testWidgets(
-      'FOTOĞRAFLAR kaydedilmiyor — `MediaItems` satırı yazan yol yok',
-      (tester) async {
-        // Seçilen kareler geçici kimlik taşıyor (`picked:`) ve `mediaIds`e
-        // girmiyor. Medya hattı (FR-042 galeri asset kimliği + FR-043 önizleme
-        // üretimi) kurulduğunda burası gerçek kimliklerle dolacak.
-        final container = await pumpForm(
-          tester,
-          photos: const ['a.jpg', 'b.jpg'],
-        );
+    testWidgets('FOTOĞRAFLAR KAYDEDİLİYOR — dosya kopyalanıp taslağa giriyor', (
+      tester,
+    ) async {
+      // Bu test bir zamanlar tersini söylüyordu: medya hattı yokken seçilen
+      // kareler geçici kimlik taşıyor ve `mediaIds`e girmiyordu. Hat
+      // kurulunca beklenti de tersine döndü.
+      final container = await pumpForm(
+        tester,
+        photos: const ['a.jpg', 'b.jpg'],
+      );
 
-        // Ekranda iki kare var…
-        expect(readState(container).photos, hasLength(2));
-        // …ama taslak hiç medya taşımıyor.
-        expect(readState(container).draft.mediaIds, isEmpty);
-        expect(readState(container).draft.coverMediaId, isNull);
-      },
-    );
+      // Dosyalar kalıcı alana aktarıldı…
+      expect(media.importedPaths, ['a.jpg', 'b.jpg']);
+      // …şeritte iki kare var…
+      expect(readState(container).photos, hasLength(2));
+      // …ve taslak GERÇEK kimlikleri taşıyor.
+      expect(readState(container).draft.mediaIds, hasLength(2));
+      // FR-018 — ilk fotoğraf kendiliğinden kapak oluyor.
+      expect(
+        readState(container).draft.coverMediaId,
+        readState(container).draft.mediaIds.first,
+      );
+    });
 
-    testWidgets('SADECE fotoğraf seçen kullanıcı KAYDEDEMİYOR', (tester) async {
-      // FR-012 "boş kayıt olmaz" kuralının bugünkü yan etkisi: fotoğraflar
-      // taslağa girmediği için taslak boş sayılıyor ve düğme kapalı kalıyor.
-      // Medya hattı kurulunca kendiliğinden düzelecek.
+    testWidgets('SADECE fotoğraf seçen kullanıcı KAYDEDEBİLİYOR', (
+      tester,
+    ) async {
+      // FR-012 "boş kayıt olmaz" diyor; bir fotoğraf boş değildir. Bu test de
+      // tersini söylüyordu — çünkü fotoğraflar taslağa girmiyordu ve taslak
+      // boş sayılıyordu. Medya hattı kurulunca kendiliğinden düzeldi.
       await pumpForm(tester, photos: const ['a.jpg']);
 
       final button = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Kaydet'),
       );
-      expect(button.onPressed, isNull);
+      expect(button.onPressed, isNotNull);
     });
 
     testWidgets('kişiler, koleksiyon ve seri kaydedilmiyor', (tester) async {

@@ -116,9 +116,11 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
     if (widget.pickedPhotoPaths.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ref
-            .read(memoryEditorProvider(widget.memoryId).notifier)
-            .addPickedPhotos(widget.pickedPhotoPaths);
+        unawaited(
+          ref
+              .read(memoryEditorProvider(widget.memoryId).notifier)
+              .addPickedPhotos(widget.pickedPhotoPaths),
+        );
       });
     }
   }
@@ -657,8 +659,9 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
     if (!mounted) return;
 
     result.fold(
-      onOk: (images) =>
-          viewModel.addPickedPhotos([for (final image in images) image.path]),
+      onOk: (images) => unawaited(
+        viewModel.addPickedPhotos([for (final image in images) image.path]),
+      ),
       onErr: (failure) =>
           context.showSnack(failure.localizedMessage(context.l10n)),
     );

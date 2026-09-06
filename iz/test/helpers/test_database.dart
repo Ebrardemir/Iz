@@ -12,6 +12,9 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
+import 'package:iz/features/media/data/repositories/media_repository_impl.dart';
+import 'package:iz/features/media/data/sources/media_file_store.dart';
+import 'package:iz/features/media/domain/repositories/media_repository.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/repositories/memory_repository.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
@@ -55,5 +58,22 @@ CollectionRepository createTestCollectionRepository(AppDatabase db) {
   return CollectionRepositoryImpl(
     dao: db.collectionDao,
     idGenerator: SequentialIdGenerator(prefix: 'kol-'),
+  );
+}
+
+/// Medya deposunu SAHTE dosya sistemiyle kurar.
+///
+/// Dosya işlemleri dışarıdan geliyor: testin gerçek diske yazması koşuları
+/// birbirine karıştırır ve `getApplicationDocumentsDirectory` eklenti ister.
+MediaRepository createTestMediaRepository(
+  AppDatabase db,
+  MediaFileStore fileStore, {
+  DateTime? now,
+}) {
+  return MediaRepositoryImpl(
+    dao: db.mediaDao,
+    fileStore: fileStore,
+    idGenerator: SequentialIdGenerator(prefix: 'medya-'),
+    clock: FixedClock(now ?? DateTime(2026, 7, 26, 12)),
   );
 }

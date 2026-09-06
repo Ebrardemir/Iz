@@ -8164,6 +8164,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final MemoryDao memoryDao = MemoryDao(this as AppDatabase);
   late final PersonDao personDao = PersonDao(this as AppDatabase);
   late final CollectionDao collectionDao = CollectionDao(this as AppDatabase);
+  late final MediaDao mediaDao = MediaDao(this as AppDatabase);
   Selectable<String> searchMemoryIds({required String query}) {
     return customSelect(
       'SELECT memory_id FROM memory_search WHERE memory_search MATCH ?1 ORDER BY rank',
