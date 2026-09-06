@@ -32,12 +32,19 @@
 /// düğmesi hangisinin ne yaptığını sorduruyor. Oluşturma tek yerde, sayfanın
 /// sonundaki düğmede.
 ///
-/// KİŞİ VE KATEGORİ ALANLARI KAYDEDİLMİYOR — bilinçli değil, EKSİK.
-/// TRD M6.1'e göre `Collections` tablosunda yalnız `title`, `description`,
-/// `coverMediaId`, `visibility`, `startDate`, `endDate` var; kategori ise
-/// TR-M6-03 gereği ANIYA ait. Form bu ikisini topluyor ama gidecek sütun
-/// yok. Ya formdan kaldırılmalı ya da veri modeli genişletilmeli; karar
-/// verilene kadar burada AÇIKÇA yazıyor ki sessizce kaybolmasın.
+/// KİŞİ VE KATEGORİ ALANLARI KALDIRILDI — sebebi burada yazılı.
+///
+/// Form bir süre ikisini de soruyordu ama `Collections` tablosunda karşılık
+/// gelen sütun yok (TRD M6.1) ve kategori zaten ANIYA ait (TR-M6-03).
+/// Yani kullanıcı seçim yapıyor, hiçbir yere yazılmıyordu — sessiz veri
+/// kaybı. Üstelik kişi listesi de önizleme verisiydi.
+///
+/// KATEGORİ tamamen kalktı: anının özelliği, anı formunda çalışıyor.
+///
+/// KİŞİ bilgisi KAYBOLMADI, yerini TÜRETMEYE bıraktı: koleksiyonun kişileri
+/// = içindeki anılarda etiketli kişiler. Elle yazılan liste eskir (sonradan
+/// eklenen anıdaki kişiyi bilmez), türetilen liste eskimez. Görüntülendiği
+/// yer koleksiyon detay ekranı olacak.
 library;
 
 import 'dart:async';
@@ -55,23 +62,17 @@ import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
-import 'package:iz/features/categories/domain/entities/memory_category.dart';
-import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
-import 'package:iz/shared/preview/form_preview_data.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
-import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 
 /// Formdaki açılabilir satırlar.
 ///
 /// Enum, bool ikilisi DEĞİL: "hangisi açık" tek bir değer ve akordeon kuralını
 /// (aynı anda tek satır) kodun kendisine yazıyor.
-enum _CollectionSection { people, category }
-
 class CollectionEditorView extends ConsumerStatefulWidget {
   const CollectionEditorView({super.key});
 
@@ -96,12 +97,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
 
   DateTimeRange? _dateRange;
 
-  final Set<String> _personIds = {};
-  String? _categoryId;
-
   List<Memory> _memories = const [];
-
-  _CollectionSection? _openSection;
 
   /// Ad boşken "Oluştur"a basılırsa görünüyor.
   String? _titleError;
@@ -185,63 +181,6 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // --- İLGİLİ KİŞİLER ------------------------------------------------
-          IzExpandableRow(
-            icon: AppIcons.people,
-            label: l10n.collectionFieldPeople,
-            value: _joinLabels(FormPreviewData.people, _personIds),
-            hint: l10n.collectionFieldPeopleHint,
-            isExpanded: _openSection == _CollectionSection.people,
-            onToggle: () => _toggleSection(_CollectionSection.people),
-            children: [
-              for (final person in FormPreviewData.people)
-                IzOptionTile(
-                  label: person.label,
-                  icon: person.icon,
-                  isSelected: _personIds.contains(person.id),
-                  // ÇOK SEÇİM: bir koleksiyon birden fazla kişiyle
-                  // paylaşılıyor, bu yüzden seçimde satır kapanmıyor.
-                  allowMultiple: true,
-                  onTap: () => setState(() {
-                    _personIds.contains(person.id)
-                        ? _personIds.remove(person.id)
-                        : _personIds.add(person.id);
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // --- KATEGORİ ------------------------------------------------------
-          IzExpandableRow(
-            icon: AppIcons.fallbackCategory,
-            label: l10n.collectionFieldCategory,
-            value: _categoryLabel(l10n),
-            hint: l10n.collectionFieldCategoryHint,
-            isExpanded: _openSection == _CollectionSection.category,
-            onToggle: () => _toggleSection(_CollectionSection.category),
-            children: [
-              for (final category in SystemCategory.values)
-                IzOptionTile(
-                  label:
-                      systemCategoryName(category.nameKey, l10n) ??
-                      category.nameKey,
-                  icon: AppIcons.forKey(category.iconKey),
-                  isSelected: _categoryId == category.id,
-                  allowMultiple: false,
-                  onTap: () => setState(() {
-                    // Aynısına tekrar dokunmak seçimi KALDIRIYOR: kategori
-                    // zorunlu değil.
-                    _categoryId = _categoryId == category.id
-                        ? null
-                        : category.id;
-                    _openSection = null;
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
           // --- İLK ANILAR ----------------------------------------------------
           IzFormCard(
             child: IzFormRow(
@@ -279,9 +218,6 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
   }
 
   /// Bir satırı açar, ötekini kapatır. Açık olana tekrar dokunmak kapatıyor.
-  void _toggleSection(_CollectionSection section) => setState(() {
-    _openSection = _openSection == section ? null : section;
-  });
 
   /// "10-14 Mayıs 2026" — tekrar eden ay ve yıl bir kez yazılıyor.
   String? _rangeLabel(AppL10n l10n) {
@@ -297,24 +233,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
     );
   }
 
-  String? _categoryLabel(AppL10n l10n) {
-    final id = _categoryId;
-    if (id == null) return null;
-
-    final category = SystemCategory.values.where((c) => c.id == id).firstOrNull;
-    if (category == null) return null;
-
-    return systemCategoryName(category.nameKey, l10n) ?? category.nameKey;
-  }
-
   /// Seçili kişilerin adları — "Annem, Babam".
-  String? _joinLabels(List<IzSelectionOption> options, Set<String> selected) {
-    final labels = [
-      for (final option in options)
-        if (selected.contains(option.id)) option.label,
-    ];
-    return labels.isEmpty ? null : labels.join(', ');
-  }
 
   /// Galeriden tek kapak.
   Future<void> _pickCover() async {
