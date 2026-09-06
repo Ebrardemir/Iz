@@ -289,10 +289,21 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
     setOccurredAt(parsed);
   }
 
+  /// Serbest metin konum.
+  ///
+  /// Metin TASLAĞA DA giriyor: depo onu bir `Locations` satırına çeviriyor
+  /// (varsa var olanı kullanıyor). Bir süre yalnız ekranda duruyor ve
+  /// kaydedilmiyordu — kullanıcı konumu yazıp kaydediyor, geri dönünce alan
+  /// boş kalıyordu.
   void setLocation(String? value) {
-    final trimmed = value?.trim();
+    final trimmed = value?.trim() ?? '';
     state = state.copyWith(
-      locationLabel: (trimmed == null || trimmed.isEmpty) ? '' : trimmed,
+      draft: state.draft.copyWith(
+        locationLabel: trimmed,
+        // Boş metin "konumu kaldır" demek; kimliği de düşürüyoruz.
+        clearLocation: trimmed.isEmpty,
+      ),
+      locationLabel: trimmed,
       clearErrors: true,
     );
   }

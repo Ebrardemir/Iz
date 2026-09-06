@@ -350,4 +350,64 @@ void main() {
     final updated = await stream.first;
     expect(updated.valueOrNull, hasLength(1));
   });
+
+  group('konum', () {
+    Future<String> konumlu(
+      String? label, {
+      String? id,
+      String? locationId,
+    }) async {
+      final result = await repository.saveDraft(
+        MemoryDraft(
+          id: id,
+          occurredAt: DateTime(2026, 5, 10),
+          title: 'Kapadokya',
+          locationLabel: label,
+          // Düzenleme kipinde ekran mevcut kimliği taşıyor
+          // (`memory_editor_view_model.dart` detayı yüklerken dolduruyor).
+          locationId: locationId,
+        ),
+      );
+      return result.valueOrNull!;
+    }
+
+    test('serbest metin bir Locations satırına çevriliyor', () async {
+      final id = await konumlu('Göreme, Nevşehir');
+
+      final detail = (await repository.findDetail(id)).valueOrNull!;
+      expect(detail.location, isNotNull);
+      expect(detail.location!.label, 'Göreme, Nevşehir');
+    });
+
+    test('AYNI ad ikinci satır AÇMIYOR', () async {
+      // Kullanıcı aynı yeri iki anıya yazınca iki satır açsaydık "bu yerdeki
+      // anılarım" sorgusu ikiye bölünürdü.
+      await konumlu('Göreme');
+      await konumlu('Göreme');
+
+      expect(await db.select(db.locations).get(), hasLength(1));
+    });
+
+    test('boş metin konumu KALDIRIYOR', () async {
+      final id = await konumlu('Göreme');
+
+      await konumlu('', id: id);
+
+      final detail = (await repository.findDetail(id)).valueOrNull!;
+      expect(detail.location, isNull);
+    });
+
+    test('etiket verilmezse mevcut konuma DOKUNULMUYOR', () async {
+      // Yalnız başlığı düzenleyen bir kayıt konumunu kaybetmemeli.
+      final id = await konumlu('Göreme');
+      final before = (await repository.findDetail(
+        id,
+      )).valueOrNull!.location!.id;
+
+      await konumlu(null, id: id, locationId: before);
+
+      final detail = (await repository.findDetail(id)).valueOrNull!;
+      expect(detail.location?.id, before);
+    });
+  });
 }
