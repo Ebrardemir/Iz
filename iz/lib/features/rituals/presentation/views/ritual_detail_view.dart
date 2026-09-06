@@ -35,7 +35,6 @@
 ///
 /// ⚠️ VERİ KAYNAĞI YOK. `RitualDao` yazılmadı; ekran dışarıdan hazır bir kayıt
 /// alıyor ([RitualDetailData]) ve onu composition root dolduruyor —
-/// önizleme serilerinde `RitualDetailPreviewData`dan, bu oturumda oluşturulan
 /// serilerde `createdRitualsProvider`dan.
 library;
 
@@ -48,7 +47,6 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/rituals/domain/ritual_stats.dart';
-import 'package:iz/features/rituals/presentation/views/ritual_detail_preview_data.dart';
 import 'package:iz/features/rituals/presentation/widgets/ritual_detail_parts.dart';
 import 'package:iz/shared/widgets/app_empty_state.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
@@ -60,6 +58,24 @@ import 'package:iz/shared/widgets/iz_screen_header.dart';
 /// DÜZ BİR KAYIT, entity değil: ekranın ihtiyacı olan her şey burada ve
 /// nereden geldiğini bilmiyor. `RitualDao` yazıldığında bu kaydı repository
 /// dolduracak, ekran değişmeyecek.
+/// Seri detayındaki tek anı.
+///
+/// Bu tip bir süre `ritual_detail_preview_data.dart` içinde yaşıyordu; o dosya
+/// tasarım önizlemesiydi ve seri veri hattı kurulunca düştü. Tip, tüketicisinin
+/// yanında olmalı.
+typedef RitualDetailMemory = ({
+  String id,
+
+  /// Anının kapağı. `MediaThumbnail` kapağı olmayanı ve dosyası kaybolanı
+  /// kendi içinde çiziyor (NFR-021 / TR-M4-13).
+  MediaItem? cover,
+  String title,
+  String dateLabel,
+  int year,
+  String? categoryLabel,
+  String? placeLabel,
+});
+
 typedef RitualDetailData = ({
   String id,
   String title,

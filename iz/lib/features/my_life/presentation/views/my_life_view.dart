@@ -38,7 +38,7 @@ class MyLifeView extends ConsumerStatefulWidget {
     this.onTabChanged,
     this.collectionFilter,
     this.onClearFilter,
-    this.extraSeries = const [],
+    this.series = const [],
     this.collections = const [],
     super.key,
   });
@@ -98,7 +98,8 @@ class MyLifeView extends ConsumerStatefulWidget {
   /// composition root yapıyor; koleksiyon süzgecinde de aynı yol kullanıldı.
   /// `RitualDao` yazıldığında bu parametre kalkacak, liste repository'den
   /// gelecek.
-  final List<SeriesCardData> extraSeries;
+  /// Veritabanından gelen seriler (composition root çeviriyor).
+  final List<SeriesCardData> series;
 
   /// Listeye ÖNCE eklenecek koleksiyonlar — [extraSeries] ile aynı gerekçe:
   /// kullanıcı formu bitirdiğinde koleksiyonunu burada görmeli.
@@ -325,8 +326,8 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           // Yeni oluşturulanlar EN ÜSTTE: kullanıcı az önce kurduğu ritüeli
           // aşağı kaydırıp aramamalı.
           series: [
-            ...widget.extraSeries,
-            ...MyLifePreviewData.series(context.l10n),
+            // Artık SAHTE VERİ YOK: liste tamamen veritabanından geliyor.
+            ...widget.series,
           ],
           // Serinin kendi ekranı: kapak, sayılar ve seriye bağlı anılar.
           onOpenSeries: (series) => unawaited(
@@ -340,7 +341,9 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           // gidilebilir.
           onOpenYear: (year) => _openMemory(
             year.memoryId,
-            MyLifePreviewData.seriesYearDetail(year.memoryId),
+            // Seri şeridindeki anı GERÇEK: kaydı yanımızda taşımıyoruz,
+            // detay ekranı kimlikten kendisi yüklüyor.
+            null,
           ),
         ),
       ],

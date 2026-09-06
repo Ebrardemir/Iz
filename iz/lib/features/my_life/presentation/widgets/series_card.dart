@@ -37,6 +37,8 @@ import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Kartta gösterilecek seri.
 ///
@@ -59,7 +61,10 @@ typedef SeriesCardData = ({
 typedef SeriesYearData = ({
   String memoryId,
   int year,
-  String imageAsset,
+
+  /// Yılın anısının kapağı. `MediaThumbnail` kapağı olmayanı ve dosyası
+  /// kaybolanı kendi içinde çiziyor (NFR-021 / TR-M4-13).
+  MediaItem? cover,
 
   /// Konum etiketi ("Çeşme"). Konum opsiyonel (rapor 20.1), boş olabilir.
   String? placeLabel,
@@ -332,7 +337,7 @@ class _YearItem extends StatelessWidget {
                   maxLines: 1,
                 ),
                 const SizedBox(height: _kGap),
-                _Cover(asset: year.imageAsset),
+                _Cover(media: year.cover),
                 const SizedBox(height: _kGap),
 
                 // Konum OPSİYONEL (rapor 20.1: "kullanıcı kaldırabilmeli").
@@ -361,35 +366,22 @@ class _YearItem extends StatelessWidget {
   }
 }
 
+/// Yılın kapak görseli.
+///
+/// Bir süre `Image.asset` çiziyordu: kartın verisi tasarım önizlemesinden
+/// geliyordu. Seri veri hattı kurulunca gerçek medyaya geçti; kapağı olmayanı
+/// ve dosyası kaybolanı [MediaThumbnail] kendi içinde ele alıyor.
 class _Cover extends StatelessWidget {
-  const _Cover({required this.asset});
+  const _Cover({required this.media});
 
-  final String asset;
+  final MediaItem? media;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.all(AppRadius.md),
-      child: Image.asset(
-        asset,
-        width: _YearItem.kCoverSize,
-        height: _YearItem.kCoverSize,
-        // Figma: `scale: crop` — oranı bozmadan kutuyu doldur.
-        fit: BoxFit.cover,
-        // Kapak bulunamazsa şerit çökmesin.
-        errorBuilder: (context, error, stack) => ColoredBox(
-          color: context.colors.surfaceContainerHigh,
-          child: SizedBox(
-            width: _YearItem.kCoverSize,
-            height: _YearItem.kCoverSize,
-            child: Icon(
-              AppIcons.photo,
-              size: AppIconSize.sm,
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+    return MediaThumbnail(
+      media: media,
+      size: _YearItem.kCoverSize,
+      borderRadius: AppRadius.md,
     );
   }
 }

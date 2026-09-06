@@ -8,35 +8,16 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/series_section.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/real_fonts.dart';
 
 /// Dört yıl → tasarımdaki tam sığan hâl (kaydırma yok).
 const _fourYears = <SeriesYearData>[
-  (
-    memoryId: 'y1',
-    year: 2026,
-    imageAsset: 'assets/images/home/hero_today.jpg',
-    placeLabel: 'Çeşme',
-  ),
-  (
-    memoryId: 'y2',
-    year: 2025,
-    imageAsset: 'assets/images/home/memory_coffee.jpg',
-    placeLabel: 'Kaş',
-  ),
-  (
-    memoryId: 'y3',
-    year: 2024,
-    imageAsset: 'assets/images/auth/hero_light.jpg',
-    placeLabel: 'Datça',
-  ),
-  (
-    memoryId: 'y4',
-    year: 2023,
-    imageAsset: 'assets/images/home/hero_today.jpg',
-    placeLabel: 'Ayvalık',
-  ),
+  (memoryId: 'y1', year: 2026, cover: null, placeLabel: 'Çeşme'),
+  (memoryId: 'y2', year: 2025, cover: null, placeLabel: 'Kaş'),
+  (memoryId: 'y3', year: 2024, cover: null, placeLabel: 'Datça'),
+  (memoryId: 'y4', year: 2023, cover: null, placeLabel: 'Ayvalık'),
 ];
 
 const _summer = (
@@ -53,12 +34,7 @@ const _birthday = (
   title: 'Annemin Doğum Günleri',
   subtitle: 'Her yıl 3 Mart\'ta',
   years: <SeriesYearData>[
-    (
-      memoryId: 'b1',
-      year: 2026,
-      imageAsset: 'assets/images/home/memory_coffee.jpg',
-      placeLabel: 'Ankara',
-    ),
+    (memoryId: 'b1', year: 2026, cover: null, placeLabel: 'Ankara'),
   ],
 );
 
@@ -350,7 +326,12 @@ void main() {
       expect(item, findsOneWidget);
       expect(tester.getSize(item).width, 64);
 
-      expect(tester.getSize(find.byType(Image).first), const Size(56, 56));
+      // Kapak artık `Image` değil `MediaThumbnail`: gerçek medya hattı
+      // kurulunca yer tutucu asset yerine `MediaItem` çiziliyor.
+      expect(
+        tester.getSize(find.byType(MediaThumbnail).first),
+        const Size(56, 56),
+      );
     });
 
     testWidgets('yıl şeridi tasarımdaki 108 yüksekliğinde', (tester) async {
@@ -370,18 +351,8 @@ void main() {
         title: 'Test',
         subtitle: 'Test',
         years: <SeriesYearData>[
-          (
-            memoryId: 'a',
-            year: 2026,
-            imageAsset: 'assets/images/home/hero_today.jpg',
-            placeLabel: null,
-          ),
-          (
-            memoryId: 'b',
-            year: 2025,
-            imageAsset: 'assets/images/home/hero_today.jpg',
-            placeLabel: 'Venedik',
-          ),
+          (memoryId: 'a', year: 2026, cover: null, placeLabel: null),
+          (memoryId: 'b', year: 2025, cover: null, placeLabel: 'Venedik'),
         ],
       );
 

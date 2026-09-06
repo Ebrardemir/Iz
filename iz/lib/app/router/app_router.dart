@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/app/composition/collections_with_memories.dart';
+import 'package:iz/app/composition/rituals_with_memories.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/app/router/app_shell.dart';
 import 'package:iz/core/extensions/context_x.dart';
@@ -30,7 +31,6 @@ import 'package:iz/features/home/presentation/views/home_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_all_entries_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_editor_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_view.dart';
-import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_list_view_model.dart';
 import 'package:iz/features/memories/presentation/views/memory_detail_view.dart';
@@ -49,8 +49,6 @@ import 'package:iz/features/people/presentation/views/person_detail_preview_data
 import 'package:iz/features/people/presentation/views/person_detail_view.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
-import 'package:iz/features/rituals/presentation/view_models/created_rituals_view_model.dart';
-import 'package:iz/features/rituals/presentation/views/ritual_detail_preview_data.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_detail_view.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_editor_view.dart';
 import 'package:iz/features/search/presentation/views/search_view.dart';
@@ -98,30 +96,31 @@ import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 /// YILLAR VE KAPAKLAR ANILARDAN geliyor: kullanıcı forma tarih girmiyor,
 /// seçtiği anıların yılları şeridi kuruyor. Anı seçilmemişse şerit boş kalıyor
 /// — kart yine görünüyor, çünkü ritüel oluştu ve kullanıcı onu görmeli.
-List<SeriesCardData> _createdSeries(
+List<SeriesCardData> _seriesCards(
   BuildContext context,
-  List<CreatedRitual> rituals,
+  List<RitualWithMemories> rituals,
 ) {
   final l10n = context.l10n;
 
   return [
-    for (final ritual in rituals)
+    for (final entry in rituals)
       (
-        id: ritual.id,
-        iconKey: 'ritual',
-        title: ritual.title,
+        id: entry.ritual.id,
+        iconKey: entry.ritual.iconKey,
+        title: entry.ritual.title,
         // Alt satır tekrar açıklaması ("Her yıl"): seri kartlarının geri
         // kalanıyla aynı köprüden geçiyor, metin iki yerde ayrışmıyor.
-        subtitle: ritual.toRitual().recurrenceLabel(l10n),
+        subtitle: entry.ritual.recurrenceLabel(l10n),
         years: [
-          for (final memory in ritual.memories)
+          for (final occurrence in entry.years)
             (
-              memoryId: memory.id,
-              year: memory.occurredAt.year,
-              // Görsel yer tutucu: medya hattı (kimlikten `MediaItem` çözme)
-              // yazılmadı, kart bugün `Image.asset` çiziyor.
-              imageAsset: 'assets/images/home/hero_today.jpg',
-              placeLabel: null,
+              memoryId: occurrence.memory.id,
+              // YIL BAĞDAN geliyor, anının tarihinden değil (BR-012): 31
+              // Aralık'ta çekilen bir fotoğraf bir sonraki yılın kutlamasına
+              // ait olabilir.
+              year: occurrence.year,
+              cover: occurrence.memory.coverMedia,
+              placeLabel: occurrence.memory.locationLabel,
             ),
         ],
       ),
@@ -139,51 +138,33 @@ List<SeriesCardData> _createdSeries(
 /// TANINMAYAN KİMLİK null DÖNÜYOR — ekran "bulunamadı" gösteriyor, çökmüyor.
 RitualDetailData? _ritualDetail(
   String id,
-  List<CreatedRitual> created,
+  List<RitualWithMemories> rituals,
   AppL10n l10n,
 ) {
-  final own = created.where((ritual) => ritual.id == id).firstOrNull;
-  if (own != null) {
-    return (
-      id: own.id,
-      title: own.title,
-      cover: own.cover,
-      memories: [
-        for (final memory in own.memories)
-          (
-            id: memory.id,
-            // Görsel yer tutucu — yukarıdaki notun aynısı.
-            imageAsset: 'assets/images/home/hero_today.jpg',
-            title: memory.displayTitle(l10n.memoryNew),
-            dateLabel: AppDateFormats.long(memory.occurredAt),
-            year: memory.occurredAt.year,
-            // Kategori ve konum seri formunda SORULMUYOR: ikisi de anının
-            // kendi alanları ve veri hattı kurulduğunda oradan gelecek.
-            categoryLabel: null,
-            placeLabel: null,
-          ),
-      ],
-    );
-  }
-
-  final memories = RitualDetailPreviewData.memoriesOf(id);
-  if (memories.isEmpty) return null;
-
-  final card = MyLifePreviewData.seriesCardOf(id, l10n);
-  if (card == null) return null;
+  final entry = rituals.where((r) => r.ritual.id == id).firstOrNull;
+  if (entry == null) return null;
 
   return (
-    id: id,
-    title: card.title,
-    // Kapak, serinin EN YENİ anısının görseli: seri kartının kendi kapağı yok
-    // ve en yeni anı, "bu seri şu an neye benziyor" sorusunun cevabı.
-    cover: MediaItem(
-      id: 'preview:${memories.first.id}',
-      type: MediaType.photo,
-      originalStatus: MediaOriginalStatus.available,
-      localPreviewPath: memories.first.imageAsset,
-    ),
-    memories: memories,
+    id: entry.ritual.id,
+    title: entry.ritual.title,
+    // Kapak, serinin EN YENİ anısının görseli: serinin kendi kapağı yok
+    // (TRD M6.1) ve en yeni anı "bu seri şu an neye benziyor" sorusunun
+    // cevabı.
+    cover: entry.years.lastOrNull?.memory.coverMedia,
+    memories: [
+      for (final occurrence in entry.years)
+        (
+          id: occurrence.memory.id,
+          cover: occurrence.memory.coverMedia,
+          title: occurrence.memory.displayTitle(l10n.memoryNew),
+          dateLabel: AppDateFormats.long(occurrence.memory.occurredAt),
+          // YIL BAĞDAN geliyor, anının tarihinden değil (BR-012).
+          year: occurrence.year,
+          // Kategori seri formunda SORULMUYOR: anının kendi alanı.
+          categoryLabel: null,
+          placeLabel: occurrence.memory.locationLabel,
+        ),
+    ],
   );
 }
 
@@ -192,7 +173,8 @@ RitualDetailData? _ritualDetail(
 /// Sırayla seri şeridi, koleksiyon ve ana sayfa kayıtlarına bakıyor. Hiçbiri
 /// tutmazsa null: detay ekranı o zaman repository'ye düşüyor.
 MemoryDetail? _previewMemoryDetail(String memoryId) =>
-    MyLifePreviewData.seriesYearDetail(memoryId) ??
+    // Seri şeridi BURADAN ÇIKTI: seriler artık veritabanından geliyor,
+    // anıları da gerçek ve detay ekranı onları kimlikten yüklüyor.
     MyLifePreviewData.collectionMemoryDetail(memoryId) ??
     HomePreviewData.detailFor(memoryId);
 
@@ -342,9 +324,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                         MyLifeTab.calendar,
                     // Oturumda oluşturulan seriler ve koleksiyonlar listenin
                     // BAŞINA giriyor.
-                    extraSeries: _createdSeries(
+                    series: _seriesCards(
                       context,
-                      ref.watch(createdRitualsProvider),
+                      ref.watch(ritualsWithMemoriesProvider).value ?? const [],
                     ),
                     collections: _collectionCards(
                       context,
@@ -571,7 +553,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, ref, _) => RitualDetailView(
               ritual: _ritualDetail(
                 id,
-                ref.watch(createdRitualsProvider),
+                ref.watch(ritualsWithMemoriesProvider).value ?? const [],
                 context.l10n,
               ),
               // Anıya gitmeyi EKRAN değil burası biliyor: önizleme anılarının

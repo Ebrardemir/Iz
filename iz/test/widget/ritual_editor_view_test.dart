@@ -21,8 +21,11 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
-import 'package:iz/features/rituals/presentation/view_models/created_rituals_view_model.dart';
+import 'package:iz/features/people/domain/entities/person.dart';
+import 'package:iz/features/people/people_providers.dart';
+import 'package:iz/features/rituals/domain/entities/ritual.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_editor_view.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:iz/shared/widgets/iz_cover_illustration.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
@@ -30,9 +33,13 @@ import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_person_repository.dart';
+import '../helpers/fake_ritual_repository.dart';
 import '../helpers/real_fonts.dart';
 
 late ProviderContainer container;
+late FakeRitualRepository rituals;
+late FakePersonRepository people;
 
 Future<void> pumpForm(
   WidgetTester tester, {
@@ -45,11 +52,25 @@ Future<void> pumpForm(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  rituals = FakeRitualRepository();
+  addTearDown(rituals.dispose);
+  people = FakePersonRepository(const [
+    Person(
+      id: 'kisi-annem',
+      name: 'Annem',
+      kind: PersonKind.human,
+      relationType: RelationType.parent,
+    ),
+  ]);
+  addTearDown(people.dispose);
+
   container = ProviderContainer(
     overrides: [
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
+      ritualRepositoryProvider.overrideWithValue(rituals),
+      personRepositoryProvider.overrideWithValue(people),
     ],
   );
   addTearDown(container.dispose);
@@ -100,18 +121,18 @@ void main() {
   setUpAll(loadRealFonts);
 
   group('yerleşim', () {
-    testWidgets('kapak, altı satır ve oluştur düğmesi duruyor', (tester) async {
+    testWidgets('kapak, dört satır ve oluştur düğmesi duruyor', (tester) async {
       await pumpForm(tester);
 
       expect(find.byType(IzCoverPicker), findsOneWidget);
       expect(find.text('Kapak Görseli Ekle'), findsOneWidget);
 
+      // AÇIKLAMA ve KATEGORİ KALKTI: `Rituals` tablosunda karşılıkları yok
+      // (TRD M6.1) ve kategori anıya ait (TR-M6-03).
       for (final label in [
         'Seri Adı',
-        'Açıklama',
         'Tekrarlama',
         'İlgili Kişiler',
-        'Kategori',
         'Bu Yıla Anı Ekle',
       ]) {
         expect(find.text(label), findsOneWidget, reason: label);
@@ -220,74 +241,50 @@ void main() {
     });
   });
 
-  group('ilgili kişiler', () {
+  group('ilgili kişi', () {
+    // ÇOKLU SEÇİM TEKİLE İNDİ: `Rituals` tablosunda tekil bir
+    // `relatedPersonId` sütunu var (TRD M6.1). Tasarım çoklu istiyordu
+    // ("aile yemeği"); çoklu seçim ayrı bir bağ tablosu gerektiriyor ve o
+    // karar ürün tarafında.
     testWidgets('kişilerim listeleniyor', (tester) async {
       await pumpForm(tester);
       await openSection(tester, 'İlgili Kişiler');
 
       expect(find.text('Annem'), findsOneWidget);
-      expect(find.text('Babam'), findsOneWidget);
     });
 
-    testWidgets('ÇOK seçim: satır açık kalıyor, adlar birleşiyor', (
+    testWidgets('TEK seçim: ikinci kişi birinciyi değiştiriyor', (
       tester,
     ) async {
-      // Bir ritüel birden fazla kişiyle paylaşılıyor (aile yemeği).
       await pumpForm(tester);
       await openSection(tester, 'İlgili Kişiler');
-
       await tester.tap(find.text('Annem'));
       await settle(tester);
-      await tester.tap(find.text('Babam'));
+
+      await tester.enterText(find.byType(TextField).first, 'Doğum Günleri');
+      await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      // Liste hâlâ açık.
-      expect(find.text('Elif'), findsOneWidget);
-      // Satırın değeri iki adı taşıyor.
-      expect(find.text('Annem, Babam'), findsOneWidget);
+      expect(rituals.saved.single.relatedPersonId, 'kisi-annem');
     });
 
     testWidgets('tekrar dokunmak seçimi kaldırıyor', (tester) async {
+      // Kişi zorunlu değil; yanlış seçenin geri dönüş yolu olmalı.
       await pumpForm(tester);
       await openSection(tester, 'İlgili Kişiler');
-
       await tester.tap(find.text('Annem'));
       await settle(tester);
+      await openSection(tester, 'İlgili Kişiler');
+      // `.last`: seçimden sonra satırın DEĞERİ de "Annem" yazıyor, yani metin
+      // iki yerde geçiyor. Listedeki seçeneği hedefliyoruz.
       await tester.tap(find.text('Annem').last);
       await settle(tester);
 
-      expect(find.text('Kişi ekle'), findsOneWidget);
-    });
-  });
-
-  group('kategori', () {
-    testWidgets('sistem kategorileri listeleniyor ve seçiliyor', (
-      tester,
-    ) async {
-      await pumpForm(tester);
-      await openSection(tester, 'Kategori');
-
-      // Sistem kategorileri kodda tanımlı, uydurma değil.
-      expect(find.text('Aile'), findsWidgets);
-
-      await tester.tap(find.text('Aile').first);
+      await tester.enterText(find.byType(TextField).first, 'Doğum Günleri');
+      await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      expect(find.text('Kategori seç'), findsNothing);
-    });
-
-    testWidgets('aynısına tekrar dokunmak seçimi kaldırıyor', (tester) async {
-      // Kategori zorunlu değil; yanlış seçenin geri dönüş yolu olmalı.
-      await pumpForm(tester);
-      await openSection(tester, 'Kategori');
-      await tester.tap(find.text('Aile').first);
-      await settle(tester);
-
-      await openSection(tester, 'Kategori');
-      await tester.tap(find.text('Aile').last);
-      await settle(tester);
-
-      expect(find.text('Kategori seç'), findsOneWidget);
+      expect(rituals.saved.single.relatedPersonId, isNull);
     });
   });
 
@@ -314,7 +311,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Bir isim yazmadan oluşturamayız.'), findsOneWidget);
-      expect(container.read(createdRitualsProvider), isEmpty);
+      expect(rituals.saved, isEmpty);
       // Ekran kapanmadı.
       expect(find.byType(RitualEditorView), findsOneWidget);
     });
@@ -340,10 +337,10 @@ void main() {
       await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdRitualsProvider);
+      final created = rituals.saved;
       expect(created, hasLength(1));
       expect(created.single.title, 'Pazar Kahvaltısı');
-      expect(created.single.recurrence.name, 'weekly');
+      expect(created.single.recurrenceType, RecurrenceType.weekly);
       expect(find.byType(RitualEditorView), findsNothing);
     });
 
@@ -360,20 +357,17 @@ void main() {
       await pumpForm(tester);
 
       await tester.enterText(find.byType(TextField).first, 'Aile Yemeği');
-      await tester.enterText(find.byType(TextField).at(1), 'Her ayın ilk günü');
+      // AÇIKLAMA VE KATEGORİ ALANLARI KALKTI: `Rituals` tablosunda karşılığı
+      // yok (TRD M6.1) ve kategori anıya ait (TR-M6-03). Kalan tek ilişki
+      // alanı KİŞİ ve o tekil — sütun da tekil (`relatedPersonId`).
       await openSection(tester, 'İlgili Kişiler');
       await tester.tap(find.text('Annem'));
-      await settle(tester);
-      await openSection(tester, 'Kategori');
-      await tester.tap(find.text('Aile').first);
       await settle(tester);
       await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdRitualsProvider).single;
-      expect(created.description, 'Her ayın ilk günü');
-      expect(created.personIds, {'person-annem'});
-      expect(created.categoryId, isNotNull);
+      final created = rituals.saved.single;
+      expect(created.relatedPersonId, 'kisi-annem');
     });
   });
 

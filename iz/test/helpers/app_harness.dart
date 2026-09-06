@@ -24,6 +24,7 @@ import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/people/people_providers.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_collection_repository.dart';
@@ -31,6 +32,7 @@ import 'fake_media_picker.dart';
 import 'fake_media_repository.dart';
 import 'fake_memory_repository.dart';
 import 'fake_person_repository.dart';
+import 'fake_ritual_repository.dart';
 
 /// Gecikmesiz sahte kimlik doğrulama — her girişi kabul eder.
 ///
@@ -106,6 +108,9 @@ Future<void> pumpApp(
   // aksi hâlde formdan kaydedilen koleksiyon listeye hiç ULAŞMAZDI ve
   // "oluştur → listede gör" akışı test edilemezdi.
   FakeCollectionRepository? collections,
+  // Seri deposu. Varsayılan BOŞ: çoğu test seriyle ilgilenmiyor ve boş liste
+  // gerçek bir yeni kullanıcının durumu.
+  FakeRitualRepository? rituals,
 }) async {
   // Varsayılan test yüzeyi 800×600'dür — yani YATAY bir masaüstü ölçüsü.
   // İZ bir telefon uygulaması; düzen kararları (görsel yüksekliği, sosyal
@@ -138,6 +143,9 @@ Future<void> pumpApp(
         ),
         collectionRepositoryProvider.overrideWithValue(
           collections ?? FakeCollectionRepository(),
+        ),
+        ritualRepositoryProvider.overrideWithValue(
+          rituals ?? FakeRitualRepository(),
         ),
         authRepositoryProvider.overrideWithValue(InstantAuthRepository()),
         mediaPickerProvider.overrideWithValue(mediaPicker ?? FakeMediaPicker()),
