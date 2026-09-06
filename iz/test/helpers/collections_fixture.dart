@@ -7,10 +7,10 @@
 /// tarafında `people_fixture.dart` ile aynı gerekçe.
 library;
 
+import 'package:iz/app/composition/collections_with_memories.dart';
 import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
-import 'package:iz/features/collections/presentation/view_models/collections_list_view_model.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 

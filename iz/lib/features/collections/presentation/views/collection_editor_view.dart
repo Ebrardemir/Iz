@@ -64,7 +64,6 @@ import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/preview/form_preview_data.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
-import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 
 /// Formdaki açılabilir satırlar.
@@ -362,7 +361,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
 
   /// Anı seçme sayfasını açar ve dönen seçimi alır.
   Future<void> _pickMemories() async {
-    final selected = await context.pushNamed<Set<String>>(
+    final selected = await context.pushNamed<List<Memory>>(
       AppRoute.memoryPicker.name,
       // Zaten seçili olanlar işaretli açılsın.
       extra: {for (final memory in _memories) memory.id},
@@ -370,13 +369,9 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
     if (selected == null || !mounted) return;
 
     setState(() {
-      // Seçilenleri GERÇEK anı listesinden çözüyoruz. Sıra listenin kendi
-      // sırası: aynı seçim her zaman aynı görünsün.
-      _memories = [
-        for (final memory
-            in ref.read(pickableMemoriesProvider).value ?? const <Memory>[])
-          if (selected.contains(memory.id)) memory,
-      ];
+      // Ekran seçilen anıların KENDİSİNİ döndürüyor; burada çevirecek
+      // bir şey yok.
+      _memories = selected;
     });
   }
 

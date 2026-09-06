@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iz/app/composition/collections_with_memories.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/app/router/app_shell.dart';
 import 'package:iz/core/extensions/context_x.dart';
@@ -23,7 +24,6 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/auth/presentation/views/sign_in_view.dart';
 import 'package:iz/features/auth/presentation/views/sign_up_view.dart';
-import 'package:iz/features/collections/presentation/view_models/collections_list_view_model.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
 import 'package:iz/features/home/presentation/views/home_preview_data.dart';
 import 'package:iz/features/home/presentation/views/home_view.dart';
@@ -32,6 +32,7 @@ import 'package:iz/features/journal/presentation/views/journal_editor_view.dart'
 import 'package:iz/features/journal/presentation/views/journal_view.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
+import 'package:iz/features/memories/presentation/view_models/memory_list_view_model.dart';
 import 'package:iz/features/memories/presentation/views/memory_detail_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_list_view.dart';
@@ -496,11 +497,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // Formda ZATEN seçili olan anılar `extra` ile geliyor: ekran ikinci
         // kez açıldığında kullanıcı seçimlerini işaretli bulmalı. Tip kontrolü
         // şart — `extra` `Object?` ve yanlış tip gelirse çökerdi.
-        builder: (context, state) => IzMemoryPickerView(
-          initialSelection: switch (state.extra) {
-            final Set<String> selected => selected,
-            _ => const {},
-          },
+        // SORGUYU BURASI YAPIYOR: seçici `shared/` altında ve hiçbir
+        // feature'ın veri katmanını tanımıyor (ARCHITECTURE.md §2).
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) => IzMemoryPickerView(
+            memories: ref.watch(pickableMemoriesProvider),
+            initialSelection: switch (state.extra) {
+              final Set<String> selected => selected,
+              _ => const {},
+            },
+          ),
         ),
       ),
       GoRoute(

@@ -30,9 +30,14 @@
 /// iki ritüele bağlayıp sessizce ilk bağı koparar.
 ///
 /// SEÇİM EKRANDA YAŞIYOR, çağıran formda değil.
-/// Kullanıcı burada işaretleyip "Bitti"ye basıyor; ekran seçilen kimlikleri
+/// Kullanıcı burada işaretleyip "Bitti"ye basıyor; ekran seçilen ANILARI
 /// `pop` ile döndürüyor. Vazgeçerse (✕ ya da geri) null dönüyor ve form hiçbir
 /// şeyi değiştirmiyor — `showIzSelectionDialog` ile aynı sözleşme.
+///
+/// KİMLİK DEĞİL, ANININ KENDİSİ dönüyor: kimlik dönseydi her form onu tekrar
+/// anıya çevirmek için anılar feature'ının veri katmanına uzanmak zorunda
+/// kalırdı ve feature sınırı delinirdi (ARCHITECTURE.md §2). Liste zaten
+/// burada; seçileni de burada veriyoruz.
 library;
 
 import 'package:flutter/material.dart';
@@ -40,47 +45,44 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/extensions/date_x.dart';
-import 'package:iz/core/result/result_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
-import 'package:iz/features/memories/domain/entities/memory_filter.dart';
 import 'package:iz/shared/widgets/app_empty_state.dart';
 import 'package:iz/shared/widgets/async_value_view.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
 import 'package:iz/shared/widgets/media_thumbnail.dart';
 
-/// Seçilebilir anılar.
-///
-/// `memoryListProvider` KULLANMIYORUZ bilerek: o, zaman tünelinin AKTİF
-/// süzgecine bağlı. Kullanıcı zaman tünelinde "yalnız favoriler" seçtiyse
-/// seçici de yarım liste gösterirdi ve sebebi anlaşılmazdı.
-final pickableMemoriesProvider = StreamProvider<List<Memory>>((ref) {
-  return ref
-      .watch(memoryRepositoryProvider)
-      .watchMemories(MemoryFilter.all)
-      .unwrap();
-});
+class IzMemoryPickerView extends StatefulWidget {
+  const IzMemoryPickerView({
+    required this.memories,
+    this.initialSelection = const {},
+    super.key,
+  });
 
-class IzMemoryPickerView extends ConsumerStatefulWidget {
-  const IzMemoryPickerView({this.initialSelection = const {}, super.key});
+  /// Listelenecek anılar.
+  ///
+  /// VERİYİ EKRAN ÇEKMİYOR, DIŞARIDAN ALIYOR. `shared/` altındaki widget'lar
+  /// hiçbir feature'ın veri katmanını tanımıyor (ARCHITECTURE.md §2); bu
+  /// ekran iki ayrı feature'ın formundan açıldığı için burada yaşıyor ama
+  /// sorguyu composition root (router) yapıyor.
+  final AsyncValue<List<Memory>> memories;
 
   /// Formda ZATEN seçili olan anılar: ekran ikinci kez açıldığında kullanıcı
   /// seçimlerini işaretli bulmalı, sıfırdan başlamamalı.
   final Set<String> initialSelection;
 
   @override
-  ConsumerState<IzMemoryPickerView> createState() => _IzMemoryPickerViewState();
+  State<IzMemoryPickerView> createState() => _IzMemoryPickerViewState();
 }
 
-class _IzMemoryPickerViewState extends ConsumerState<IzMemoryPickerView> {
+class _IzMemoryPickerViewState extends State<IzMemoryPickerView> {
   late final Set<String> _selected = {...widget.initialSelection};
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final memories = ref.watch(pickableMemoriesProvider);
+    final memories = widget.memories;
 
     return Scaffold(
       appBar: AppBar(
@@ -99,7 +101,12 @@ class _IzMemoryPickerViewState extends ConsumerState<IzMemoryPickerView> {
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: TextButton(
-              onPressed: () => context.pop(_selected),
+              // Sıra LİSTENİN sırası, işaretleme sırası değil: aynı seçim
+              // her zaman aynı görünsün.
+              onPressed: () => context.pop([
+                for (final memory in widget.memories.value ?? const <Memory>[])
+                  if (_selected.contains(memory.id)) memory,
+              ]),
               child: Text(l10n.memoryPickerDone),
             ),
           ),
