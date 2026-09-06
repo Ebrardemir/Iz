@@ -212,18 +212,11 @@ List<CollectionCardData> _collectionCards(
   final l10n = context.l10n;
   final locale = l10n.localeName;
 
-  // ⚠️ GÖRSELLER HENÜZ GERÇEK DEĞİL — eksik, bilinçli tercih değil.
-  // Kapak `coverMediaId` olarak KAYDEDİLİYOR ama medya hattı (kimlikten
-  // `MediaItem` çözme) yazılmadı; kart bugün `Image.asset` çiziyor
-  // (bkz. collection_card.dart `_Cover`, kendi notu da bunu söylüyor).
-  // O widget `MediaThumbnail`e geçtiğinde burası gerçek kapağı verecek.
-  const placeholderCover = 'assets/images/home/hero_today.jpg';
-
   return [
     for (final entry in collections)
       (
         id: entry.collection.id,
-        coverAsset: placeholderCover,
+        cover: entry.cover,
         title: entry.collection.title,
         summary: [
           l10n.memoryCount(entry.memories.length),
@@ -238,7 +231,7 @@ List<CollectionCardData> _collectionCards(
           for (final memory in entry.memories)
             (
               id: memory.id,
-              imageAsset: placeholderCover,
+              cover: memory.coverMedia,
               title: memory.displayTitle(l10n.memoryNew),
               dateLabel: AppDateFormats.long(memory.occurredAt, locale: locale),
             ),

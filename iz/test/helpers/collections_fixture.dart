@@ -26,6 +26,7 @@ abstract final class CollectionsFixture {
         startDate: DateTime(2026, 5, 10),
         endDate: DateTime(2026, 5, 14),
       ),
+      cover: null,
       memories: [
         _memory('mem-balon', 'Balonlar havalanırken', DateTime(2026, 5, 10)),
         _memory('mem-vadi', 'Güvercinlik Vadisi', DateTime(2026, 5, 12)),
@@ -44,6 +45,7 @@ abstract final class CollectionsFixture {
         startDate: DateTime(2021, 9, 20),
         endDate: DateTime(2025, 6, 14),
       ),
+      cover: null,
       memories: [
         _memory('mem-ilk-gun', 'Kampüste ilk gün', DateTime(2021, 9, 20)),
         _memory('mem-mezuniyet', 'Mezuniyet', DateTime(2025, 6, 14)),
@@ -56,6 +58,7 @@ abstract final class CollectionsFixture {
         visibility: CollectionVisibility.private,
         startDate: DateTime(2026, 3),
       ),
+      cover: null,
       memories: [_memory('mem-kahve', 'Kahve Molası', DateTime(2026, 3))],
     ),
   ];
@@ -82,13 +85,11 @@ abstract final class CollectionsFixture {
   /// çeviriden, aralık `AppDateFormats`ten üretiliyor — üretimdeki yolun
   /// aynısı. Hazır yazsaydık test, biçimlendirme bozulsa bile geçerdi.
   static List<CollectionCardData> cards(AppL10n l10n, {String? locale}) {
-    const cover = 'assets/images/home/hero_today.jpg';
-
     return [
       for (final entry in withMemories())
         (
           id: entry.collection.id,
-          coverAsset: cover,
+          cover: entry.cover,
           title: entry.collection.title,
           summary: [
             l10n.memoryCount(entry.memories.length),
@@ -103,7 +104,7 @@ abstract final class CollectionsFixture {
             for (final memory in entry.memories)
               (
                 id: memory.id,
-                imageAsset: cover,
+                cover: memory.coverMedia,
                 title: memory.displayTitle(l10n.memoryNew),
                 dateLabel: AppDateFormats.long(
                   memory.occurredAt,
