@@ -42,9 +42,9 @@
 /// KAYIT VE SİLME GERÇEK: form `PersonRepository`ye yazıyor, düzenlenecek
 /// kişi oradan okunuyor.
 ///
-/// FOTOĞRAF HÂLÂ KAYDEDİLMİYOR — medya hattı (dosyayı uygulama alanına
-/// kopyalama, önizleme üretme) kurulmadı. Seçilen fotoğraf ekranda görünüyor
-/// ama `avatarMediaId` boş kalıyor; M4 ile bağlanacak.
+/// FOTOĞRAF KAYDEDİLİYOR. Seçilen dosya uygulama alanına kopyalanıyor
+/// (TR-M4-11) ve kimliği `avatarMediaId`ye yazılıyor. Bir süre yalnız
+/// ekranda görünüp kaydedilmiyordu; medya hattı kurulunca bağlandı.
 library;
 
 import 'dart:async';
@@ -61,6 +61,7 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/people/domain/repositories/person_repository.dart';
 import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/person_l10n.dart';
@@ -99,11 +100,11 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
   final _birthDateController = TextEditingController();
   final _noteController = TextEditingController();
 
-  /// Seçilen fotoğraf.
+  /// Seçilen fotoğraf — kalıcı bir [MediaItem].
   ///
-  /// ⚠️ GEÇİCİ [MediaItem]: medya hattı (dosyayı uygulama alanına kopyalama,
-  /// önizleme üretme) kurulmadı, elimizde yalnızca dosya yolu var. Aynı
-  /// yaklaşım anı formunda da kullanılıyor.
+  /// Düzenleme kipinde kişinin mevcut avatarıyla dolduruluyor; boş bırakılsa
+  /// kaydetme `avatarMediaId`yi null'a çeker ve kullanıcının avatarı sessizce
+  /// silinirdi.
   MediaItem? _photo;
 
   DateTime? _birthDate;
@@ -167,6 +168,15 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
     if (birthDate != null) {
       _birthDate = birthDate;
       _birthDateController.text = _formatBirthDate(birthDate);
+    }
+
+    // MEVCUT AVATARI DA GERİ YÜKLÜYORUZ. Yüklemeseydik `_photo` boş kalır ve
+    // kaydetme `avatarMediaId: null` yazardı: kullanıcı yalnız adını
+    // düzeltmek için formu açtığında fotoğrafı sessizce silinirdi.
+    if (person.avatarMediaId case final mediaId?) {
+      final media = await ref.read(mediaRepositoryProvider).findMedia(mediaId);
+      if (!mounted) return;
+      if (media case Ok(:final value)) _photo = value;
     }
 
     // Denetleyicilere yazmak widget'ı kendiliğinden yeniden çizmiyor;
@@ -358,22 +368,36 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
     // diye bakmak zorundayız (use_build_context_synchronously).
     if (!mounted) return;
 
-    result.fold(
-      onOk: (images) {
-        final path = images.firstOrNull?.path;
-        if (path == null) return; // vazgeçti — bir hata değil, bir karar
-        setState(
-          () => _photo = MediaItem(
-            id: 'picked:$path',
-            type: MediaType.photo,
-            originalStatus: MediaOriginalStatus.available,
-            localPreviewPath: path,
-          ),
-        );
-      },
-      onErr: (failure) =>
-          context.showSnack(failure.localizedMessage(context.l10n)),
-    );
+    switch (result) {
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+      case Ok(:final value):
+        final path = value.firstOrNull?.path;
+        // Vazgeçti — bir hata değil, bir karar.
+        if (path == null) return;
+        await _importPhoto(path);
+    }
+  }
+
+  /// Seçilen dosyayı KALICI hâle getirir.
+  ///
+  /// Önce yalnız dosya yolunu tutan geçici bir [MediaItem] üretiliyordu ve
+  /// `avatarMediaId` boş kalıyordu: kullanıcı fotoğraf seçiyor, kaydediyor,
+  /// geri dönünce avatar yoktu. Artık dosya uygulama alanına kopyalanıyor ve
+  /// `MediaItems` tablosuna bir satır yazılıyor (TR-M4-11).
+  Future<void> _importPhoto(String path) async {
+    final imported = await ref.read(mediaRepositoryProvider).importPicked([
+      path,
+    ]);
+
+    if (!mounted) return;
+
+    switch (imported) {
+      case Ok(:final value):
+        if (value.isNotEmpty) setState(() => _photo = value.first);
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 
   Future<void> _pickBirthDate() async {
@@ -441,6 +465,7 @@ class _PersonEditorViewState extends ConsumerState<PersonEditorView> {
             relationLabel: _relationController.text,
             birthDate: _birthDate,
             note: _noteController.text,
+            avatarMediaId: _photo?.id,
           ),
         );
 

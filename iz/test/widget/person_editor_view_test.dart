@@ -18,6 +18,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/features/people/presentation/widgets/person_photo_picker.dart';
@@ -26,6 +27,7 @@ import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_media_repository.dart';
 import '../helpers/fake_person_repository.dart';
 import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
@@ -34,6 +36,7 @@ final _today = DateTime(2026, 8, 12);
 
 late FakeMediaPicker picker;
 late FakePersonRepository repository;
+late FakeMediaRepository media;
 
 Future<void> pumpEditor(
   WidgetTester tester, {
@@ -49,6 +52,7 @@ Future<void> pumpEditor(
   addTearDown(tester.view.reset);
 
   picker = FakeMediaPicker(paths: pickerReturns);
+  media = FakeMediaRepository();
   // Düzenleme kipi kişiyi DEPODAN okuyor; kaydetme de oraya yazıyor.
   repository = FakePersonRepository(PeopleFixture.people);
   addTearDown(repository.dispose);
@@ -59,6 +63,7 @@ Future<void> pumpEditor(
         clockProvider.overrideWithValue(FixedClock(_today)),
         personRepositoryProvider.overrideWithValue(repository),
         mediaPickerProvider.overrideWithValue(picker),
+        mediaRepositoryProvider.overrideWithValue(media),
       ],
       child: MaterialApp.router(
         theme: dark ? AppTheme.dark() : AppTheme.light(),
@@ -358,6 +363,24 @@ void main() {
     });
   });
 
+  group('avatar kalıcılığı', () {
+    testWidgets('seçilen fotoğraf KAYDA giriyor', (tester) async {
+      await pumpEditor(tester, pickerReturns: const ['/tmp/anne.jpg']);
+
+      await tester.enterText(find.byType(TextField).first, 'Annem');
+      await tester.tap(find.byType(PersonPhotoPicker));
+      await settle(tester);
+
+      await tester.tap(find.text('Kişiyi Kaydet'));
+      await settle(tester);
+
+      // Dosya kalıcı hâle getirildi…
+      expect(media.importedPaths, ['/tmp/anne.jpg']);
+      // …ve kimliği kişiyle birlikte kaydedildi.
+      expect(repository.saved.single.avatarMediaId, isNotNull);
+    });
+  });
+
   group('düzenleme kipi', () {
     // Önizleme verisindeki "Annem": adı, ilişkisi ve doğum tarihi var.
     const annem = 'person-annem';
@@ -429,7 +452,12 @@ void main() {
 
       final strip = tester.widget<IzPhotoStrip>(find.byType(IzPhotoStrip));
       expect(strip.photos, hasLength(1));
-      expect(strip.photos.single.localPreviewPath, '/tmp/anne.jpg');
+      // Yol artık KAYNAK değil, uygulama alanındaki kopya: dosya kalıcı
+      // hâle getiriliyor (TR-M4-11).
+      expect(
+        strip.photos.single.localPreviewPath,
+        '/sahte/medya//tmp/anne.jpg',
+      );
     });
 
     testWidgets('çarpı fotoğrafı siliyor', (tester) async {

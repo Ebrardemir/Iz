@@ -26,6 +26,7 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/shared/widgets/iz_cover_illustration.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
@@ -33,12 +34,14 @@ import 'package:iz/shared/widgets/iz_form_row.dart';
 import '../helpers/app_harness.dart';
 import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_media_repository.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 13);
 
 late ProviderContainer container;
 late FakeCollectionRepository collections;
+late FakeMediaRepository media;
 
 Future<void> pumpForm(
   WidgetTester tester, {
@@ -52,12 +55,14 @@ Future<void> pumpForm(
   addTearDown(tester.view.reset);
 
   collections = FakeCollectionRepository();
+  media = FakeMediaRepository();
   addTearDown(collections.dispose);
 
   container = ProviderContainer(
     overrides: [
       clockProvider.overrideWithValue(FixedClock(_today)),
       collectionRepositoryProvider.overrideWithValue(collections),
+      mediaRepositoryProvider.overrideWithValue(media),
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
@@ -155,7 +160,11 @@ void main() {
       await settle(tester);
 
       final picker = tester.widget<IzCoverPicker>(find.byType(IzCoverPicker));
-      expect(picker.cover?.localPreviewPath, '/tmp/kapak.jpg');
+      // Yol artık KAYNAK değil, uygulama alanındaki kopya: kapak dosyası
+      // kalıcı hâle getiriliyor (TR-M4-11) ve `coverMediaId` gerçek bir
+      // satıra işaret ediyor.
+      expect(picker.cover?.localPreviewPath, '/sahte/medya//tmp/kapak.jpg');
+      expect(media.importedPaths, ['/tmp/kapak.jpg']);
       expect(find.byType(IzCoverIllustration), findsNothing);
       expect(find.text('Kapak Görselini Değiştir'), findsOneWidget);
     });
