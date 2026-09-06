@@ -60,12 +60,19 @@ final class RitualRepositoryImpl implements RitualRepository {
       .transform(_resultGuard<Map<String, List<RitualOccurrence>>>());
 
   @override
+  Stream<Result<Map<String, Set<String>>>> watchPeopleLinks() => _dao
+      .watchPeopleLinks()
+      .map<Result<Map<String, Set<String>>>>(Ok.new)
+      .transform(_resultGuard<Map<String, Set<String>>>());
+
+  @override
   Future<Result<String>> save(RitualDraft draft) => guard(() async {
     // Kimlik yeni kayıtta ÜRETİLİYOR, güncellemede korunuyor (TR-C-40).
     final id = draft.id ?? _ids.newId();
     await _dao.upsertRitual(
       RitualMapper.toCompanion(draft, id: id),
       occurrences: draft.occurrences,
+      personIds: draft.personIds,
     );
     return id;
   }, onError: _dbFailure);

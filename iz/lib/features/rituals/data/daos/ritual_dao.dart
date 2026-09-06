@@ -12,7 +12,7 @@ import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
 
 part 'ritual_dao.g.dart';
 
-@DriftAccessor(tables: [Rituals, MemoryRituals])
+@DriftAccessor(tables: [Rituals, MemoryRituals, RitualPeople])
 class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
   RitualDao(super.db);
 
@@ -57,12 +57,27 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
     });
   }
 
-  /// Seriyi VE anı bağlarını tek transaction'da yazar.
+  /// Seri kimliği → bağlı kişi kimlikleri.
+  ///
+  /// Anı bağlarından AYRI akış: kişi değişince anı listesini yeniden çekmek
+  /// gereksiz iş olurdu.
+  Stream<Map<String, Set<String>>> watchPeopleLinks() {
+    return select(ritualPeople).watch().map((rows) {
+      final links = <String, Set<String>>{};
+      for (final row in rows) {
+        (links[row.ritualId] ??= {}).add(row.personId);
+      }
+      return links;
+    });
+  }
+
+  /// Seriyi, anı bağlarını VE kişi bağlarını tek transaction'da yazar.
   ///
   /// `version` YAZAN TARAF artırır (TR-C-31) — tek yazma yolu burası.
   Future<void> upsertRitual(
     RitualsCompanion ritual, {
     List<({String memoryId, int year})>? occurrences,
+    Set<String>? personIds,
   }) {
     return transaction(() async {
       final id = ritual.id.value;
@@ -81,6 +96,32 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
       if (occurrences != null) {
         await _replaceOccurrences(id, occurrences);
       }
+      if (personIds != null) {
+        await _replacePeople(id, personIds);
+      }
+    });
+  }
+
+  /// Serinin kişi bağlarını verilen kümeyle DEĞİŞTİRİR.
+  ///
+  /// Silip yeniden yazıyoruz: form kullanıcıya tam listeyi gösteriyor,
+  /// "hangisi eklendi/çıkarıldı" hesabını burada tutmak aynı bilgiyi iki
+  /// yerde saklamak olurdu.
+  Future<void> _replacePeople(String ritualId, Set<String> personIds) {
+    return transaction(() async {
+      await (delete(
+        ritualPeople,
+      )..where((t) => t.ritualId.equals(ritualId))).go();
+
+      await batch((batch) {
+        batch.insertAll(ritualPeople, [
+          for (final personId in personIds)
+            RitualPeopleCompanion.insert(
+              ritualId: ritualId,
+              personId: personId,
+            ),
+        ]);
+      });
     });
   }
 

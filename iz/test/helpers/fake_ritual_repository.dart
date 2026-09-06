@@ -26,6 +26,9 @@ class FakeRitualRepository implements RitualRepository {
   /// Seri kimliği → bağlı anılar ve yılları.
   final Map<String, List<RitualOccurrence>> occurrences = {};
 
+  /// Seri kimliği → bağlı kişi kimlikleri.
+  final Map<String, Set<String>> peopleLinks = {};
+
   int _idCounter = 0;
 
   List<Ritual> get rituals => List.unmodifiable(_rituals);
@@ -53,6 +56,12 @@ class FakeRitualRepository implements RitualRepository {
   }
 
   @override
+  Stream<Result<Map<String, Set<String>>>> watchPeopleLinks() async* {
+    yield Ok(Map.unmodifiable(peopleLinks));
+    yield* _controller.stream.map((_) => Ok(Map.unmodifiable(peopleLinks)));
+  }
+
+  @override
   Future<Result<String>> save(RitualDraft draft) async {
     saved.add(draft);
     final id = draft.id ?? 'sahte-seri-${++_idCounter}';
@@ -61,7 +70,6 @@ class FakeRitualRepository implements RitualRepository {
       id: id,
       title: draft.title,
       recurrenceType: draft.recurrenceType,
-      relatedPersonId: draft.relatedPersonId,
       anchorMonth: draft.anchorMonth,
       anchorDay: draft.anchorDay,
       iconKey: draft.iconKey,
@@ -77,6 +85,9 @@ class FakeRitualRepository implements RitualRepository {
     // `null` = "bağlara dokunma" — gerçeğindeki ayrımın aynısı.
     if (draft.occurrences case final list?) {
       occurrences[id] = [...list];
+    }
+    if (draft.personIds case final ids?) {
+      peopleLinks[id] = {...ids};
     }
 
     _notify();

@@ -30,6 +30,7 @@ void main() {
     int? anchorMonth,
     int? anchorDay,
     List<RitualOccurrence>? occurrences,
+    Set<String>? personIds,
   }) async {
     final result = await repository.save(
       RitualDraft(
@@ -38,6 +39,7 @@ void main() {
         anchorMonth: anchorMonth,
         anchorDay: anchorDay,
         occurrences: occurrences,
+        personIds: personIds,
       ),
     );
     return (result as Ok<String>).value;
@@ -184,6 +186,72 @@ void main() {
       );
 
       expect(await baglar(), isEmpty);
+    });
+  });
+
+  group('kişi bağları', () {
+    Future<void> kisiEkle(String id, String name) =>
+        db.into(db.people).insert(PeopleCompanion.insert(id: id, name: name));
+
+    Future<Map<String, Set<String>>> kisiBaglari() async =>
+        ((await repository.watchPeopleLinks().first)
+                as Ok<Map<String, Set<String>>>)
+            .value;
+
+    test('ÇOKLU kişi bağlanabiliyor', () async {
+      // Bir seri birden fazla kişiyle paylaşılıyor ("Aile Yemeklerimiz").
+      // Şema v7'ye kadar tekil bir sütun vardı.
+      await kisiEkle('kisi-a', 'Annem');
+      await kisiEkle('kisi-b', 'Babam');
+
+      final id = await ekle(personIds: {'kisi-a', 'kisi-b'});
+
+      expect(await kisiBaglari(), {
+        id: {'kisi-a', 'kisi-b'},
+      });
+    });
+
+    test('güncelleme bağları DEĞİŞTİRİYOR', () async {
+      await kisiEkle('kisi-a', 'Annem');
+      await kisiEkle('kisi-b', 'Babam');
+      final id = await ekle(personIds: {'kisi-a'});
+
+      await repository.save(
+        RitualDraft(id: id, title: 'Aile', personIds: {'kisi-b'}),
+      );
+
+      expect(await kisiBaglari(), {
+        id: {'kisi-b'},
+      });
+    });
+
+    test('personIds null ise bağlara DOKUNULMUYOR', () async {
+      await kisiEkle('kisi-a', 'Annem');
+      final id = await ekle(personIds: {'kisi-a'});
+
+      await repository.save(RitualDraft(id: id, title: 'Yeni ad'));
+
+      expect((await kisiBaglari())[id], {'kisi-a'});
+    });
+
+    test('personIds boş küme ise bağlar KALDIRILIYOR', () async {
+      await kisiEkle('kisi-a', 'Annem');
+      final id = await ekle(personIds: {'kisi-a'});
+
+      await repository.save(
+        RitualDraft(id: id, title: 'Aile', personIds: const {}),
+      );
+
+      expect(await kisiBaglari(), isEmpty);
+    });
+
+    test('kişi silinince bağ da düşüyor (cascade)', () async {
+      await kisiEkle('kisi-a', 'Annem');
+      await ekle(personIds: {'kisi-a'});
+
+      await (db.delete(db.people)..where((t) => t.id.equals('kisi-a'))).go();
+
+      expect(await kisiBaglari(), isEmpty);
     });
   });
 

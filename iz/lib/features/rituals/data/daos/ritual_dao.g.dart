@@ -10,6 +10,8 @@ mixin _$RitualDaoMixin on DatabaseAccessor<AppDatabase> {
   $MediaItemsTable get mediaItems => attachedDatabase.mediaItems;
   $MemoriesTable get memories => attachedDatabase.memories;
   $MemoryRitualsTable get memoryRituals => attachedDatabase.memoryRituals;
+  $PeopleTable get people => attachedDatabase.people;
+  $RitualPeopleTable get ritualPeople => attachedDatabase.ritualPeople;
   RitualDaoManager get managers => RitualDaoManager(this);
 }
 
@@ -28,4 +30,8 @@ class RitualDaoManager {
       $$MemoriesTableTableManager(_db.attachedDatabase, _db.memories);
   $$MemoryRitualsTableTableManager get memoryRituals =>
       $$MemoryRitualsTableTableManager(_db.attachedDatabase, _db.memoryRituals);
+  $$PeopleTableTableManager get people =>
+      $$PeopleTableTableManager(_db.attachedDatabase, _db.people);
+  $$RitualPeopleTableTableManager get ritualPeople =>
+      $$RitualPeopleTableTableManager(_db.attachedDatabase, _db.ritualPeople);
 }

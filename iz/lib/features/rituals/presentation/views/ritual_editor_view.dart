@@ -100,15 +100,12 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   /// karara sokardı.
   RecurrenceType _recurrence = RecurrenceType.yearly;
 
-  /// FR-064 — seriye bağlı KİŞİ.
+  /// FR-064 — seriye bağlı KİŞİLER.
   ///
-  /// TASARIM ÇOKLU SEÇİM İSTİYORDU ("aile yemeği birden fazla kişiyle
-  /// paylaşılıyor") ama `Rituals` tablosunda tekil bir `relatedPersonId`
-  /// sütunu var (TRD M6.1). Çoklu seçim ayrı bir bağ tablosu gerektiriyor;
-  /// şemayı tek başına genişletmek yerine bugün tekil kaydediyoruz ve karar
-  /// ürün tarafına bırakılıyor. TRD'deki örnek de tekil: "Annemin Doğum
-  /// Günleri".
-  String? _relatedPersonId;
+  /// ÇOKLU: bir seri birden fazla kişiyle paylaşılıyor ("Aile Yemeklerimiz").
+  /// Bir süre tekil bir sütunda tutuluyordu ve bu form çoklu seçim gösterip
+  /// tekil kaydetmek zorunda kalıyordu; şema v7 ile bağ tablosuna geçti.
+  final Set<String> _personIds = {};
 
   /// Seçilen anılar — tarih aralığı bunlardan türetiliyor.
   List<Memory> _memories = const [];
@@ -203,11 +200,11 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // --- İLGİLİ KİŞİ ---------------------------------------------------
+          // --- İLGİLİ KİŞİLER ------------------------------------------------
           IzExpandableRow(
             icon: AppIcons.people,
             label: l10n.ritualFieldPeople,
-            value: _personLabel(peopleOptions),
+            value: _peopleLabel(peopleOptions),
             hint: l10n.ritualFieldPeopleHint,
             isExpanded: _openSection == _RitualSection.person,
             onToggle: () => _toggleSection(_RitualSection.person),
@@ -216,15 +213,14 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
                 IzOptionTile(
                   label: person.label,
                   icon: person.icon,
-                  isSelected: _relatedPersonId == person.id,
-                  // TEK SEÇİM: sütun tekil (`relatedPersonId`). Aynısına
-                  // tekrar dokunmak seçimi kaldırıyor — kişi zorunlu değil.
-                  allowMultiple: false,
+                  isSelected: _personIds.contains(person.id),
+                  // ÇOK SEÇİM: bir seri birden fazla kişiyle paylaşılıyor
+                  // (aile yemeği). Bu yüzden seçimde satır KAPANMIYOR.
+                  allowMultiple: true,
                   onTap: () => setState(() {
-                    _relatedPersonId = _relatedPersonId == person.id
-                        ? null
-                        : person.id;
-                    _openSection = null;
+                    _personIds.contains(person.id)
+                        ? _personIds.remove(person.id)
+                        : _personIds.add(person.id);
                   }),
                 ),
             ],
@@ -313,16 +309,17 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
       Ritual(id: '', title: '', recurrenceType: type).recurrenceLabel(l10n);
 
   /// Seçili kişilerin adları — "Annem, Babam".
-  /// Seçili kişinin adı — seçilmemişse null.
-  String? _personLabel(List<IzSelectionOption> options) {
-    final id = _relatedPersonId;
-    if (id == null) return null;
+  /// Seçili kişilerin adları — "Annem, Babam". Seçim yoksa null.
+  String? _peopleLabel(List<IzSelectionOption> options) {
+    if (_personIds.isEmpty) return null;
 
-    for (final option in options) {
-      if (option.id == id) return option.label;
-    }
-    // Kişi silinmişse etiketi yok; satır ipucunu gösteriyor.
-    return null;
+    final labels = [
+      for (final option in options)
+        if (_personIds.contains(option.id)) option.label,
+    ];
+
+    // Kişiler silinmişse etiket kalmaz; satır ipucunu gösteriyor.
+    return labels.isEmpty ? null : labels.join(', ');
   }
 
   /// "Tarih aralığı: 2024 – 2026" — tek yıl varsa "2026".
@@ -410,7 +407,7 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
           RitualDraft(
             title: title,
             recurrenceType: _recurrence,
-            relatedPersonId: _relatedPersonId,
+            personIds: {..._personIds},
             // BR-012 — bağ hangi YILA ait olduğunu taşımak zorunda. Yılı
             // anının tarihinden alıyoruz: kullanıcı forma tarih girmiyor,
             // seçtiği anıların yılları şeridi kuruyor.

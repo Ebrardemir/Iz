@@ -61,6 +61,12 @@ Future<void> pumpForm(
       kind: PersonKind.human,
       relationType: RelationType.parent,
     ),
+    Person(
+      id: 'kisi-babam',
+      name: 'Babam',
+      kind: PersonKind.human,
+      relationType: RelationType.parent,
+    ),
   ]);
   addTearDown(people.dispose);
 
@@ -241,50 +247,61 @@ void main() {
     });
   });
 
-  group('ilgili kişi', () {
-    // ÇOKLU SEÇİM TEKİLE İNDİ: `Rituals` tablosunda tekil bir
-    // `relatedPersonId` sütunu var (TRD M6.1). Tasarım çoklu istiyordu
-    // ("aile yemeği"); çoklu seçim ayrı bir bağ tablosu gerektiriyor ve o
-    // karar ürün tarafında.
+  group('ilgili kişiler', () {
     testWidgets('kişilerim listeleniyor', (tester) async {
       await pumpForm(tester);
       await openSection(tester, 'İlgili Kişiler');
 
       expect(find.text('Annem'), findsOneWidget);
+      expect(find.text('Babam'), findsOneWidget);
     });
 
-    testWidgets('TEK seçim: ikinci kişi birinciyi değiştiriyor', (
+    testWidgets('ÇOK seçim: satır açık kalıyor, adlar birleşiyor', (
       tester,
     ) async {
+      // Bir seri birden fazla kişiyle paylaşılıyor (aile yemeği). Şema v7'ye
+      // kadar tekil bir sütun vardı ve form çoklu gösterip tekil kaydediyordu.
       await pumpForm(tester);
       await openSection(tester, 'İlgili Kişiler');
       await tester.tap(find.text('Annem'));
       await settle(tester);
+      // Satır KAPANMIYOR: ikinciye dokunabiliyoruz.
+      await tester.tap(find.text('Babam'));
+      await settle(tester);
 
-      await tester.enterText(find.byType(TextField).first, 'Doğum Günleri');
+      expect(find.text('Annem, Babam'), findsOneWidget);
+    });
+
+    testWidgets('seçilen kişiler KAYDA giriyor', (tester) async {
+      await pumpForm(tester);
+      await tester.enterText(find.byType(TextField).first, 'Aile Yemekleri');
+      await openSection(tester, 'İlgili Kişiler');
+      await tester.tap(find.text('Annem'));
+      await settle(tester);
+      await tester.tap(find.text('Babam'));
+      await settle(tester);
+      await openSection(tester, 'İlgili Kişiler');
       await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      expect(rituals.saved.single.relatedPersonId, 'kisi-annem');
+      expect(rituals.saved.single.personIds, {'kisi-annem', 'kisi-babam'});
     });
 
     testWidgets('tekrar dokunmak seçimi kaldırıyor', (tester) async {
       // Kişi zorunlu değil; yanlış seçenin geri dönüş yolu olmalı.
       await pumpForm(tester);
+      await tester.enterText(find.byType(TextField).first, 'Aile Yemekleri');
       await openSection(tester, 'İlgili Kişiler');
       await tester.tap(find.text('Annem'));
       await settle(tester);
-      await openSection(tester, 'İlgili Kişiler');
-      // `.last`: seçimden sonra satırın DEĞERİ de "Annem" yazıyor, yani metin
-      // iki yerde geçiyor. Listedeki seçeneği hedefliyoruz.
+      // `.last`: seçimden sonra satırın DEĞERİ de "Annem" yazıyor.
       await tester.tap(find.text('Annem').last);
       await settle(tester);
-
-      await tester.enterText(find.byType(TextField).first, 'Doğum Günleri');
+      await openSection(tester, 'İlgili Kişiler');
       await tester.tap(find.text('Seriyi Oluştur'));
       await settle(tester);
 
-      expect(rituals.saved.single.relatedPersonId, isNull);
+      expect(rituals.saved.single.personIds, isEmpty);
     });
   });
 
@@ -367,7 +384,7 @@ void main() {
       await settle(tester);
 
       final created = rituals.saved.single;
-      expect(created.relatedPersonId, 'kisi-annem');
+      expect(created.personIds, {'kisi-annem'});
     });
   });
 

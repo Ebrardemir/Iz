@@ -30,7 +30,6 @@ final class Ritual extends Equatable {
     required this.id,
     required this.title,
     required this.recurrenceType,
-    this.relatedPersonId,
     this.anchorMonth,
     this.anchorDay,
     this.iconKey = 'ritual',
@@ -39,9 +38,6 @@ final class Ritual extends Equatable {
   final String id;
   final String title;
   final RecurrenceType recurrenceType;
-
-  /// FR-064 — kişiye özel ritüeller (annemin doğum günü).
-  final String? relatedPersonId;
 
   /// yearly ritüellerde hatırlatma tarihi (FR-152).
   final int? anchorMonth;
@@ -69,7 +65,6 @@ final class Ritual extends Equatable {
   Ritual copyWith({
     String? title,
     RecurrenceType? recurrenceType,
-    String? relatedPersonId,
     int? anchorMonth,
     int? anchorDay,
     String? iconKey,
@@ -77,7 +72,6 @@ final class Ritual extends Equatable {
     id: id,
     title: title ?? this.title,
     recurrenceType: recurrenceType ?? this.recurrenceType,
-    relatedPersonId: relatedPersonId ?? this.relatedPersonId,
     anchorMonth: anchorMonth ?? this.anchorMonth,
     anchorDay: anchorDay ?? this.anchorDay,
     iconKey: iconKey ?? this.iconKey,
@@ -88,7 +82,6 @@ final class Ritual extends Equatable {
     id,
     title,
     recurrenceType,
-    relatedPersonId,
     anchorMonth,
     anchorDay,
     iconKey,
