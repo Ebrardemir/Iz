@@ -4,7 +4,9 @@
 ///   • kapak alanına dokunmak galeriyi açar
 ///   • TARİH ARALIĞI var (seride yok — koleksiyon anılardan önce kurulabiliyor)
 ///     ve tek takvimde iki tarih seçiliyor
-///   • kişiler ve kategori AŞAĞI doğru açılır, aynı anda yalnızca biri açık
+///   • KİŞİ ve KATEGORİ SORULMUYOR: ikisinin de `Collections` tablosunda
+///     karşılığı yok. Kategori anıya ait (TR-M6-03); koleksiyonun kişileri
+///     ise anılarından türetilecek.
 ///   • AppBar'da tik YOK: oluşturma tek yerden
 ///   • ad boşsa oluşturmaz
 ///
@@ -98,11 +100,6 @@ Future<void> pumpForm(
   await settle(tester);
 }
 
-Future<void> openSection(WidgetTester tester, String label) async {
-  await tester.tap(find.text(label));
-  await settle(tester);
-}
-
 void main() {
   setUpAll(loadRealFonts);
 
@@ -117,8 +114,6 @@ void main() {
         'Koleksiyon Adı',
         'Açıklama',
         'Tarih Aralığı',
-        'İlgili Kişiler',
-        'Kategori',
         'İlk Anıları Ekle',
       ]) {
         expect(find.text(label), findsOneWidget, reason: label);
@@ -138,10 +133,15 @@ void main() {
     testWidgets('SERİ FORMUYLA aynı parçalar', (tester) async {
       // İki form birbirinin kopyası değil; `shared/`taki aynı parçaların iki
       // dizilişi. Biri düzeltilince öteki de düzeliyor.
+      //
+      // AÇILIR SATIR (`IzExpandableRow`) ARTIK YOK: kişi ve kategori
+      // kaldırıldı (ikisinin de `Collections`ta karşılığı yoktu). Kalan
+      // alanların hepsi düz satır.
       await pumpForm(tester);
 
       expect(find.byType(IzFormCard), findsWidgets);
-      expect(find.byType(IzExpandableRow), findsNWidgets(2));
+      expect(find.byType(IzCoverPicker), findsOneWidget);
+      expect(find.byType(IzExpandableRow), findsNothing);
     });
   });
 
@@ -186,43 +186,6 @@ void main() {
     });
   });
 
-  group('kişiler ve kategori', () {
-    testWidgets('kişiler ÇOK seçim, satır açık kalıyor', (tester) async {
-      await pumpForm(tester);
-      await openSection(tester, 'İlgili Kişiler');
-
-      await tester.tap(find.text('Annem'));
-      await settle(tester);
-      await tester.tap(find.text('Babam'));
-      await settle(tester);
-
-      expect(find.text('Elif'), findsOneWidget);
-      expect(find.text('Annem, Babam'), findsOneWidget);
-    });
-
-    testWidgets('kategori TEK seçim, satır kapanıyor', (tester) async {
-      await pumpForm(tester);
-      await openSection(tester, 'Kategori');
-
-      await tester.tap(find.text('Aile').first);
-      await settle(tester);
-
-      expect(find.text('Kategori seç'), findsNothing);
-      expect(find.text('Seyahat'), findsNothing);
-    });
-
-    testWidgets('AKORDEON: ikinciyi açmak birinciyi kapatıyor', (tester) async {
-      await pumpForm(tester);
-      await openSection(tester, 'İlgili Kişiler');
-      expect(find.text('Annem'), findsOneWidget);
-
-      await openSection(tester, 'Kategori');
-
-      expect(find.text('Annem'), findsNothing);
-      expect(find.text('Seyahat'), findsWidgets);
-    });
-  });
-
   group('oluşturma', () {
     testWidgets('ad boşsa uyarıyor ve oluşturmuyor', (tester) async {
       await pumpForm(tester);
@@ -253,13 +216,6 @@ void main() {
 
       await tester.enterText(find.byType(TextField).first, 'Kapadokya 2026');
       await tester.enterText(find.byType(TextField).at(1), 'Balonlar ve vadi');
-      await openSection(tester, 'İlgili Kişiler');
-      await tester.tap(find.text('Annem'));
-      await settle(tester);
-      // Açılan kişi listesi düğmeyi ekranın DIŞINA itiyor ve `ListView`
-      // görünmeyen çocukları hiç kurmuyor: `ensureVisible` de bulamıyor.
-      // Gerçek kullanıcı gibi kaydırıyoruz.
-      await tester.drag(find.byType(ListView), const Offset(0, -400));
       await settle(tester);
       await tester.tap(find.text('Koleksiyonu Oluştur'));
       await settle(tester);
