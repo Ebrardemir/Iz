@@ -10,14 +10,12 @@
 ///   │ [ T  │ Koleksiyon Adı     ]  │
 ///   │ [ ≡  │ Açıklama           ]  │
 ///   │ [ 📅 │ Tarih Aralığı      ]  │  → tek takvimde başlangıç ve bitiş
-///   │ [ 👥 │ İlgili Kişiler   ⌄  ]  │  → kişilerim listesi
-///   │ [ 🏷 │ Kategori         ⌄  ]  │  → sistem kategorileri
 ///   │ [ 🖼 │ İlk Anıları Ekle ›  ]  │  → anı seçme sayfası
 ///   │ [   Koleksiyonu Oluştur    ] │
 ///   └──────────────────────────────┘
 ///
-/// SERİ FORMUYLA AYNI PARÇALAR: kapak kutusu, satırlar, açılır seçiciler ve
-/// anı seçme ekranı `shared/`ta yaşıyor (`IzCoverPicker`, `IzFormRow`,
+/// SERİ FORMUYLA AYNI PARÇALAR: kapak kutusu, satırlar ve anı seçme ekranı
+/// `shared/`ta yaşıyor (`IzCoverPicker`, `IzFormRow`,
 /// `IzMemoryPickerView`). İki form birbirinin kopyası değil, aynı parçaların
 /// iki farklı dizilişi — biri düzeltilince öteki de düzeliyor.
 ///
@@ -65,14 +63,11 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
 
-/// Formdaki açılabilir satırlar.
-///
-/// Enum, bool ikilisi DEĞİL: "hangisi açık" tek bir değer ve akordeon kuralını
-/// (aynı anda tek satır) kodun kendisine yazıyor.
 class CollectionEditorView extends ConsumerStatefulWidget {
   const CollectionEditorView({super.key});
 
@@ -91,8 +86,10 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  /// ⚠️ GEÇİCİ [MediaItem]: medya hattı kurulmadı, elimizde yalnızca dosya
-  /// yolu var (seri ve kişi formlarıyla aynı durum).
+  /// Seçilen kapak — kalıcı bir [MediaItem].
+  ///
+  /// Dosya uygulama alanına kopyalanıp `MediaItems` tablosuna yazıldıktan
+  /// sonra buraya konuyor; `coverMediaId` gerçek bir satıra işaret ediyor.
   MediaItem? _cover;
 
   DateTimeRange? _dateRange;
@@ -243,22 +240,36 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
     // Seçici uygulamanın DIŞINDA çalışıyor; dönüşte ekran hâlâ ayakta mı?
     if (!mounted) return;
 
-    result.fold(
-      onOk: (images) {
-        final path = images.firstOrNull?.path;
-        if (path == null) return; // vazgeçti — bir hata değil, bir karar
-        setState(
-          () => _cover = MediaItem(
-            id: 'picked:$path',
-            type: MediaType.photo,
-            originalStatus: MediaOriginalStatus.available,
-            localPreviewPath: path,
-          ),
-        );
-      },
-      onErr: (failure) =>
-          context.showSnack(failure.localizedMessage(context.l10n)),
-    );
+    switch (result) {
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+      case Ok(:final value):
+        final path = value.firstOrNull?.path;
+        // Vazgeçti — bir hata değil, bir karar.
+        if (path == null) return;
+        await _importCover(path);
+    }
+  }
+
+  /// Seçilen kapağı KALICI hâle getirir.
+  ///
+  /// Önce yalnız dosya yolunu tutan geçici bir [MediaItem] üretiliyordu;
+  /// `coverMediaId` var olmayan bir kimliğe işaret ediyor ve kapak hiçbir
+  /// yerde görünmüyordu. Artık dosya uygulama alanına kopyalanıyor ve
+  /// `MediaItems` tablosuna bir satır yazılıyor (TR-M4-11).
+  Future<void> _importCover(String path) async {
+    final imported = await ref.read(mediaRepositoryProvider).importPicked([
+      path,
+    ]);
+
+    if (!mounted) return;
+
+    switch (imported) {
+      case Ok(:final value):
+        if (value.isNotEmpty) setState(() => _cover = value.first);
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 
   Future<void> _pickDateRange() async {

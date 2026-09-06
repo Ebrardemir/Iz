@@ -23,6 +23,7 @@ import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/people/presentation/person_l10n.dart';
 import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
@@ -194,7 +195,7 @@ class _PeopleListState extends State<_PeopleList> {
             dividerInset: PersonRow.kInset + PersonRow.kAvatarSize,
             rows: [
               for (final person in people)
-                PersonRow(
+                _PersonRowWithAvatar(
                   person: person,
                   onTap: () => context.pushNamed(
                     AppRoute.personDetail.name,
@@ -327,5 +328,31 @@ class _EmptyState extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Kişi satırı + avatarını çözen küçük sarmalayıcı.
+///
+/// NEDEN AYRI WIDGET?
+/// [PersonRow] saf bir widget: hazır bir [MediaItem] alıyor, Riverpod
+/// bilmiyor (bkz. kendi notu). Kimliği görsele çevirmek bir veri işi ve
+/// satır başına ayrı bir abonelik gerektiriyor; listedeki her satırın kendi
+/// küçük sarmalayıcısı olması, tüm listeyi tek bir medya sorgusuna
+/// bağlamaktan daha ucuz — biri değişince yalnız o satır yeniden çiziliyor.
+class _PersonRowWithAvatar extends ConsumerWidget {
+  const _PersonRowWithAvatar({required this.person, required this.onTap});
+
+  final Person person;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Avatarı olmayan kişi için sorgu bile açmıyoruz.
+    final mediaId = person.avatarMediaId;
+    final photo = mediaId == null
+        ? null
+        : ref.watch(mediaItemProvider(mediaId)).value;
+
+    return PersonRow(person: person, photo: photo, onTap: onTap);
   }
 }
