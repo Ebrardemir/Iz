@@ -15,7 +15,7 @@ import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
-import 'package:iz/features/rituals/presentation/views/ritual_detail_preview_data.dart';
+import 'package:iz/features/rituals/presentation/views/ritual_detail_view.dart';
 import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Serinin kapak görseli.
@@ -207,22 +207,13 @@ class RitualMemoryRow extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(AppRadius.sm),
-                  child: Image.asset(
-                    memory.imageAsset,
-                    width: kCoverWidth,
-                    height: kCoverHeight,
-                    fit: BoxFit.cover,
-                    // Kapak bulunamazsa liste çökmesin (NFR-021).
-                    errorBuilder: (context, error, stack) => ColoredBox(
-                      color: colors.surfaceContainerHighest,
-                      child: const SizedBox(
-                        width: kCoverWidth,
-                        height: kCoverHeight,
-                      ),
-                    ),
-                  ),
+                // Kapağı olmayanı ve dosyası kaybolanı `MediaThumbnail`
+                // kendi içinde çiziyor (NFR-021 / TR-M4-13).
+                MediaThumbnail(
+                  media: memory.cover,
+                  width: kCoverWidth,
+                  height: kCoverHeight,
+                  borderRadius: AppRadius.sm,
                 ),
                 const SizedBox(width: AppSpacing.md - 4),
 

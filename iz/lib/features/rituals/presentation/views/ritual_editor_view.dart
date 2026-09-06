@@ -38,6 +38,8 @@
 /// Hat kurulduğunda `_create` içindeki tek çağrı değişecek.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,16 +48,16 @@ import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/l10n/failure_l10n.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/media/media_picker.dart';
+import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/features/categories/domain/entities/memory_category.dart';
-import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
+import 'package:iz/features/memories/presentation/view_models/memory_form_options.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/rituals/domain/repositories/ritual_repository.dart';
 import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
-import 'package:iz/features/rituals/presentation/view_models/created_rituals_view_model.dart';
-import 'package:iz/shared/preview/form_preview_data.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
@@ -65,7 +67,7 @@ import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 /// Enum, bool üçlüsü DEĞİL: "hangisi açık" tek bir değer ve bunu tek bir
 /// alanda tutmak akordeon kuralını (aynı anda tek satır) kodun kendisine
 /// yazıyor — üç bool'la o kural her `setState`te elle korunmak zorundaydı.
-enum _RitualSection { recurrence, people, category }
+enum _RitualSection { recurrence, person }
 
 class RitualEditorView extends ConsumerStatefulWidget {
   const RitualEditorView({super.key});
@@ -82,12 +84,15 @@ class RitualEditorView extends ConsumerStatefulWidget {
 
 class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
 
   /// Kapak görseli.
   ///
   /// ⚠️ GEÇİCİ [MediaItem]: medya hattı (dosyayı uygulama alanına kopyalama,
   /// önizleme üretme) kurulmadı, elimizde yalnızca dosya yolu var.
+  /// ⚠️ KAYDEDİLMİYOR: `Rituals` tablosunda kapak sütunu yok (TRD M6.1).
+  /// Seri kartının görselleri zaten bağlı ANILARDAN geliyor, ayrı bir kapağa
+  /// ihtiyaç duymuyor. Alanın kaldırılması bir tasarım kararı; şimdilik
+  /// duruyor ama hiçbir yere yazılmıyor.
   MediaItem? _cover;
 
   /// Referansta "Her yıl" seçili geliyor ve doğrusu bu: ritüellerin çoğu
@@ -95,8 +100,15 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   /// karara sokardı.
   RecurrenceType _recurrence = RecurrenceType.yearly;
 
-  final Set<String> _personIds = {};
-  String? _categoryId;
+  /// FR-064 — seriye bağlı KİŞİ.
+  ///
+  /// TASARIM ÇOKLU SEÇİM İSTİYORDU ("aile yemeği birden fazla kişiyle
+  /// paylaşılıyor") ama `Rituals` tablosunda tekil bir `relatedPersonId`
+  /// sütunu var (TRD M6.1). Çoklu seçim ayrı bir bağ tablosu gerektiriyor;
+  /// şemayı tek başına genişletmek yerine bugün tekil kaydediyoruz ve karar
+  /// ürün tarafına bırakılıyor. TRD'deki örnek de tekil: "Annemin Doğum
+  /// Günleri".
+  String? _relatedPersonId;
 
   /// Seçilen anılar — tarih aralığı bunlardan türetiliyor.
   List<Memory> _memories = const [];
@@ -111,13 +123,18 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   @override
   void dispose() {
     _titleController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // SEÇENEKLERİ BURADA İZLİYORUZ, dokunma anında OKUMUYORUZ: `ref.read`
+    // bir `StreamProvider`ı ilk kez okuduğunda akış henüz değer yaymamış
+    // olur ve liste boş açılırdı.
+    final peopleOptions =
+        ref.watch(memoryPeopleOptionsProvider).value ??
+        const <IzSelectionOption>[];
 
     return Scaffold(
       // APPBAR'DA TİK YOK — kullanıcının kararı ve doğrusu bu.
@@ -160,24 +177,6 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
           if (_titleError case final error?) _ErrorNote(error),
           const SizedBox(height: AppSpacing.sm),
 
-          // --- AÇIKLAMA ------------------------------------------------------
-          IzFormCard(
-            child: IzFormRow(
-              icon: AppIcons.description,
-              label: l10n.ritualFieldDescription,
-              child: IzInlineField(
-                controller: _descriptionController,
-                hint: l10n.ritualFieldDescriptionHint,
-                maxLength: RitualEditorView.kDescriptionMaxLength,
-                textCapitalization: TextCapitalization.sentences,
-                // İki satıra kadar büyüyor: "kısa açıklama" sözü tutuluyor
-                // ama uzun yazan kullanıcının satırı kesilmiyor.
-                maxLines: 2,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
           // --- TEKRARLAMA ----------------------------------------------------
           IzExpandableRow(
             icon: AppIcons.recurrence,
@@ -204,57 +203,27 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // --- İLGİLİ KİŞİLER ------------------------------------------------
+          // --- İLGİLİ KİŞİ ---------------------------------------------------
           IzExpandableRow(
             icon: AppIcons.people,
             label: l10n.ritualFieldPeople,
-            value: _joinLabels(FormPreviewData.people, _personIds),
+            value: _personLabel(peopleOptions),
             hint: l10n.ritualFieldPeopleHint,
-            isExpanded: _openSection == _RitualSection.people,
-            onToggle: () => _toggleSection(_RitualSection.people),
+            isExpanded: _openSection == _RitualSection.person,
+            onToggle: () => _toggleSection(_RitualSection.person),
             children: [
-              for (final person in FormPreviewData.people)
+              for (final person in peopleOptions)
                 IzOptionTile(
                   label: person.label,
                   icon: person.icon,
-                  isSelected: _personIds.contains(person.id),
-                  // ÇOK SEÇİM: bir ritüel birden fazla kişiyle paylaşılıyor
-                  // (aile yemeği). Bu yüzden seçimde satır KAPANMIYOR.
-                  allowMultiple: true,
-                  onTap: () => setState(() {
-                    _personIds.contains(person.id)
-                        ? _personIds.remove(person.id)
-                        : _personIds.add(person.id);
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // --- KATEGORİ ------------------------------------------------------
-          IzExpandableRow(
-            icon: AppIcons.fallbackCategory,
-            label: l10n.ritualFieldCategory,
-            value: _categoryLabel(l10n),
-            hint: l10n.ritualFieldCategoryHint,
-            isExpanded: _openSection == _RitualSection.category,
-            onToggle: () => _toggleSection(_RitualSection.category),
-            children: [
-              for (final category in SystemCategory.values)
-                IzOptionTile(
-                  label:
-                      systemCategoryName(category.nameKey, l10n) ??
-                      category.nameKey,
-                  icon: AppIcons.forKey(category.iconKey),
-                  isSelected: _categoryId == category.id,
+                  isSelected: _relatedPersonId == person.id,
+                  // TEK SEÇİM: sütun tekil (`relatedPersonId`). Aynısına
+                  // tekrar dokunmak seçimi kaldırıyor — kişi zorunlu değil.
                   allowMultiple: false,
                   onTap: () => setState(() {
-                    // Aynısına tekrar dokunmak SEÇİMİ KALDIRIYOR: kategori
-                    // zorunlu değil ve yanlış seçen kullanıcının geri dönüş
-                    // yolu olmalı.
-                    _categoryId = _categoryId == category.id
+                    _relatedPersonId = _relatedPersonId == person.id
                         ? null
-                        : category.id;
+                        : person.id;
                     _openSection = null;
                   }),
                 ),
@@ -343,23 +312,17 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   String _labelOf(RecurrenceType type, AppL10n l10n) =>
       Ritual(id: '', title: '', recurrenceType: type).recurrenceLabel(l10n);
 
-  String? _categoryLabel(AppL10n l10n) {
-    final id = _categoryId;
+  /// Seçili kişilerin adları — "Annem, Babam".
+  /// Seçili kişinin adı — seçilmemişse null.
+  String? _personLabel(List<IzSelectionOption> options) {
+    final id = _relatedPersonId;
     if (id == null) return null;
 
-    final category = SystemCategory.values.where((c) => c.id == id).firstOrNull;
-    if (category == null) return null;
-
-    return systemCategoryName(category.nameKey, l10n) ?? category.nameKey;
-  }
-
-  /// Seçili kişilerin adları — "Annem, Babam".
-  String? _joinLabels(List<IzSelectionOption> options, Set<String> selected) {
-    final labels = [
-      for (final option in options)
-        if (selected.contains(option.id)) option.label,
-    ];
-    return labels.isEmpty ? null : labels.join(', ');
+    for (final option in options) {
+      if (option.id == id) return option.label;
+    }
+    // Kişi silinmişse etiketi yok; satır ipucunu gösteriyor.
+    return null;
   }
 
   /// "Tarih aralığı: 2024 – 2026" — tek yıl varsa "2026".
@@ -433,27 +396,44 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
       return;
     }
 
-    // ⚠️ VERİTABANI YOK: kayıt oturum belleğine gidiyor
-    // (bkz. `created_rituals_view_model.dart`). Hat kurulduğunda burası
-    // `ref.read(saveRitualProvider)(...)` olacak, formun geri kalanı aynı
-    // kalacak.
-    //
-    // Kimlik ZAMANDAN üretiliyor çünkü repository yok; gerçek kimliği
-    // veritabanı verecek.
-    ref.read(createdRitualsProvider.notifier).add((
-      id: 'ritual-${DateTime.now().microsecondsSinceEpoch}',
-      title: title,
-      description: _descriptionController.text.trim(),
-      recurrence: _recurrence,
-      personIds: {..._personIds},
-      categoryId: _categoryId,
-      cover: _cover,
-      memories: _memories,
-    ));
+    unawaited(_persist(title));
+  }
 
-    context
-      ..pop()
-      ..showSnack(l10n.ritualCreated);
+  /// Kaydeder ve ekranı kapatır.
+  ///
+  /// HATADA ekran KAPANMIYOR: form dolu kalıyor ki kullanıcı yazdıklarını
+  /// kaybetmesin. Kişi ve koleksiyon formlarındaki kararın aynısı.
+  Future<void> _persist(String title) async {
+    final result = await ref
+        .read(ritualRepositoryProvider)
+        .save(
+          RitualDraft(
+            title: title,
+            recurrenceType: _recurrence,
+            relatedPersonId: _relatedPersonId,
+            // BR-012 — bağ hangi YILA ait olduğunu taşımak zorunda. Yılı
+            // anının tarihinden alıyoruz: kullanıcı forma tarih girmiyor,
+            // seçtiği anıların yılları şeridi kuruyor.
+            occurrences: [
+              for (final memory in _memories)
+                (memoryId: memory.id, year: memory.occurredAt.year),
+            ],
+          ),
+        );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok():
+        // Kullanıcı listeye değil geldiği yere dönüyor ve yeni seriyi
+        // göremiyor; gördüğü şeyi tekrar söylemiyoruz, görmediğini haber
+        // veriyoruz.
+        context
+          ..pop()
+          ..showSnack(context.l10n.ritualCreated);
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 }
 

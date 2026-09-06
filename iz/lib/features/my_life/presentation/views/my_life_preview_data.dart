@@ -14,14 +14,11 @@
 library;
 
 import 'package:iz/core/extensions/date_x.dart';
-import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/my_life/presentation/widgets/day_memory_card.dart';
-import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
-import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
 
 /// Görünen ayda anısı olan günler.
 ///
@@ -199,107 +196,11 @@ abstract final class MyLifePreviewData {
   // Aşağıdaki `_collections` DURUYOR: `collectionMemoryDetail` hâlâ anı
   // detayını oradan çözüyor ve o hattın sırası M6'nın devamında gelecek.
 
-  // --- SERİLERİM sekmesi ----------------------------------------------------
-
-  /// Sahte ritüeller — GERÇEK `Ritual` entity'si olarak.
-  ///
-  /// Uydurma bir kayıt tipi yazmıyoruz: kartın altyazısı ("Her yıl 3 Mart'ta")
-  /// `recurrenceType` + `anchorMonth` + `anchorDay`dan türetiliyor ve o zincir
-  /// veri bağlandığında AYNEN kalacak. Önizleme ile üretim arasındaki tek fark
-  /// bu listenin nereden geldiği olacak.
-  static final List<Ritual> _rituals = [
-    const Ritual(
-      id: 'rit-yaz',
-      title: 'Yaz Tatillerimiz',
-      // Tarihi kayan ritüel: her yıl aynı güne denk gelmiyor.
-      recurrenceType: RecurrenceType.seasonal,
-      anchorMonth: 7,
-      iconKey: 'summer',
-    ),
-    const Ritual(
-      id: 'rit-dogumgunu',
-      title: 'Annemin Doğum Günleri',
-      recurrenceType: RecurrenceType.yearly,
-      anchorMonth: 3,
-      anchorDay: 3,
-      iconKey: 'birthday',
-    ),
-    const Ritual(
-      id: 'rit-yildonumu',
-      title: 'Yıldönümlerimiz',
-      recurrenceType: RecurrenceType.yearly,
-      anchorMonth: 5,
-      anchorDay: 15,
-      iconKey: 'anniversary',
-    ),
-  ];
-
-  /// Ritüel kimliği → yılların anıları. Şerit bunları yeniden ESKİYE doğru
-  /// sıralı gösteriyor (tasarımdaki sıra: 2023, 2022, 2021…).
-  static const Map<String, List<_RawYear>> _yearsByRitual = {
-    'rit-yaz': [
-      (year: 2026, asset: 'assets/images/home/hero_today.jpg', place: 'Çeşme'),
-      (year: 2025, asset: 'assets/images/home/memory_coffee.jpg', place: 'Kaş'),
-      (year: 2024, asset: 'assets/images/auth/hero_light.jpg', place: 'Datça'),
-      (year: 2023, asset: 'assets/images/home/hero_today.jpg', place: 'Çeşme'),
-      // Beşinci yıl BİLEREK var: şerit kaydırılabilir hâle geliyor ve
-      // alttaki gösterge görünüyor.
-      (
-        year: 2022,
-        asset: 'assets/images/home/memory_coffee.jpg',
-        place: 'Ayvalık',
-      ),
-    ],
-    'rit-dogumgunu': [
-      (
-        year: 2026,
-        asset: 'assets/images/home/memory_coffee.jpg',
-        place: 'Ankara',
-      ),
-      (year: 2025, asset: 'assets/images/auth/hero_light.jpg', place: 'Ankara'),
-      (year: 2024, asset: 'assets/images/home/hero_today.jpg', place: 'İzmir'),
-    ],
-    'rit-yildonumu': [
-      (year: 2026, asset: 'assets/images/auth/hero_light.jpg', place: null),
-      (
-        year: 2025,
-        asset: 'assets/images/home/hero_today.jpg',
-        place: 'Venedik',
-      ),
-    ],
-  };
-
-  /// Kartların beklediği hâle çevirir: altyazı tekrar tipinden, yıllar
-  /// haritadan.
-  static List<SeriesCardData> series(AppL10n l10n) {
-    return [
-      for (final ritual in _rituals)
-        (
-          id: ritual.id,
-          iconKey: ritual.iconKey,
-          title: ritual.title,
-          // Dilbilgisi burada değil çeviride çözülüyor: Türkçede ek aya göre
-          // değişiyor (Mart'ta / Nisan'da / Eylül'de).
-          subtitle: ritual.recurrenceLabel(l10n),
-          years: [
-            for (final year in _yearsByRitual[ritual.id] ?? const <_RawYear>[])
-              (
-                memoryId: '${ritual.id}-${year.year}',
-                year: year.year,
-                imageAsset: year.asset,
-                placeLabel: year.place,
-              ),
-          ],
-        ),
-    ];
-  }
-
-  /// Kimlikten seri kartı — seri detay ekranı başlığı için.
-  ///
-  /// Başlığı ikinci kez yazmak yerine kartların kaynağından okuyoruz: aynı
-  /// seri iki yerde farklı adla görünmemeli.
-  static SeriesCardData? seriesCardOf(String id, AppL10n l10n) =>
-      series(l10n).where((card) => card.id == id).firstOrNull;
+  // --- SERİLERİM sekmesi ---------------------------------------------------
+  //
+  // Sahte seriler BURADAN KALDIRILDI: seriler artık veritabanından geliyor
+  // (bkz. `RitualRepository`). Aynı veri testlerde gerekiyordu,
+  // `test/helpers/rituals_fixture.dart`a taşındı.
 
   // --- ÖNİZLEME ANILARININ DETAY HÂLİ --------------------------------------
   //
@@ -366,34 +267,6 @@ abstract final class MyLifePreviewData {
   /// Kimlik `<seriKimliği>-<yıl>` biçiminde üretiliyor (bkz. [series]); buradan
   /// geriye ayrıştırıp hangi serinin hangi yılı olduğunu buluyoruz. Detayda
   /// seri satırı bu yüzden dolu geliyor.
-  static MemoryDetail? seriesYearDetail(String memoryId) {
-    for (final ritual in _rituals) {
-      for (final year in _yearsByRitual[ritual.id] ?? const <_RawYear>[]) {
-        if (memoryId != '${ritual.id}-${year.year}') continue;
-
-        return _detail(
-          id: memoryId,
-          // Seri anısının kendi başlığı yok; serinin adı + yıl en anlamlı
-          // karşılık ("Yaz Tatillerimiz 2026").
-          title: '${ritual.title} ${year.year}',
-          // Ayı seriden alıyoruz (`anchorMonth`), yılı şeritten.
-          occurredAt: DateTime(year.year, ritual.anchorMonth ?? 1, 1),
-          locationLabel: year.place,
-          photoAssets: [year.asset],
-          ritual: Ritual(
-            id: ritual.id,
-            title: ritual.title,
-            recurrenceType: ritual.recurrenceType,
-            anchorMonth: ritual.anchorMonth,
-            anchorDay: ritual.anchorDay,
-            iconKey: ritual.iconKey,
-          ),
-          ritualYear: year.year,
-        );
-      }
-    }
-    return null;
-  }
 
   /// Sahte bir `MemoryDetail` kurar.
   ///
@@ -445,8 +318,6 @@ abstract final class MyLifePreviewData {
 }
 
 /// Bir serinin tek yılının ham biçimi — yalnızca bu dosyanın içi.
-typedef _RawYear = ({int year, String asset, String? place});
-
 /// Sahte koleksiyonun ham biçimi — yalnızca bu dosyanın içi.
 typedef _RawCollection = ({
   String id,

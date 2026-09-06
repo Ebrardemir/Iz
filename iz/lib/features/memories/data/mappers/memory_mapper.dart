@@ -18,7 +18,7 @@ import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/daos/memory_dao.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
-import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/rituals/data/mappers/ritual_mapper.dart';
 
 abstract final class MemoryMapper {
   // --- Satır → Domain ------------------------------------------------------
@@ -124,18 +124,6 @@ abstract final class PersonMapper {
     avatarMediaId: row.avatarMediaId,
     note: row.note,
     isFavorite: row.isFavorite,
-  );
-}
-
-abstract final class RitualMapper {
-  static Ritual toDomain(RitualRow row) => Ritual(
-    id: row.id,
-    title: row.title,
-    recurrenceType: row.recurrenceType,
-    relatedPersonId: row.relatedPersonId,
-    anchorMonth: row.anchorMonth,
-    anchorDay: row.anchorDay,
-    iconKey: row.iconKey,
   );
 }
 

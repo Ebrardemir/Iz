@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/theme/app_icons.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_grid.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
@@ -30,8 +31,10 @@ import '../helpers/collections_fixture.dart';
 import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/fake_person_repository.dart';
+import '../helpers/fake_ritual_repository.dart';
 import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
+import '../helpers/rituals_fixture.dart';
 
 void main() {
   setUpAll(loadRealFonts);
@@ -39,13 +42,21 @@ void main() {
   late FakeMemoryRepository repository;
   late FakePersonRepository people;
   late FakeCollectionRepository collections;
+  late FakeRitualRepository rituals;
 
   setUp(() {
     // Koleksiyon kartları anılarını `MemoryRepository`den alıyor; sahte anı
     // deposu koleksiyon fikstürünün anılarını da taşımalı.
-    repository = FakeMemoryRepository(CollectionsFixture.memories);
+    repository = FakeMemoryRepository([
+      ...CollectionsFixture.memories,
+      ...RitualsFixture.memories,
+    ]);
     collections = FakeCollectionRepository(CollectionsFixture.collections)
       ..links.addAll(CollectionsFixture.links);
+    // Seri sekmesi testleri karta ve yıl şeridine dokunuyor; liste boş
+    // olsaydı dokunacak bir şey olmazdı.
+    rituals = FakeRitualRepository(RitualsFixture.rituals)
+      ..occurrences.addAll(RitualsFixture.occurrences);
     // Gezinme testleri kişi satırına dokunup detaya gidiyor; liste boş
     // olsaydı dokunacak satır olmazdı.
     people = FakePersonRepository(PeopleFixture.people);
@@ -54,6 +65,7 @@ void main() {
     repository.dispose();
     people.dispose();
     collections.dispose();
+    rituals.dispose();
   });
 
   Future<void> pump(WidgetTester tester) => pumpApp(
@@ -63,6 +75,7 @@ void main() {
     // Koleksiyon sekmesi testleri karta ve içindeki anı satırına dokunuyor;
     // liste boş olsaydı dokunacak bir şey olmazdı.
     collections: collections,
+    rituals: rituals,
   );
 
   /// Uygulamayı kurar, "Hayatım" sekmesine geçip istenen alt sekmeyi açar.
@@ -208,6 +221,11 @@ void main() {
       await openMyLifeTab(tester, 'SERİLERİM');
 
       expect(find.byType(SeriesCard), findsWidgets);
+      // YIL ŞERİDİ KAYDIRILABİLİR: altı yıllı bir seride son yıl ekranın
+      // dışında kalıyor ve doğrudan dokunma boşa gider. Gerçek kullanıcı gibi
+      // önce görünür yapıyoruz.
+      await tester.ensureVisible(find.text('2026').first);
+      await tester.pump();
       await tester.tap(find.text('2026').first);
       await settle(tester);
 
@@ -215,8 +233,24 @@ void main() {
     });
 
     testWidgets('detay SERİ satırını dolu gösteriyor', (tester) async {
+      // SAHTE DEPO İLİŞKİLERİ TÜRETMİYOR (bkz. `fake_memory_repository.dart`):
+      // `Memory` listesinden çıkarılan detay hep ilişkisiz gelir. Anı detayının
+      // seri satırı tam da o ilişkiyi gösteriyor, bu yüzden hazır kaydı
+      // buraya koyuyoruz.
+      final yaz = RitualsFixture.withMemories().first;
+      repository.detail = MemoryDetail(
+        memory: yaz.years.last.memory,
+        people: const [],
+        collections: const [],
+        media: const [],
+        ritual: yaz.ritual,
+        ritualYear: yaz.years.last.year,
+      );
+
       await openMyLifeTab(tester, 'SERİLERİM');
 
+      await tester.ensureVisible(find.text('2026').first);
+      await tester.pump();
       await tester.tap(find.text('2026').first);
       await settle(tester);
 

@@ -19,6 +19,8 @@ import 'package:iz/features/memories/data/repositories/memory_repository_impl.da
 import 'package:iz/features/memories/domain/repositories/memory_repository.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/domain/repositories/person_repository.dart';
+import 'package:iz/features/rituals/data/repositories/ritual_repository_impl.dart';
+import 'package:iz/features/rituals/domain/repositories/ritual_repository.dart';
 
 /// Her test için taze, boş bir veritabanı.
 ///
@@ -75,5 +77,13 @@ MediaRepository createTestMediaRepository(
     fileStore: fileStore,
     idGenerator: SequentialIdGenerator(prefix: 'medya-'),
     clock: FixedClock(now ?? DateTime(2026, 7, 26, 12)),
+  );
+}
+
+/// Seri deposunu tahmin edilebilir kimliklerle kurar.
+RitualRepository createTestRitualRepository(AppDatabase db) {
+  return RitualRepositoryImpl(
+    dao: db.ritualDao,
+    idGenerator: SequentialIdGenerator(prefix: 'seri-'),
   );
 }

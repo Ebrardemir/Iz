@@ -19,6 +19,7 @@ import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 
 import '../helpers/collections_fixture.dart';
 import '../helpers/real_fonts.dart';
+import '../helpers/rituals_fixture.dart';
 
 final _today = DateTime(2026, 8, 12);
 
@@ -42,6 +43,7 @@ Future<void> pumpMyLife(WidgetTester tester) async {
               AppL10n.of(context),
               locale: 'tr',
             ),
+            series: RitualsFixture.cards(AppL10n.of(context)),
           ),
         ),
       ),
@@ -98,7 +100,6 @@ void main() {
       expect(find.text('Her yıl yaz aylarında'), findsOneWidget);
       // Yıllık ritüel (3 Mart) → Türkçe bulunma hâli eki doğru olmalı.
       expect(find.text('Her yıl 3 Mart\'ta'), findsOneWidget);
-      expect(find.text('Her yıl 15 Mayıs\'ta'), findsOneWidget);
     });
 
     testWidgets('TAKVİM sekmesine dönülebilir', (tester) async {

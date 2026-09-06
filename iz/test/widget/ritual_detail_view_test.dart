@@ -18,7 +18,6 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
-import 'package:iz/features/rituals/presentation/views/ritual_detail_preview_data.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_detail_view.dart';
 import 'package:iz/features/rituals/presentation/widgets/ritual_detail_parts.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
@@ -39,7 +38,7 @@ RitualDetailMemory _memory(
   String? category = 'Seyahat',
 }) => (
   id: 'mem-$year',
-  imageAsset: 'assets/images/home/hero_today.jpg',
+  cover: null,
   title: '$year yazı',
   dateLabel: '14 Temmuz $year',
   year: year,
