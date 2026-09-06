@@ -43,7 +43,6 @@ import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_editor_view_model.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_form_options.dart';
-import 'package:iz/features/memories/presentation/views/memory_form_preview_data.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
@@ -145,6 +144,9 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
         const <IzSelectionOption>[];
     final collectionOptions =
         ref.watch(memoryCollectionOptionsProvider).value ??
+        const <IzSelectionOption>[];
+    final seriesOptions =
+        ref.watch(memorySeriesOptionsProvider).value ??
         const <IzSelectionOption>[];
 
     final provider = memoryEditorProvider(widget.memoryId);
@@ -269,7 +271,7 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
                     _peopleRow(state, viewModel, peopleOptions),
                     _categoryRow(state, viewModel),
                     _collectionRow(state, viewModel, collectionOptions),
-                    _seriesRow(state, viewModel),
+                    _seriesRow(state, viewModel, seriesOptions),
                   ],
                 ),
 
@@ -513,23 +515,28 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
     );
   }
 
-  Widget _seriesRow(MemoryEditorState state, MemoryEditorViewModel viewModel) {
+  Widget _seriesRow(
+    MemoryEditorState state,
+    MemoryEditorViewModel viewModel,
+    List<IzSelectionOption> options,
+  ) {
     final l10n = context.l10n;
 
     return MemoryInfoRow(
       icon: AppIcons.series,
       label: l10n.memoryFieldSeries,
       onTap: () async {
+        // Liste GERÇEK serilerden geliyor. Önizleme verisi gösterdiğimiz
+        // sürece seçim kaydedilemiyordu: o kimlikler veritabanında yok ve
+        // yabancı anahtar kısıtı kaydı düşürürdü.
         final result = await _openPicker(
           title: l10n.memoryFieldSeries,
-          options: MemoryFormPreviewData.series,
+          options: options,
           selected: _idSet(state.series),
           allowMultiple: false,
         );
         if (result == null) return;
-        viewModel.setSeries(
-          _toSelections(MemoryFormPreviewData.series, result).firstOrNull,
-        );
+        viewModel.setSeries(_toSelections(options, result).firstOrNull);
       },
       trailing: const _RowIcon(AppIcons.forward),
       child: MemoryInfoValue(value: state.series?.label),
