@@ -10,6 +10,8 @@ import 'package:drift/native.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
+import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/repositories/memory_repository.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
@@ -45,5 +47,13 @@ PersonRepository createTestPersonRepository(AppDatabase db) {
   return PersonRepositoryImpl(
     dao: db.personDao,
     idGenerator: SequentialIdGenerator(prefix: 'kisi-'),
+  );
+}
+
+/// Koleksiyon deposunu tahmin edilebilir kimliklerle kurar.
+CollectionRepository createTestCollectionRepository(AppDatabase db) {
+  return CollectionRepositoryImpl(
+    dao: db.collectionDao,
+    idGenerator: SequentialIdGenerator(prefix: 'kol-'),
   );
 }

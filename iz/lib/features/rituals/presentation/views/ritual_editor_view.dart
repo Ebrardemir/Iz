@@ -51,6 +51,7 @@ import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/categories/domain/entities/memory_category.dart';
 import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
 import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
 import 'package:iz/features/rituals/presentation/view_models/created_rituals_view_model.dart';
@@ -98,7 +99,7 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   String? _categoryId;
 
   /// Seçilen anılar — tarih aralığı bunlardan türetiliyor.
-  List<FormMemoryOption> _memories = const [];
+  List<Memory> _memories = const [];
 
   /// Açık olan satır; hiçbiri açık değilse null.
   _RitualSection? _openSection;
@@ -365,7 +366,8 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
   String? _dateRangeLabel(AppL10n l10n) {
     if (_memories.isEmpty) return null;
 
-    final years = [for (final memory in _memories) memory.year]..sort();
+    final years = [for (final memory in _memories) memory.occurredAt.year]
+      ..sort();
     final from = years.first;
     final to = years.last;
 
@@ -404,7 +406,7 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
 
   /// Anı seçme sayfasını açar ve dönen seçimi alır.
   Future<void> _pickMemories() async {
-    final selected = await context.pushNamed<Set<String>>(
+    final selected = await context.pushNamed<List<Memory>>(
       AppRoute.memoryPicker.name,
       // Zaten seçili olanlar işaretli açılsın: kullanıcı ikinci kez girdiğinde
       // sıfırdan başlamamalı.
@@ -413,12 +415,9 @@ class _RitualEditorViewState extends ConsumerState<RitualEditorView> {
     if (selected == null || !mounted) return;
 
     setState(() {
-      // Sıra ÖNİZLEME VERİSİNDEKİ sıra: kullanıcının işaretleme sırası değil,
-      // listenin kendi sırası. Böylece aynı seçim her zaman aynı görünüyor.
-      _memories = [
-        for (final memory in FormPreviewData.unlinkedMemories)
-          if (selected.contains(memory.id)) memory,
-      ];
+      // Ekran seçilen anıların KENDİSİNİ döndürüyor; burada çevirecek
+      // bir şey yok.
+      _memories = selected;
     });
   }
 

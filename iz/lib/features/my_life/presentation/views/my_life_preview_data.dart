@@ -18,7 +18,6 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
-import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/day_memory_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
@@ -192,34 +191,13 @@ abstract final class MyLifePreviewData {
     ),
   ];
 
-  /// Kartların beklediği hâle çevirir: sayaç çoğullanır, tarih aralığı
-  /// biçimlenir, ikisi "•" ile birleşir.
-  static List<CollectionCardData> collections(AppL10n l10n, {String? locale}) {
-    return [
-      for (final raw in _collections)
-        (
-          id: raw.id,
-          coverAsset: raw.coverAsset,
-          title: raw.title,
-          // "18 anı • 10-14 Mayıs 2026"
-          //
-          // AYIRICI ÇEVİRİDEN GELMİYOR: "•" bir noktalama işareti, arayüz
-          // metni değil — her dilde aynı.
-          summary:
-              '${l10n.collectionMemoryCount(raw.memories.length)} • '
-              '${AppDateFormats.range(raw.start, raw.end, locale: locale)}',
-          memories: [
-            for (final memory in raw.memories)
-              (
-                id: memory.id,
-                imageAsset: memory.imageAsset,
-                title: memory.title,
-                dateLabel: AppDateFormats.long(memory.date, locale: locale),
-              ),
-          ],
-        ),
-    ];
-  }
+  // Kartları üreten `collections(...)` BURADAN KALDIRILDI: koleksiyonlar
+  // artık veritabanından geliyor (bkz. `CollectionRepository`). Aynı veri
+  // testlerde hâlâ gerekiyordu, `test/helpers/collections_fixture.dart`a
+  // taşındı — sahte veri üretim kodunda durmamalı.
+  //
+  // Aşağıdaki `_collections` DURUYOR: `collectionMemoryDetail` hâlâ anı
+  // detayını oradan çözüyor ve o hattın sırası M6'nın devamında gelecek.
 
   // --- SERİLERİM sekmesi ----------------------------------------------------
 

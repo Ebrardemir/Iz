@@ -26,6 +26,8 @@ import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_radial_menu.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/collections_fixture.dart';
+import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/fake_person_repository.dart';
 import '../helpers/people_fixture.dart';
@@ -36,9 +38,14 @@ void main() {
 
   late FakeMemoryRepository repository;
   late FakePersonRepository people;
+  late FakeCollectionRepository collections;
 
   setUp(() {
-    repository = FakeMemoryRepository();
+    // Koleksiyon kartları anılarını `MemoryRepository`den alıyor; sahte anı
+    // deposu koleksiyon fikstürünün anılarını da taşımalı.
+    repository = FakeMemoryRepository(CollectionsFixture.memories);
+    collections = FakeCollectionRepository(CollectionsFixture.collections)
+      ..links.addAll(CollectionsFixture.links);
     // Gezinme testleri kişi satırına dokunup detaya gidiyor; liste boş
     // olsaydı dokunacak satır olmazdı.
     people = FakePersonRepository(PeopleFixture.people);
@@ -46,10 +53,17 @@ void main() {
   tearDown(() {
     repository.dispose();
     people.dispose();
+    collections.dispose();
   });
 
-  Future<void> pump(WidgetTester tester) =>
-      pumpApp(tester, repository: repository, people: people);
+  Future<void> pump(WidgetTester tester) => pumpApp(
+    tester,
+    repository: repository,
+    people: people,
+    // Koleksiyon sekmesi testleri karta ve içindeki anı satırına dokunuyor;
+    // liste boş olsaydı dokunacak bir şey olmazdı.
+    collections: collections,
+  );
 
   /// Uygulamayı kurar, "Hayatım" sekmesine geçip istenen alt sekmeyi açar.
   Future<void> openMyLifeTab(WidgetTester tester, String tabLabel) async {
@@ -568,7 +582,7 @@ void main() {
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
       await tester.tap(find.text('Kahve Molası'));
-      await tester.tap(find.text('Sahilde Sabah'));
+      await tester.tap(find.text('Mezuniyet'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
       await settle(tester);
@@ -583,14 +597,14 @@ void main() {
       await openRitualForm(tester);
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
-      // 2026 ve 2023: aralığın iki ucu.
+      // 2026 ve 2021: aralığın iki ucu (`CollectionsFixture.memories`).
       await tester.tap(find.text('Kahve Molası'));
-      await tester.tap(find.text('Annemin Doğum Günü'));
+      await tester.tap(find.text('Kampüste ilk gün'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
       await settle(tester);
 
-      expect(find.text('Tarih aralığı: 2023 – 2026'), findsOneWidget);
+      expect(find.text('Tarih aralığı: 2021 – 2026'), findsOneWidget);
     });
 
     testWidgets('tek yıl seçilirse aralık tek yıl yazıyor', (tester) async {
@@ -784,8 +798,12 @@ void main() {
       await openCollectionForm(tester);
       await tester.tap(find.text('İlk Anıları Ekle'));
       await settle(tester);
+      // Anı seçici artık GERÇEK depodan besleniyor: aşağıdaki başlıklar
+      // `CollectionsFixture.memories` içinde. Eskiden önizleme verisiydi ve
+      // kimlikleri veritabanında olmadığı için kaydetmek kısıt hatası
+      // veriyordu.
       await tester.tap(find.text('Kahve Molası'));
-      await tester.tap(find.text('Venedik Balayımız'));
+      await tester.tap(find.text('Mezuniyet'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
       await settle(tester);

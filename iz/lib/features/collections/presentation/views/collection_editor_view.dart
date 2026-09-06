@@ -32,10 +32,15 @@
 /// düğmesi hangisinin ne yaptığını sorduruyor. Oluşturma tek yerde, sayfanın
 /// sonundaki düğmede.
 ///
-/// ⚠️ KAYIT HATTI YOK. `CollectionDao` yazılmadı; oluşturulan koleksiyon oturum
-/// belleğinde duruyor (`createdCollectionsProvider`) ve "Hayatım"ın
-/// koleksiyonlar sekmesinde görünüyor.
+/// KİŞİ VE KATEGORİ ALANLARI KAYDEDİLMİYOR — bilinçli değil, EKSİK.
+/// TRD M6.1'e göre `Collections` tablosunda yalnız `title`, `description`,
+/// `coverMediaId`, `visibility`, `startDate`, `endDate` var; kategori ise
+/// TR-M6-03 gereği ANIYA ait. Form bu ikisini topluyor ama gidecek sütun
+/// yok. Ya formdan kaldırılmalı ya da veri modeli genişletilmeli; karar
+/// verilene kadar burada AÇIKÇA yazıyor ki sessizce kaybolmasın.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,13 +51,16 @@ import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/l10n/failure_l10n.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/media/media_picker.dart';
+import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/categories/domain/entities/memory_category.dart';
 import 'package:iz/features/categories/presentation/category_l10n.dart';
-import 'package:iz/features/collections/presentation/view_models/created_collections_view_model.dart';
+import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/preview/form_preview_data.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
@@ -91,7 +99,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
   final Set<String> _personIds = {};
   String? _categoryId;
 
-  List<FormMemoryOption> _memories = const [];
+  List<Memory> _memories = const [];
 
   _CollectionSection? _openSection;
 
@@ -353,7 +361,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
 
   /// Anı seçme sayfasını açar ve dönen seçimi alır.
   Future<void> _pickMemories() async {
-    final selected = await context.pushNamed<Set<String>>(
+    final selected = await context.pushNamed<List<Memory>>(
       AppRoute.memoryPicker.name,
       // Zaten seçili olanlar işaretli açılsın.
       extra: {for (final memory in _memories) memory.id},
@@ -361,11 +369,9 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
     if (selected == null || !mounted) return;
 
     setState(() {
-      // Sıra LİSTENİN kendi sırası: aynı seçim her zaman aynı görünsün.
-      _memories = [
-        for (final memory in FormPreviewData.unlinkedMemories)
-          if (selected.contains(memory.id)) memory,
-      ];
+      // Ekran seçilen anıların KENDİSİNİ döndürüyor; burada çevirecek
+      // bir şey yok.
+      _memories = selected;
     });
   }
 
@@ -380,24 +386,42 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
       return;
     }
 
-    // ⚠️ BURADA KAYIT YOK; oturum belleğine gidiyor
-    // (bkz. `created_collections_view_model.dart`). Hat kurulduğunda burası
-    // `ref.read(saveCollectionProvider)(...)` olacak.
-    ref.read(createdCollectionsProvider.notifier).add((
-      id: 'collection-${DateTime.now().microsecondsSinceEpoch}',
-      title: title,
-      description: _descriptionController.text.trim(),
-      startDate: _dateRange?.start,
-      endDate: _dateRange?.end,
-      personIds: {..._personIds},
-      categoryId: _categoryId,
-      cover: _cover,
-      memories: _memories,
-    ));
+    unawaited(_persist(title));
+  }
 
-    context
-      ..pop()
-      ..showSnack(l10n.collectionCreated);
+  /// Kaydeder ve ekranı kapatır.
+  ///
+  /// HATADA ekran KAPANMIYOR: form dolu kalıyor ki kullanıcı yazdıklarını
+  /// kaybetmesin. Kişi formundaki kararın aynısı.
+  Future<void> _persist(String title) async {
+    final result = await ref
+        .read(collectionRepositoryProvider)
+        .save(
+          CollectionDraft(
+            title: title,
+            description: _descriptionController.text,
+            coverMediaId: _cover?.id,
+            startDate: _dateRange?.start,
+            endDate: _dateRange?.end,
+            // Kullanıcının formda dizdiği sıra korunuyor.
+            memoryIds: [for (final memory in _memories) memory.id],
+          ),
+        );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok():
+        // Burada BAŞARI BİLDİRİMİ VAR, kişi formunda yok — çünkü koleksiyon
+        // oluşturunca kullanıcı listeye değil, geldiği yere dönüyor ve yeni
+        // koleksiyonu göremiyor. Gördüğü şeyi tekrar söylemiyoruz; görmediği
+        // şeyi haber veriyoruz.
+        context
+          ..pop()
+          ..showSnack(context.l10n.collectionCreated);
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 }
 

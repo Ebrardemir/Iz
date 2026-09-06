@@ -15,30 +15,58 @@
 ///   │ └──────────────────────────┘ │
 ///   └──────────────────────────────┘
 ///
-/// ⚠️ BURADA LİSTELENEN ANILAR "BAĞSIZ" OLMAK ZORUNDA.
-/// BR — bir anı yalnızca BİR ritüele bağlanabilir. Bu yüzden liste "tüm
-/// anılar" değil, "hiçbir ritüele bağlı olmayan anılar". Şimdilik önizleme
-/// verisi bunu temsil ediyor; veri hattı kurulduğunda sorgunun
-/// `WHERE ritual_id IS NULL` koşulunu taşıması gerekiyor — yoksa kullanıcı bir
-/// anıyı iki ritüele bağlayıp sessizce ilk bağı koparır.
+/// LİSTE GERÇEK ANILARDAN GELİYOR (`MemoryRepository`).
+///
+/// Önce önizleme verisi gösteriyordu ve kimlikleri (`preview-kahve` gibi)
+/// veritabanında yoktu: koleksiyona böyle bir anı bağlamaya çalışmak yabancı
+/// anahtar kısıtını düşürüyor ve kullanıcı "Verilerine şu anda
+/// ulaşılamıyor" hatası alıyordu.
+///
+/// ⚠️ RİTÜEL İÇİN EKSİK KOŞUL VAR.
+/// BR — bir anı yalnızca BİR ritüele bağlanabilir; ritüel formu bu ekranı
+/// açtığında listenin "hiçbir ritüele bağlı olmayan anılar" olması gerekiyor.
+/// `MemoryFilter` bugün "ritüeli boş olanlar" diye bir koşul ifade edemiyor;
+/// ritüel veri hattı yazılırken o koşul eklenmeli, yoksa kullanıcı bir anıyı
+/// iki ritüele bağlayıp sessizce ilk bağı koparar.
 ///
 /// SEÇİM EKRANDA YAŞIYOR, çağıran formda değil.
-/// Kullanıcı burada işaretleyip "Bitti"ye basıyor; ekran seçilen kimlikleri
+/// Kullanıcı burada işaretleyip "Bitti"ye basıyor; ekran seçilen ANILARI
 /// `pop` ile döndürüyor. Vazgeçerse (✕ ya da geri) null dönüyor ve form hiçbir
 /// şeyi değiştirmiyor — `showIzSelectionDialog` ile aynı sözleşme.
+///
+/// KİMLİK DEĞİL, ANININ KENDİSİ dönüyor: kimlik dönseydi her form onu tekrar
+/// anıya çevirmek için anılar feature'ının veri katmanına uzanmak zorunda
+/// kalırdı ve feature sınırı delinirdi (ARCHITECTURE.md §2). Liste zaten
+/// burada; seçileni de burada veriyoruz.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/core/extensions/context_x.dart';
+import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/shared/preview/form_preview_data.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/widgets/app_empty_state.dart';
+import 'package:iz/shared/widgets/async_value_view.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 class IzMemoryPickerView extends StatefulWidget {
-  const IzMemoryPickerView({this.initialSelection = const {}, super.key});
+  const IzMemoryPickerView({
+    required this.memories,
+    this.initialSelection = const {},
+    super.key,
+  });
+
+  /// Listelenecek anılar.
+  ///
+  /// VERİYİ EKRAN ÇEKMİYOR, DIŞARIDAN ALIYOR. `shared/` altındaki widget'lar
+  /// hiçbir feature'ın veri katmanını tanımıyor (ARCHITECTURE.md §2); bu
+  /// ekran iki ayrı feature'ın formundan açıldığı için burada yaşıyor ama
+  /// sorguyu composition root (router) yapıyor.
+  final AsyncValue<List<Memory>> memories;
 
   /// Formda ZATEN seçili olan anılar: ekran ikinci kez açıldığında kullanıcı
   /// seçimlerini işaretli bulmalı, sıfırdan başlamamalı.
@@ -54,7 +82,7 @@ class _IzMemoryPickerViewState extends State<IzMemoryPickerView> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const memories = FormPreviewData.unlinkedMemories;
+    final memories = widget.memories;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,40 +101,50 @@ class _IzMemoryPickerViewState extends State<IzMemoryPickerView> {
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: TextButton(
-              onPressed: () => context.pop(_selected),
+              // Sıra LİSTENİN sırası, işaretleme sırası değil: aynı seçim
+              // her zaman aynı görünsün.
+              onPressed: () => context.pop([
+                for (final memory in widget.memories.value ?? const <Memory>[])
+                  if (_selected.contains(memory.id)) memory,
+              ]),
               child: Text(l10n.memoryPickerDone),
             ),
           ),
         ],
       ),
 
-      body: memories.isEmpty
-          ? AppEmptyState(icon: AppIcons.memory, title: l10n.memoryPickerEmpty)
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xxl,
-              ),
-              itemCount: memories.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final memory = memories[index];
+      body: AsyncValueView<List<Memory>>(
+        value: memories,
+        // Hiç anı yoksa bu bir HATA DEĞİL: henüz anı biriktirmemiş kullanıcı
+        // doğal bir durum. Koleksiyona bağlanacak bir şey yok, o kadar.
+        emptyBuilder: () =>
+            AppEmptyState(icon: AppIcons.memory, title: l10n.memoryPickerEmpty),
+        data: (list) => ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.xxl,
+          ),
+          itemCount: list.length,
+          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, index) {
+            final memory = list[index];
 
-                return _MemoryPickTile(
-                  memory: memory,
-                  isSelected: _selected.contains(memory.id),
-                  onTap: () => setState(() {
-                    // Dokunmak AÇIP KAPIYOR: ayrı bir "kaldır" yolu yok,
-                    // aynı satır iki işi de yapıyor.
-                    _selected.contains(memory.id)
-                        ? _selected.remove(memory.id)
-                        : _selected.add(memory.id);
-                  }),
-                );
-              },
-            ),
+            return _MemoryPickTile(
+              memory: memory,
+              isSelected: _selected.contains(memory.id),
+              onTap: () => setState(() {
+                // Dokunmak AÇIP KAPIYOR: ayrı bir "kaldır" yolu yok,
+                // aynı satır iki işi de yapıyor.
+                _selected.contains(memory.id)
+                    ? _selected.remove(memory.id)
+                    : _selected.add(memory.id);
+              }),
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -119,7 +157,7 @@ class _MemoryPickTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final FormMemoryOption memory;
+  final Memory memory;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -133,7 +171,7 @@ class _MemoryPickTile extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: memory.title,
+      label: memory.displayTitle(context.l10n.memoryNew),
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -154,19 +192,12 @@ class _MemoryPickTile extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(AppRadius.sm),
-                  child: Image.asset(
-                    memory.imageAsset,
-                    width: _kCoverSize,
-                    height: _kCoverSize,
-                    fit: BoxFit.cover,
-                    // Kapak bulunamazsa liste çökmesin (NFR-021).
-                    errorBuilder: (context, error, stack) => ColoredBox(
-                      color: colors.surfaceContainerHighest,
-                      child: const SizedBox.square(dimension: _kCoverSize),
-                    ),
-                  ),
+                // `MediaThumbnail` kapağı olmayanı ve dosyası kaybolanı
+                // kendi içinde çiziyor (NFR-021) — burada ayrıca ele almıyoruz.
+                MediaThumbnail(
+                  media: memory.coverMedia,
+                  size: _kCoverSize,
+                  borderRadius: AppRadius.sm,
                 ),
                 const SizedBox(width: AppSpacing.md - 4),
 
@@ -176,7 +207,7 @@ class _MemoryPickTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        memory.title,
+                        memory.displayTitle(context.l10n.memoryNew),
                         style: context.text.titleMedium?.copyWith(
                           color: colors.onSurface,
                           fontWeight: FontWeight.w600,
@@ -186,7 +217,7 @@ class _MemoryPickTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        memory.dateLabel,
+                        AppDateFormats.long(memory.occurredAt),
                         style: context.text.bodySmall?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),

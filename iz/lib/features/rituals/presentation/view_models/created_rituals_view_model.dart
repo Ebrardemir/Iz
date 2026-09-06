@@ -17,8 +17,8 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
-import 'package:iz/shared/preview/form_preview_data.dart';
 
 /// Formun ürettiği kayıt.
 ///
@@ -38,7 +38,7 @@ typedef CreatedRitual = ({
 
   /// Ritüele bağlanan anılar. Tarih aralığı BUNLARDAN türetiliyor: kullanıcı
   /// forma tarih girmiyor (kendi kararı — "bu tarih anılardan gelsin").
-  List<FormMemoryOption> memories,
+  List<Memory> memories,
 });
 
 extension CreatedRitualX on CreatedRitual {
@@ -61,7 +61,8 @@ extension CreatedRitualX on CreatedRitual {
   ({int from, int to})? get yearRange {
     if (memories.isEmpty) return null;
 
-    final years = [for (final memory in memories) memory.year]..sort();
+    final years = [for (final memory in memories) memory.occurredAt.year]
+      ..sort();
     return (from: years.first, to: years.last);
   }
 }

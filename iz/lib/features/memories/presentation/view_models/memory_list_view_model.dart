@@ -17,6 +17,7 @@ import 'package:iz/core/result/result.dart';
 import 'package:iz/core/result/result_x.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
+import 'package:iz/features/memories/domain/entities/memory_filter.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_filter_view_model.dart';
 
 class MemoryListViewModel extends StreamNotifier<List<Memory>> {
@@ -76,4 +77,16 @@ final memoryCountProvider = FutureProvider<int>((ref) async {
   ref.watch(memoryListProvider);
   final result = await ref.watch(memoryRepositoryProvider).countAll();
   return result.getOrElse(0);
+});
+
+/// Seçilebilir anılar — koleksiyon ve seri formlarındaki "anı seç" ekranı için.
+///
+/// [memoryListProvider] KULLANMIYORUZ bilerek: o, zaman tünelinin AKTİF
+/// süzgecine bağlı. Kullanıcı zaman tünelinde "yalnız favoriler" seçtiyse
+/// seçici de yarım liste gösterirdi ve sebebi anlaşılmazdı.
+final pickableMemoriesProvider = StreamProvider<List<Memory>>((ref) {
+  return ref
+      .watch(memoryRepositoryProvider)
+      .watchMemories(MemoryFilter.all)
+      .unwrap();
 });
