@@ -21,7 +21,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
-import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
 import 'package:iz/shared/widgets/iz_cover_illustration.dart';

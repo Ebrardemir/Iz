@@ -57,7 +57,7 @@ import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/categories/domain/entities/memory_category.dart';
 import 'package:iz/features/categories/presentation/category_l10n.dart';
-import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';

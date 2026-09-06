@@ -299,19 +299,24 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
 
   // --- Seçim alanları -------------------------------------------------------
   //
-  // Dördü de aynı deseni izliyor: seçim EKRAN durumunda tutuluyor, taslağın
-  // id alanlarına yazılmıyor (gerekçe: [MemoryFormSelection]).
+  // KİŞİ, KATEGORİ ve KOLEKSİYON taslağa da yazılıyor: üçünün de veritabanında
+  // gerçek satırları var, dolayısıyla kaydedilebiliyorlar.
+  //
+  // SERİ yazılmıyor: `Rituals` tablosuna satır yazan bir yol henüz yok ve
+  // `PRAGMA foreign_keys = ON` olduğu için var olmayan bir kimlikle kaydetmek
+  // `saveDraft`ı düşürürdü.
 
-  void setPeople(List<MemoryFormSelection> people) =>
-      state = state.copyWith(people: people, clearErrors: true);
+  void setPeople(List<MemoryFormSelection> people) => state = state.copyWith(
+    draft: state.draft.copyWith(
+      personIds: [for (final person in people) person.id],
+    ),
+    people: people,
+    clearErrors: true,
+  );
 
-  /// Kategori — TASLAĞA DA YAZILAN tek seçim.
-  ///
-  /// Öteki üçü yalnızca ekranda yaşıyor çünkü karşılık gelen veritabanı
-  /// satırları yok. Kategori FARKLI: sistem kategorileri (`SystemCategory`)
-  /// ilk açılışta veritabanına tohumlanıyor, yani `cat_travel` GERÇEK bir
-  /// satır. Taslağa yazmak yabancı anahtar ihlali değil — ve yazmasak
-  /// kullanıcının seçtiği kategori kaydedilmezdi.
+  /// Kategori — sistem kategorileri ilk açılışta tohumlandığı için
+  /// `cat_travel` GERÇEK bir satır; taslağa yazmak yabancı anahtar ihlali
+  /// değil.
   void setCategory(MemoryFormSelection? category) => state = state.copyWith(
     draft: state.draft.copyWith(categoryId: category?.id),
     category: category,
@@ -320,7 +325,13 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
   );
 
   void setCollections(List<MemoryFormSelection> collections) =>
-      state = state.copyWith(collections: collections, clearErrors: true);
+      state = state.copyWith(
+        draft: state.draft.copyWith(
+          collectionIds: [for (final c in collections) c.id],
+        ),
+        collections: collections,
+        clearErrors: true,
+      );
 
   void setSeries(MemoryFormSelection? series) => state = state.copyWith(
     series: series,

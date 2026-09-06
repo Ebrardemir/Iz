@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
-import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
 import 'package:iz/features/people/presentation/widgets/people_empty_illustration.dart';
 import 'package:iz/features/people/presentation/widgets/person_row.dart';

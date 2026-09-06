@@ -18,7 +18,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
-import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/features/people/presentation/widgets/person_photo_picker.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';

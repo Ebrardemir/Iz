@@ -22,7 +22,7 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
-import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';
