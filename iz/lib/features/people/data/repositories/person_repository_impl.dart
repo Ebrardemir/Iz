@@ -13,8 +13,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iz/app/database/app_database.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
@@ -109,14 +107,3 @@ final class PersonRepositoryImpl implements PersonRepository {
     );
   }
 }
-
-// --- Providers --------------------------------------------------------------
-
-/// Domain arayüzü üzerinden veriyoruz: ViewModel'ler `PersonRepositoryImpl`i
-/// değil `PersonRepository`yi görür.
-final personRepositoryProvider = Provider<PersonRepository>((ref) {
-  return PersonRepositoryImpl(
-    dao: ref.watch(appDatabaseProvider).personDao,
-    idGenerator: ref.watch(idGeneratorProvider),
-  );
-});

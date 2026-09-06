@@ -13,8 +13,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iz/app/database/app_database.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
@@ -114,14 +112,3 @@ final class CollectionRepositoryImpl implements CollectionRepository {
     );
   }
 }
-
-// --- Providers --------------------------------------------------------------
-
-/// Domain arayüzü üzerinden veriyoruz: ViewModel'ler
-/// `CollectionRepositoryImpl`i değil `CollectionRepository`yi görür.
-final collectionRepositoryProvider = Provider<CollectionRepository>((ref) {
-  return CollectionRepositoryImpl(
-    dao: ref.watch(appDatabaseProvider).collectionDao,
-    idGenerator: ref.watch(idGeneratorProvider),
-  );
-});

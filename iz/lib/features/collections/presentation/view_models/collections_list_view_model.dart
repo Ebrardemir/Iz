@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/result/result_x.dart';
-import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 
 class CollectionsListViewModel extends StreamNotifier<List<MemoryCollection>> {

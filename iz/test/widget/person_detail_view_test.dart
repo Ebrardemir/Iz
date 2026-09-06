@@ -18,7 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
-import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
+import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/views/person_detail_view.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_header.dart';

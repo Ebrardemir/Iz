@@ -42,6 +42,7 @@ import 'package:iz/features/categories/domain/entities/memory_category.dart';
 import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/presentation/view_models/memory_editor_view_model.dart';
+import 'package:iz/features/memories/presentation/view_models/memory_form_options.dart';
 import 'package:iz/features/memories/presentation/views/memory_form_preview_data.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
@@ -136,6 +137,16 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
 
   @override
   Widget build(BuildContext context) {
+    // SEÇENEKLERİ BURADA İZLİYORUZ, dokunma anında OKUMUYORUZ.
+    // `ref.read` bir `StreamProvider`ı ilk kez okuduğunda akış henüz değer
+    // yaymamış olur ve liste boş gelir — seçici bomboş açılırdı.
+    final peopleOptions =
+        ref.watch(memoryPeopleOptionsProvider).value ??
+        const <IzSelectionOption>[];
+    final collectionOptions =
+        ref.watch(memoryCollectionOptionsProvider).value ??
+        const <IzSelectionOption>[];
+
     final provider = memoryEditorProvider(widget.memoryId);
     final state = ref.watch(provider);
     final viewModel = ref.read(provider.notifier);
@@ -255,9 +266,9 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
                     _dateRow(state, viewModel, dateFormat),
                     _locationRow(viewModel),
                     _noteRow(state, viewModel),
-                    _peopleRow(state, viewModel),
+                    _peopleRow(state, viewModel, peopleOptions),
                     _categoryRow(state, viewModel),
-                    _collectionRow(state, viewModel),
+                    _collectionRow(state, viewModel, collectionOptions),
                     _seriesRow(state, viewModel),
                   ],
                 ),
@@ -415,23 +426,28 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
     );
   }
 
-  Widget _peopleRow(MemoryEditorState state, MemoryEditorViewModel viewModel) {
+  Widget _peopleRow(
+    MemoryEditorState state,
+    MemoryEditorViewModel viewModel,
+    List<IzSelectionOption> options,
+  ) {
     final l10n = context.l10n;
 
     return MemoryInfoRow(
       icon: AppIcons.people,
       label: l10n.relationPeople,
       onTap: () async {
+        // Liste GERÇEK kişilerden geliyor. Önizleme verisi gösterdiğimiz
+        // sürece seçim kaydedilemiyordu: o kimlikler veritabanında yok ve
+        // yabancı anahtar kısıtı kaydı düşürürdü.
         final result = await _openPicker(
           title: l10n.relationPeople,
-          options: MemoryFormPreviewData.people,
+          options: options,
           selected: state.people.map((p) => p.id).toSet(),
           allowMultiple: true,
         );
         if (result == null) return;
-        viewModel.setPeople(
-          _toSelections(MemoryFormPreviewData.people, result),
-        );
+        viewModel.setPeople(_toSelections(options, result));
       },
       trailing: const _RowIcon(AppIcons.forward),
       child: MemoryInfoValue(value: _joinLabels(state.people)),
@@ -475,6 +491,7 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
   Widget _collectionRow(
     MemoryEditorState state,
     MemoryEditorViewModel viewModel,
+    List<IzSelectionOption> options,
   ) {
     final l10n = context.l10n;
 
@@ -484,14 +501,12 @@ class _MemoryEditorViewState extends ConsumerState<MemoryEditorView> {
       onTap: () async {
         final result = await _openPicker(
           title: l10n.memoryFieldCollection,
-          options: MemoryFormPreviewData.collections,
+          options: options,
           selected: state.collections.map((c) => c.id).toSet(),
           allowMultiple: true,
         );
         if (result == null) return;
-        viewModel.setCollections(
-          _toSelections(MemoryFormPreviewData.collections, result),
-        );
+        viewModel.setCollections(_toSelections(options, result));
       },
       trailing: const _RowIcon(AppIcons.forward),
       child: MemoryInfoValue(value: _joinLabels(state.collections)),

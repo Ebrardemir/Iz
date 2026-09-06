@@ -9,8 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/result/result_x.dart';
-import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
+import 'package:iz/features/people/people_providers.dart';
 
 class PeopleListViewModel extends StreamNotifier<List<Person>> {
   static final _log = appLogger('people.list_vm');

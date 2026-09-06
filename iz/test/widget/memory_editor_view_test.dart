@@ -18,6 +18,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
+import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/media/media_providers.dart';
@@ -27,13 +28,16 @@ import 'package:iz/features/memories/presentation/view_models/memory_editor_view
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
+import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_media_picker.dart';
 import '../helpers/fake_media_repository.dart';
 import '../helpers/fake_memory_repository.dart';
+import '../helpers/fake_person_repository.dart';
 import '../helpers/real_fonts.dart';
 
 /// Testin "bugün"ü — tarih alanının başlangıç değeri buna bağlı.
@@ -100,6 +104,11 @@ MemoryDetail existingMemory({int photoCount = 2}) => MemoryDetail(
 /// Son kurulan sahte medya deposu — testler içe aktarılanı doğrulayabilsin.
 late FakeMediaRepository media;
 
+/// Anı formundaki "Kişiler" ve "Koleksiyon" seçicileri artık GERÇEK listeden
+/// besleniyor; testin de bir listesi olmalı.
+late FakePersonRepository people;
+late FakeCollectionRepository collections;
+
 Future<ProviderContainer> pumpForm(
   WidgetTester tester, {
   List<String> photos = const [],
@@ -116,6 +125,30 @@ Future<ProviderContainer> pumpForm(
   addTearDown(tester.view.reset);
 
   media = FakeMediaRepository();
+  people = FakePersonRepository(const [
+    Person(
+      id: 'kisi-annem',
+      name: 'Annem',
+      kind: PersonKind.human,
+      relationType: RelationType.parent,
+    ),
+    Person(
+      id: 'kisi-elif',
+      name: 'Elif',
+      kind: PersonKind.human,
+      relationType: RelationType.friend,
+    ),
+  ]);
+  addTearDown(people.dispose);
+
+  collections = FakeCollectionRepository(const [
+    MemoryCollection(
+      id: 'kol-kapadokya',
+      title: 'Kapadokya 2026',
+      visibility: CollectionVisibility.private,
+    ),
+  ]);
+  addTearDown(collections.dispose);
 
   repository = existing == null
       ? FakeMemoryRepository()
@@ -131,6 +164,8 @@ Future<ProviderContainer> pumpForm(
       memoryRepositoryProvider.overrideWithValue(repository),
       mediaPickerProvider.overrideWithValue(picker),
       mediaRepositoryProvider.overrideWithValue(media),
+      personRepositoryProvider.overrideWithValue(people),
+      collectionRepositoryProvider.overrideWithValue(collections),
       currentPlanProvider.overrideWithValue(plan),
     ],
   );
@@ -515,7 +550,7 @@ void main() {
       await settle(tester);
 
       expect(readState(container).collections.map((c) => c.id), [
-        'collection_1',
+        'kol-kapadokya',
       ]);
     });
 
@@ -560,13 +595,15 @@ void main() {
       });
     }
 
-    testWidgets('seçimler taslağın KİMLİK alanlarına yazılmıyor', (
+    testWidgets('seçimler taslağın KİMLİK alanlarına YAZILIYOR', (
       tester,
     ) async {
-      // Bu testin varlık sebebi dosya başındaki nottur: `PRAGMA
-      // foreign_keys = ON` ve karşılık gelen tablolar boş. Buraya bir gün
-      // "seçimi taslağa da yazayım" diye dokunulursa kaydetme kırılır ve
-      // bu test önce uyarır.
+      // Bu test bir zamanlar tersini söylüyordu: `People` ve `Collections`
+      // tablolarına satır yazan yol yokken seçimi taslağa koymak
+      // `PRAGMA foreign_keys = ON` yüzünden kaydetmeyi düşürürdü. İki veri
+      // hattı da kurulunca beklenti tersine döndü.
+      //
+      // SERİ hâlâ yazılmıyor: `Rituals` tablosuna satır yazan yol yok.
       final container = await pumpForm(tester);
 
       await openPicker(tester, 'Kategori');
@@ -579,15 +616,16 @@ void main() {
       await tester.tap(find.text('Tamam'));
       await settle(tester);
 
-      final draft = readState(container).draft;
-      expect(draft.personIds, isEmpty);
-      expect(draft.collectionIds, isEmpty);
-      expect(draft.ritualId, isNull);
+      await openPicker(tester, 'Koleksiyon');
+      await tester.tap(find.text('Kapadokya 2026'));
+      await settle(tester);
+      await tester.tap(find.text('Tamam'));
+      await settle(tester);
 
-      // KATEGORİ İSTİSNA ve bu bilinçli: sistem kategorileri ilk açılışta
-      // veritabanına tohumlanıyor, yani `cat_travel` gerçek bir satır.
-      // Yazmamak kullanıcının seçtiği kategoriyi kaydetmemek olurdu.
+      final draft = readState(container).draft;
       expect(draft.categoryId, 'cat_travel');
+      expect(draft.personIds, ['kisi-annem']);
+      expect(draft.collectionIds, ['kol-kapadokya']);
     });
   });
 
@@ -1006,7 +1044,10 @@ void main() {
       expect(button.onPressed, isNotNull);
     });
 
-    testWidgets('kişiler, koleksiyon ve seri kaydedilmiyor', (tester) async {
+    testWidgets('KİŞİ kaydediliyor, SERİ hâlâ kaydedilmiyor', (tester) async {
+      // Bu test bir zamanlar "hiçbiri kaydedilmiyor" diyordu: `People` ve
+      // `Collections` tablolarına satır yazan yol yoktu. İkisi de kurulunca
+      // beklenti değişti. Seri için `Rituals` hattı hâlâ yok.
       final container = await pumpForm(tester);
 
       await tester.enterText(fieldOf('Başlık'), 'Kapadokya');
@@ -1019,12 +1060,8 @@ void main() {
       await tester.tap(find.text('Tamam'));
       await settle(tester);
 
-      // Ekranda seçili…
       expect(readState(container).people, hasLength(1));
-      // …ama taslakta yok: `People` tablosunda karşılık gelen satır olmadığı
-      // için yazmak yabancı anahtar ihlali olurdu.
-      expect(readState(container).draft.personIds, isEmpty);
-      expect(readState(container).draft.collectionIds, isEmpty);
+      expect(readState(container).draft.personIds, ['kisi-annem']);
       expect(readState(container).draft.ritualId, isNull);
     });
   });
