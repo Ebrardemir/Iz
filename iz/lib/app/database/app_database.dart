@@ -33,6 +33,7 @@ import 'package:iz/features/collections/data/tables/collection_tables.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/journal/data/tables/journal_tables.dart';
 import 'package:iz/features/journal/domain/entities/journal_entry.dart';
+import 'package:iz/features/media/data/daos/media_dao.dart';
 import 'package:iz/features/media/data/tables/media_tables.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/daos/memory_dao.dart';
@@ -65,7 +66,7 @@ part 'app_database.g.dart';
     JournalEntries,
     JournalMedia,
   ],
-  daos: [MemoryDao, PersonDao, CollectionDao],
+  daos: [MemoryDao, PersonDao, CollectionDao, MediaDao],
   // FTS5 sanal tablosu ve trigger'ları SQL ile tanımlanır (Dart API'si
   // sanal tabloyu ifade edemez).
   include: {'package:iz/features/search/data/search.drift'},

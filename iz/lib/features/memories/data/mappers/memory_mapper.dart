@@ -13,6 +13,7 @@ library;
 import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/collections/data/mappers/collection_mapper.dart';
+import 'package:iz/features/media/data/mappers/media_mapper.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/daos/memory_dao.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
@@ -111,22 +112,6 @@ abstract final class MemoryMapper {
     final trimmed = value?.trim();
     return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
-}
-
-abstract final class MediaMapper {
-  static MediaItem toDomain(MediaRow row) => MediaItem(
-    id: row.id,
-    type: row.type,
-    galleryAssetId: row.galleryAssetId,
-    localPreviewPath: row.localPreviewPath,
-    cloudObjectKey: row.cloudObjectKey,
-    originalStatus: row.originalStatus,
-    mimeType: row.mimeType,
-    width: row.width,
-    height: row.height,
-    durationMs: row.durationMs,
-    sizeBytes: row.sizeBytes,
-  );
 }
 
 abstract final class PersonMapper {

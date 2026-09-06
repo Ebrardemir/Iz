@@ -21,12 +21,14 @@ import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
 import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_collection_repository.dart';
 import 'fake_media_picker.dart';
+import 'fake_media_repository.dart';
 import 'fake_memory_repository.dart';
 import 'fake_person_repository.dart';
 
@@ -139,6 +141,9 @@ Future<void> pumpApp(
         ),
         authRepositoryProvider.overrideWithValue(InstantAuthRepository()),
         mediaPickerProvider.overrideWithValue(mediaPicker ?? FakeMediaPicker()),
+        // Gerçeği hem Drift'e hem dosya sistemine dokunuyor; widget
+        // testinde ikisi de eklenti istiyor.
+        mediaRepositoryProvider.overrideWithValue(FakeMediaRepository()),
       ],
       child: const IzApp(),
     ),

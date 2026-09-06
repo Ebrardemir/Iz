@@ -17,6 +17,7 @@ import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/presentation/providers/memory_providers.dart';
@@ -89,7 +90,7 @@ final class MemoryEditorState {
   ///   • DÜZENLEMEDE anıya bağlı kayıtlı [MediaItem]lar
   /// Şeride iki ayrı liste verseydik silme, ekleme ve sıra mantığını iki kez
   /// yazmak gerekirdi. Seçilen yollar için geçici bir [MediaItem] üretiyoruz
-  /// (bkz. [MemoryEditorViewModel.pickedMedia]); şerit tek tip görüyor.
+  /// Hepsi gerçek `MediaItems` satırıdır; şerit tek tip görüyor.
   final List<MediaItem> photos;
 
   /// İş kuralı hatası. Hangi alanın altında görüneceğini `code.field` söyler.
@@ -327,22 +328,52 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
     clearErrors: true,
   );
 
-  /// Galeriden seçilen dosya yollarını şeride ekler.
+  /// Bu düzenleme oturumunda içe aktarılmış KAYNAK yollar.
   ///
-  /// ⚠️ HENÜZ KALICI DEĞİL. Medya hattı (dosyayı uygulama alanına kopyalama,
-  /// önizleme üretme, `MediaItems` tablosuna yazma) kurulmadı; ürettiğimiz
-  /// [MediaItem]ların kimliği geçici ve `mediaIds`e YAZILMIYOR — var olmayan
-  /// bir medya kimliğiyle kaydetmek yabancı anahtar ihlali olurdu.
+  /// NEDEN STATE'TE DEĞİL?
+  /// Ekranın çizdiği hiçbir şeyi etkilemiyor; yalnız "bunu zaten aldım mı?"
+  /// sorusunu cevaplıyor. State'e koysaydık her fotoğraf eklemede tüm ekran
+  /// yeniden çizilirdi ve `MemoryEditorState` ekranla ilgisi olmayan bir alan
+  /// taşırdı.
+  final Set<String> _importedPaths = {};
+
+  /// Galeriden seçilen dosyaları KALICI hâle getirip şeride ekler.
   ///
-  /// Hat kurulduğunda burası dosyaları kaydedip gerçek kimlikleri
-  /// [addMedia]ya geçecek; şeridin tek satırı değişmeyecek.
-  void addPickedPhotos(List<String> paths) {
-    final next = [...state.photos];
-    for (final path in paths) {
-      if (next.any((m) => m.localPreviewPath == path)) continue;
-      next.add(pickedMedia(path));
+  /// Her dosya uygulama alanına kopyalanıyor ve `MediaItems` tablosuna bir
+  /// satır yazılıyor (TR-M4-11); dönen kimlikler taslağa giriyor. Önce
+  /// yalnızca dosya yolunu şeritte gösteriyorduk ve kaydetmiyorduk — çünkü
+  /// var olmayan bir medya kimliğiyle anı kaydetmek yabancı anahtar ihlali
+  /// olurdu.
+  ///
+  /// HATA DURUMUNDA ŞERİDE HİÇBİR ŞEY EKLENMİYOR. Yarısı eklenmiş bir şerit,
+  /// kullanıcıya "eklendi" deyip kaydetmemek olurdu.
+  Future<void> addPickedPhotos(List<String> paths) async {
+    // AYNI DOSYAYI İKİ KEZ İÇE AKTARMIYORUZ. Kullanıcı seçiciyi tekrar açıp
+    // aynı fotoğrafı seçerse şeritte iki kopya belirirdi ve ikisi de ayrı
+    // birer `MediaItems` satırı olurdu — hem şerit yanlış görünür hem sandbox
+    // aynı dosyayı iki kez taşırdı.
+    final fresh = [
+      for (final path in paths)
+        if (!_importedPaths.contains(path)) path,
+    ];
+    if (fresh.isEmpty) return;
+
+    final result = await ref.read(mediaRepositoryProvider).importPicked(fresh);
+
+    switch (result) {
+      case Ok(:final value):
+        _importedPaths.addAll(fresh);
+        final next = [...state.photos];
+        for (final media in value) {
+          if (next.any((m) => m.id == media.id)) continue;
+          next.add(media);
+        }
+        state = state.copyWith(photos: next, clearErrors: true);
+        // Taslağa GERÇEK kimlikler giriyor; ilk fotoğraf kapak oluyor.
+        addMedia([for (final media in value) media.id]);
+      case Err(:final failure):
+        state = state.copyWith(generalError: failure);
     }
-    state = state.copyWith(photos: next, clearErrors: true);
   }
 
   /// Şeritten bir fotoğrafı kaldırır.
@@ -362,13 +393,6 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
   ///
   /// Kimlik ÖNEKLİ (`picked:`) çünkü gerçek bir medya kimliği değil: taslağa
   /// yazılmaması gerektiğini kodun kendisi söylüyor.
-  static MediaItem pickedMedia(String path) => MediaItem(
-    id: 'picked:$path',
-    type: MediaType.photo,
-    originalStatus: MediaOriginalStatus.available,
-    localPreviewPath: path,
-  );
-
   void addMedia(List<String> mediaIds) => _update((d) {
     final next = [...d.mediaIds];
     for (final id in mediaIds) {
