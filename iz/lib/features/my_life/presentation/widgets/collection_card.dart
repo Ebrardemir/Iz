@@ -52,7 +52,9 @@ import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/shared/widgets/iz_icon_action.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Kartta gösterilecek koleksiyon.
 ///
@@ -61,7 +63,7 @@ import 'package:iz/shared/widgets/iz_icon_action.dart';
 /// bu widget'ın üstünde çözülür (bkz. `AppDateFormats.range`).
 typedef CollectionCardData = ({
   String id,
-  String coverAsset,
+  MediaItem? cover,
   String title,
   String summary,
   List<CollectionMemoryData> memories,
@@ -70,7 +72,7 @@ typedef CollectionCardData = ({
 /// Açık kartta listelenen tek anı.
 typedef CollectionMemoryData = ({
   String id,
-  String imageAsset,
+  MediaItem? cover,
   String title,
   String dateLabel,
 });
@@ -168,7 +170,7 @@ class CollectionCard extends StatelessWidget {
           child: Row(
             children: [
               _Cover(
-                asset: collection.coverAsset,
+                media: collection.cover,
                 width: kCollapsedCoverSize,
                 height: kCollapsedCoverSize,
                 radius: AppRadius.sm,
@@ -205,7 +207,7 @@ class CollectionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Cover(
-            asset: collection.coverAsset,
+            media: collection.cover,
             height: kCoverStripHeight,
             // Figma: kapak şeridinin köşesi 4 — karttan (8) daha küçük,
             // çünkü şerit kartın içinde duruyor ve iç köşe daha keskin olur.
@@ -382,7 +384,7 @@ class _MemoryRowState extends State<_MemoryRow> {
                   child: Row(
                     children: [
                       _Cover(
-                        asset: memory.imageAsset,
+                        media: memory.cover,
                         width: _MemoryRow.kThumbSize,
                         height: _MemoryRow.kThumbSize,
                         radius: AppRadius.sm,
@@ -456,17 +458,21 @@ class _MemoryRowState extends State<_MemoryRow> {
 
 /// Kapak görseli — üç ölçüde de aynı davranış.
 ///
-/// ⚠️ Şimdilik asset. Veri bağlandığında `Memory.coverMedia`den gelecek;
-/// değişecek tek yer bu widget (bkz. `MediaThumbnail`).
+/// GERÇEK MEDYA. Bir süre `Image.asset` çiziyordu çünkü kartın verisi
+/// tasarım önizlemesinden geliyordu; artık `MediaItems` tablosundan gelen
+/// bir [MediaItem] alıyor.
+///
+/// Kapağı olmayanı ve dosyası kaybolanı [MediaThumbnail] kendi içinde
+/// çiziyor (NFR-021 / TR-M4-13) — burada ayrıca ele almıyoruz.
 class _Cover extends StatelessWidget {
   const _Cover({
-    required this.asset,
+    required this.media,
     required this.height,
     required this.radius,
     this.width,
   });
 
-  final String asset;
+  final MediaItem? media;
 
   /// null → kalan genişliği doldur (açık karttaki kapak şeridi).
   final double? width;
@@ -475,28 +481,13 @@ class _Cover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.all(radius),
-      child: Image.asset(
-        asset,
-        width: width,
-        height: height,
-        // Figma: `scale: crop` — oranı bozmadan kutuyu doldur.
-        fit: BoxFit.cover,
-        // Kapak bulunamazsa kart çökmesin.
-        errorBuilder: (context, error, stack) => ColoredBox(
-          color: context.colors.surfaceContainerHigh,
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Icon(
-              AppIcons.photo,
-              size: AppIconSize.md,
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+    return MediaThumbnail(
+      media: media,
+      // Figma: `scale: crop` — oranı bozmadan kutuyu doldur. `MediaThumbnail`
+      // zaten `BoxFit.cover` uyguluyor.
+      width: width ?? double.infinity,
+      height: height,
+      borderRadius: radius,
     );
   }
 }

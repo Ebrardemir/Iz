@@ -9,27 +9,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/collections_section.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/real_fonts.dart';
 
 const _memories = <CollectionMemoryData>[
   (
     id: 'm1',
-    imageAsset: 'assets/images/home/hero_today.jpg',
+    cover: null,
     title: 'Balonlar havalanırken',
     dateLabel: '10 Mayıs 2026',
   ),
   (
     id: 'm2',
-    imageAsset: 'assets/images/home/memory_coffee.jpg',
+    cover: null,
     title: 'Güvercinlik Vadisi',
     dateLabel: '12 Mayıs 2026',
   ),
   (
     id: 'm3',
-    imageAsset: 'assets/images/auth/hero_light.jpg',
+    cover: null,
     title: 'Kızılçukur\'da gün batımı',
     dateLabel: '14 Mayıs 2026',
   ),
@@ -37,7 +39,7 @@ const _memories = <CollectionMemoryData>[
 
 const _kapadokya = (
   id: 'col-1',
-  coverAsset: 'assets/images/home/hero_today.jpg',
+  cover: null,
   title: 'Kapadokya 2026',
   summary: '3 anı • 10-14 Mayıs 2026',
   memories: _memories,
@@ -45,7 +47,7 @@ const _kapadokya = (
 
 const _universite = (
   id: 'col-2',
-  coverAsset: 'assets/images/auth/hero_light.jpg',
+  cover: null,
   title: 'Üniversite Yıllarım',
   summary: '2 anı • 20 Eylül 2021 — 14 Haziran 2025',
   memories: <CollectionMemoryData>[],
@@ -299,6 +301,73 @@ void main() {
 
       expect(find.byType(CollectionCard), findsNothing);
       expect(find.text('Henüz bir koleksiyon yok'), findsOneWidget);
+    });
+  });
+
+  group('kapak görseli', () {
+    // Kart bir süre `Image.asset` çiziyordu: verisi tasarım önizlemesinden
+    // geliyordu ve `localPreviewPath` bir paket görseliydi. Gerçek medya
+    // hattı kurulunca `MediaThumbnail`e geçti; bu testler o geçişi kilitliyor.
+
+    const media = MediaItem(
+      id: 'medya-1',
+      type: MediaType.photo,
+      originalStatus: MediaOriginalStatus.available,
+      localPreviewPath: '/sahte/medya/kapak.jpg',
+    );
+
+    testWidgets('kapak MediaThumbnail ile çiziliyor', (tester) async {
+      await _sizeTo(tester);
+      await tester.pumpWidget(
+        _wrap(
+          CollectionCard(
+            collection: (
+              id: 'col-1',
+              cover: media,
+              title: 'Kapadokya 2026',
+              summary: '3 anı',
+              memories: const [],
+            ),
+            isExpanded: false,
+            onToggle: () {},
+            onOpenMemory: _noopMemory,
+            onMemoryActions: _noopActions,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final thumb = tester.widget<MediaThumbnail>(
+        find.byType(MediaThumbnail).first,
+      );
+      expect(thumb.media, media);
+    });
+
+    testWidgets('kapağı olmayan koleksiyon ÇÖKMÜYOR', (tester) async {
+      // NFR-021 / TR-M4-13: kapağı olmayan ya da dosyası kaybolan medya
+      // yer tutucuya düşüyor, kart çizilmeye devam ediyor.
+      await _sizeTo(tester);
+      await tester.pumpWidget(
+        _wrap(
+          CollectionCard(
+            collection: (
+              id: 'col-1',
+              cover: null,
+              title: 'Kapaksız',
+              summary: 'Anı yok',
+              memories: const [],
+            ),
+            isExpanded: false,
+            onToggle: () {},
+            onOpenMemory: _noopMemory,
+            onMemoryActions: _noopActions,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Kapaksız'), findsOneWidget);
     });
   });
 }
