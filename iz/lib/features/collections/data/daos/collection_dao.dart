@@ -9,8 +9,15 @@ import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/collections/data/tables/collection_tables.dart';
 import 'package:iz/features/memories/data/tables/memory_tables.dart';
+import 'package:iz/features/sync/data/daos/outbox_dao.dart';
+import 'package:iz/features/sync/data/outbox_payload.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'collection_dao.g.dart';
+
+/// Koleksiyonun outbox'taki karşılığı — sunucu bu adla tanıyor.
+/// Sabit ve DEĞİŞMEZ: bekleyen eski kuyruk satırları bu adı taşıyor.
+const kCollectionEntityType = 'collection';
 
 @DriftAccessor(tables: [Collections, MemoryCollections])
 class CollectionDao extends DatabaseAccessor<AppDatabase>
@@ -78,6 +85,8 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
     CollectionsCompanion collection, {
     // TR-C-41 — saat dışarıdan. Koleksiyon ve bağları AYNI ana damgalanmalı.
     required DateTime now,
+    // TR-M13-01 — kuyruk satırının kimliği çağırandan.
+    required String outboxId,
     List<String>? memoryIds,
   }) {
     return transaction(() async {
@@ -98,6 +107,14 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
       if (memoryIds != null) {
         await _replaceMemories(id, memoryIds, now);
       }
+
+      await _enqueue(
+        id,
+        op: current == null ? OutboxOperation.create : OutboxOperation.update,
+        baseVersion: current?.version ?? 0,
+        outboxId: outboxId,
+        now: now,
+      );
     });
   }
 
@@ -107,7 +124,11 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   /// bilerek bırakıyoruz: tombstone'un amacı "bu kaydı sildim" olayını
   /// senkronizasyonda taşımak; bağları şimdi silsek, silme geri alınamaz
   /// hâle gelirdi.
-  Future<void> softDelete(String id, {required DateTime now}) {
+  Future<void> softDelete(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) {
     return transaction(() async {
       final current = await (select(
         collections,
@@ -122,7 +143,54 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
           version: Value(current.version + 1),
         ),
       );
+
+      // Sunucuya "sil" diye gitmezse ikinci cihaz silmeyi hiç öğrenmez.
+      await _enqueue(
+        id,
+        op: OutboxOperation.delete,
+        baseVersion: current.version,
+        outboxId: outboxId,
+        now: now,
+      );
     });
+  }
+
+  /// Değişikliği outbox'a düşürür — AYNI TRANSACTION İÇİNDEN.
+  ///
+  /// Gerekçesi `memory_dao.dart`taki aynı adlı fonksiyonun notunda.
+  /// Anı bağları tombstone'lananlar dâhil gövdeye giriyor.
+  Future<void> _enqueue(
+    String collectionId, {
+    required OutboxOperation op,
+    required int baseVersion,
+    required String outboxId,
+    required DateTime now,
+  }) async {
+    final row = await (select(
+      collections,
+    )..where((t) => t.id.equals(collectionId))).getSingleOrNull();
+    if (row == null) return;
+
+    final baglar = await (select(
+      memoryCollections,
+    )..where((t) => t.collectionId.equals(collectionId))).get();
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kCollectionEntityType,
+      entityId: collectionId,
+      op: op,
+      payloadJson: encodeOutboxPayload(
+        entity: outboxRowJson(row),
+        links: {
+          'memory_collections': [
+            for (final link in baglar) outboxRowJson(link),
+          ],
+        },
+      ),
+      baseVersion: baseVersion,
+      now: now,
+    );
   }
 
   /// Koleksiyonun anı bağlarını verilen listeyle EŞİTLER — silmeden.

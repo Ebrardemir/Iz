@@ -133,6 +133,7 @@ final class MemoryRepositoryImpl implements MemoryRepository {
         collectionIds: draft.collectionIds,
         mediaIds: draft.mediaIds,
         now: now,
+        outboxId: _ids.newId(),
         ritualId: draft.ritualId,
         ritualYear: draft.ritualYear ?? draft.occurredAt.year,
       );
@@ -149,32 +150,42 @@ final class MemoryRepositoryImpl implements MemoryRepository {
   @override
   Future<Result<Unit>> setFavorite(String id, {required bool isFavorite}) =>
       guard(() async {
-        await _dao.setFavorite(id, isFavorite: isFavorite);
+        await _dao.setFavorite(
+          id,
+          isFavorite: isFavorite,
+          now: _clock.now(),
+          outboxId: _ids.newId(),
+        );
         return Unit.value;
       }, onError: (e, s) => DatabaseFailure(cause: e, stackTrace: s));
 
   @override
   Future<Result<Unit>> setArchived(String id, {required bool isArchived}) =>
       guard(() async {
-        await _dao.setArchived(id, isArchived: isArchived);
+        await _dao.setArchived(
+          id,
+          isArchived: isArchived,
+          now: _clock.now(),
+          outboxId: _ids.newId(),
+        );
         return Unit.value;
       }, onError: (e, s) => DatabaseFailure(cause: e, stackTrace: s));
 
   @override
   Future<Result<Unit>> moveToTrash(String id) => guard(() async {
-    await _dao.softDelete(id);
+    await _dao.softDelete(id, now: _clock.now(), outboxId: _ids.newId());
     return Unit.value;
   }, onError: (e, s) => DatabaseFailure(cause: e, stackTrace: s));
 
   @override
   Future<Result<Unit>> restoreFromTrash(String id) => guard(() async {
-    await _dao.restore(id);
+    await _dao.restore(id, now: _clock.now(), outboxId: _ids.newId());
     return Unit.value;
   }, onError: (e, s) => DatabaseFailure(cause: e, stackTrace: s));
 
   @override
   Future<Result<int>> purgeExpiredTrash() => guard(
-    _dao.purgeExpiredTrash,
+    () => _dao.purgeExpiredTrash(now: _clock.now()),
     onError: (e, s) => DatabaseFailure(cause: e, stackTrace: s),
   );
 

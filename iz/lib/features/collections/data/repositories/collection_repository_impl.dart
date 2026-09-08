@@ -76,6 +76,7 @@ final class CollectionRepositoryImpl implements CollectionRepository {
     await _dao.upsertCollection(
       CollectionMapper.toCompanion(draft, id: id),
       now: _clock.now(),
+      outboxId: _ids.newId(),
       memoryIds: draft.memoryIds,
     );
     return id;
@@ -83,7 +84,7 @@ final class CollectionRepositoryImpl implements CollectionRepository {
 
   @override
   Future<Result<Unit>> softDelete(String id) => guard(() async {
-    await _dao.softDelete(id, now: _clock.now());
+    await _dao.softDelete(id, now: _clock.now(), outboxId: _ids.newId());
     return Unit.value;
   }, onError: _dbFailure);
 

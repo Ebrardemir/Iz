@@ -12,6 +12,8 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/collections/data/repositories/collection_repository_impl.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
+import 'package:iz/features/journal/data/repositories/journal_repository_impl.dart';
+import 'package:iz/features/journal/domain/repositories/journal_repository.dart';
 import 'package:iz/features/media/data/repositories/media_repository_impl.dart';
 import 'package:iz/features/media/data/sources/media_file_store.dart';
 import 'package:iz/features/media/domain/repositories/media_repository.dart';
@@ -58,6 +60,7 @@ PersonRepository createTestPersonRepository(AppDatabase db) {
   return PersonRepositoryImpl(
     dao: db.personDao,
     idGenerator: SequentialIdGenerator(prefix: 'kisi-'),
+    clock: FixedClock(kTestDatabaseNow),
   );
 }
 
@@ -86,6 +89,15 @@ MediaRepository createTestMediaRepository(
     fileStore: fileStore,
     idGenerator: SequentialIdGenerator(prefix: 'medya-'),
     clock: FixedClock(now ?? DateTime(2026, 7, 26, 12)),
+  );
+}
+
+/// Günlük deposunu tahmin edilebilir kimliklerle kurar.
+JournalRepository createTestJournalRepository(AppDatabase db) {
+  return JournalRepositoryImpl(
+    dao: db.journalDao,
+    idGenerator: SequentialIdGenerator(prefix: 'gunluk-'),
+    clock: FixedClock(kTestDatabaseNow),
   );
 }
 

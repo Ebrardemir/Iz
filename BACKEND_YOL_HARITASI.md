@@ -465,6 +465,26 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 
 **Çıkış kriteri:** v6 → v8 migration testi yeşil; mevcut test paketi hâlâ yeşil; outbox doluyor.
 
+#### ✅ Durum — istemci tarafı tamamlandı
+
+| Adım | Nerede |
+|---|---|
+| Şema v8, bağ tablolarına `updatedAt/deletedAt/version` | `core/database/table_mixins.dart` → `SyncableLink` |
+| `Users` + `OutboxEntries` + `SyncState` + `SyncConflicts` | `features/sync/data/tables/`, `features/auth/data/tables/` |
+| Bağlar tombstone; tüm okumalarda `deletedAt IS NULL` | beş feature DAO'su |
+| Yazma yolları outbox'a düşüyor | `features/sync/data/daos/outbox_dao.dart` |
+| Testler | `migration_test.dart`, `link_tombstone_test.dart`, `outbox_test.dart` |
+
+**Faz 3'e devredilen borçlar** (motor yazılmadan kapatılması ZORUNLU):
+
+1. **`deviceOnly` süzgeci yok** (TR-M3-02). Günlük kaydı gizlilik modu ne olursa olsun outbox'a
+   giriyor. Bugün kuyruğu okuyan kimse yok — yani veri cihazdan çıkmıyor — ama motor açılmadan
+   önce `journal_dao.dart` içindeki `_enqueue` bir koşul kazanmak zorunda.
+2. **Free plan kapısı yok** (TR-M13-06). Motor hiç başlamayacağı için bugün zararsız.
+3. **Kuyruk boşalmıyor.** `OutboxDao.pending/recordFailure/remove` yazıldı ama çağıran yok;
+   `SyncState` satırı hiç açılmıyor.
+4. **Medya kuyruğa girmiyor** — bilinçli, ADR-B07: medya bu haritanın dışında.
+
 ---
 
 ### Faz 3 — Metadata senkronizasyonu (4–6 hafta) — **haritanın kalbi**

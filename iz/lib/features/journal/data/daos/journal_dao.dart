@@ -8,8 +8,15 @@ library;
 import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/journal/data/tables/journal_tables.dart';
+import 'package:iz/features/sync/data/daos/outbox_dao.dart';
+import 'package:iz/features/sync/data/outbox_payload.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'journal_dao.g.dart';
+
+/// Günlük kaydının outbox'taki karşılığı — sunucu bu adla tanıyor.
+/// Sabit ve DEĞİŞMEZ: bekleyen eski kuyruk satırları bu adı taşıyor.
+const kJournalEntityType = 'journal_entry';
 
 @DriftAccessor(tables: [JournalEntries, JournalMedia])
 class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
@@ -61,6 +68,8 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   Future<void> upsertEntry(
     JournalEntriesCompanion entry, {
     required DateTime now,
+    // TR-M13-01 — kuyruk satırının kimliği çağırandan.
+    required String outboxId,
     List<String>? mediaIds,
   }) {
     return transaction(() async {
@@ -78,23 +87,80 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
 
       // `null` = "bağlara dokunma". Boş liste = "hepsini kaldır".
       if (mediaIds != null) await _replaceMedia(id, mediaIds, now);
+
+      await _enqueue(
+        id,
+        op: current == null ? OutboxOperation.create : OutboxOperation.update,
+        baseVersion: current?.version ?? 0,
+        outboxId: outboxId,
+        now: now,
+      );
     });
+  }
+
+  /// Değişikliği outbox'a düşürür — AYNI TRANSACTION İÇİNDEN.
+  ///
+  /// Gerekçesi `memory_dao.dart`taki aynı adlı fonksiyonun notunda.
+  ///
+  /// ⚠️ GİZLİLİK BORCU: FR-035'teki `deviceOnly` kayıtlar buraya HİÇ
+  /// GİRMEMELİ (TR-M3-02). O süzgeç Faz 3'te, motor yazılırken kurulacak.
+  /// Bugün kuyruğu okuyan kimse yok — yani kayıt cihazdan çıkmıyor — ama
+  /// motor açılmadan ÖNCE bu satır bir koşul kazanmak zorunda.
+  Future<void> _enqueue(
+    String entryId, {
+    required OutboxOperation op,
+    required int baseVersion,
+    required String outboxId,
+    required DateTime now,
+  }) async {
+    final row = await (select(
+      journalEntries,
+    )..where((t) => t.id.equals(entryId))).getSingleOrNull();
+    if (row == null) return;
+
+    final medyalar = await (select(
+      journalMedia,
+    )..where((t) => t.journalEntryId.equals(entryId))).get();
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kJournalEntityType,
+      entityId: entryId,
+      op: op,
+      payloadJson: encodeOutboxPayload(
+        entity: outboxRowJson(row),
+        links: {
+          'journal_media': [for (final link in medyalar) outboxRowJson(link)],
+        },
+      ),
+      baseVersion: baseVersion,
+      now: now,
+    );
   }
 
   Future<void> setFavorite(
     String id, {
     required bool isFavorite,
     required DateTime now,
+    required String outboxId,
   }) => _patch(
     id,
     now: now,
+    outboxId: outboxId,
     (row) => JournalEntriesCompanion(isFavorite: Value(isFavorite)),
   );
 
   /// TR-C-32 — tombstone.
-  Future<void> softDelete(String id, {required DateTime now}) => _patch(
+  Future<void> softDelete(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     now: now,
+    outboxId: outboxId,
+    // Sunucuya "sil" diye gitmezse ikinci cihaz silmeyi hiç öğrenmez.
+    op: OutboxOperation.delete,
     (row) => JournalEntriesCompanion(deletedAt: Value(now)),
   );
 
@@ -153,6 +219,8 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
     String id,
     JournalEntriesCompanion Function(JournalEntryRow current) build, {
     required DateTime now,
+    required String outboxId,
+    OutboxOperation op = OutboxOperation.update,
   }) {
     return transaction(() async {
       final current = await (select(
@@ -165,6 +233,14 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
         build(
           current,
         ).copyWith(updatedAt: Value(now), version: Value(current.version + 1)),
+      );
+
+      await _enqueue(
+        id,
+        op: op,
+        baseVersion: current.version,
+        outboxId: outboxId,
+        now: now,
       );
     });
   }

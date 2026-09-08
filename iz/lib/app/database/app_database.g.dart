@@ -619,15 +619,15 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CategoryRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
       name: serializer.fromJson<String>(json['name']),
-      iconKey: serializer.fromJson<String>(json['iconKey']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
-      isSystem: serializer.fromJson<bool>(json['isSystem']),
+      iconKey: serializer.fromJson<String>(json['icon_key']),
+      sortOrder: serializer.fromJson<int>(json['sort_order']),
+      isSystem: serializer.fromJson<bool>(json['is_system']),
     );
   }
   @override
@@ -635,15 +635,15 @@ class CategoryRow extends DataClass implements Insertable<CategoryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'owner_id': serializer.toJson<String>(ownerId),
       'name': serializer.toJson<String>(name),
-      'iconKey': serializer.toJson<String>(iconKey),
-      'sortOrder': serializer.toJson<int>(sortOrder),
-      'isSystem': serializer.toJson<bool>(isSystem),
+      'icon_key': serializer.toJson<String>(iconKey),
+      'sort_order': serializer.toJson<int>(sortOrder),
+      'is_system': serializer.toJson<bool>(isSystem),
     };
   }
 
@@ -1232,9 +1232,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return LocationRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
       label: serializer.fromJson<String>(json['label']),
       latitude: serializer.fromJson<double?>(json['latitude']),
@@ -1248,9 +1248,9 @@ class LocationRow extends DataClass implements Insertable<LocationRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
       'label': serializer.toJson<String>(label),
       'latitude': serializer.toJson<double?>(latitude),
@@ -2049,25 +2049,27 @@ class MediaRow extends DataClass implements Insertable<MediaRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MediaRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
       type: $MediaItemsTable.$convertertype.fromJson(
         serializer.fromJson<String>(json['type']),
       ),
-      galleryAssetId: serializer.fromJson<String?>(json['galleryAssetId']),
-      localPreviewPath: serializer.fromJson<String?>(json['localPreviewPath']),
-      cloudObjectKey: serializer.fromJson<String?>(json['cloudObjectKey']),
-      originalStatus: $MediaItemsTable.$converteroriginalStatus.fromJson(
-        serializer.fromJson<String>(json['originalStatus']),
+      galleryAssetId: serializer.fromJson<String?>(json['gallery_asset_id']),
+      localPreviewPath: serializer.fromJson<String?>(
+        json['local_preview_path'],
       ),
-      mimeType: serializer.fromJson<String?>(json['mimeType']),
+      cloudObjectKey: serializer.fromJson<String?>(json['cloud_object_key']),
+      originalStatus: $MediaItemsTable.$converteroriginalStatus.fromJson(
+        serializer.fromJson<String>(json['original_status']),
+      ),
+      mimeType: serializer.fromJson<String?>(json['mime_type']),
       width: serializer.fromJson<int?>(json['width']),
       height: serializer.fromJson<int?>(json['height']),
-      durationMs: serializer.fromJson<int?>(json['durationMs']),
-      sizeBytes: serializer.fromJson<int?>(json['sizeBytes']),
-      lastVerifiedAt: serializer.fromJson<DateTime?>(json['lastVerifiedAt']),
+      durationMs: serializer.fromJson<int?>(json['duration_ms']),
+      sizeBytes: serializer.fromJson<int?>(json['size_bytes']),
+      lastVerifiedAt: serializer.fromJson<DateTime?>(json['last_verified_at']),
     );
   }
   @override
@@ -2075,25 +2077,25 @@ class MediaRow extends DataClass implements Insertable<MediaRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
       'type': serializer.toJson<String>(
         $MediaItemsTable.$convertertype.toJson(type),
       ),
-      'galleryAssetId': serializer.toJson<String?>(galleryAssetId),
-      'localPreviewPath': serializer.toJson<String?>(localPreviewPath),
-      'cloudObjectKey': serializer.toJson<String?>(cloudObjectKey),
-      'originalStatus': serializer.toJson<String>(
+      'gallery_asset_id': serializer.toJson<String?>(galleryAssetId),
+      'local_preview_path': serializer.toJson<String?>(localPreviewPath),
+      'cloud_object_key': serializer.toJson<String?>(cloudObjectKey),
+      'original_status': serializer.toJson<String>(
         $MediaItemsTable.$converteroriginalStatus.toJson(originalStatus),
       ),
-      'mimeType': serializer.toJson<String?>(mimeType),
+      'mime_type': serializer.toJson<String?>(mimeType),
       'width': serializer.toJson<int?>(width),
       'height': serializer.toJson<int?>(height),
-      'durationMs': serializer.toJson<int?>(durationMs),
-      'sizeBytes': serializer.toJson<int?>(sizeBytes),
-      'lastVerifiedAt': serializer.toJson<DateTime?>(lastVerifiedAt),
+      'duration_ms': serializer.toJson<int?>(durationMs),
+      'size_bytes': serializer.toJson<int?>(sizeBytes),
+      'last_verified_at': serializer.toJson<DateTime?>(lastVerifiedAt),
     };
   }
 
@@ -3070,24 +3072,24 @@ class MemoryRow extends DataClass implements Insertable<MemoryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
       title: serializer.fromJson<String?>(json['title']),
       note: serializer.fromJson<String?>(json['note']),
-      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
-      occurredYear: serializer.fromJson<int>(json['occurredYear']),
-      occurredMonth: serializer.fromJson<int>(json['occurredMonth']),
-      occurredDay: serializer.fromJson<int>(json['occurredDay']),
-      categoryId: serializer.fromJson<String?>(json['categoryId']),
-      locationId: serializer.fromJson<String?>(json['locationId']),
-      coverMediaId: serializer.fromJson<String?>(json['coverMediaId']),
-      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
-      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurred_at']),
+      occurredYear: serializer.fromJson<int>(json['occurred_year']),
+      occurredMonth: serializer.fromJson<int>(json['occurred_month']),
+      occurredDay: serializer.fromJson<int>(json['occurred_day']),
+      categoryId: serializer.fromJson<String?>(json['category_id']),
+      locationId: serializer.fromJson<String?>(json['location_id']),
+      coverMediaId: serializer.fromJson<String?>(json['cover_media_id']),
+      isFavorite: serializer.fromJson<bool>(json['is_favorite']),
+      isArchived: serializer.fromJson<bool>(json['is_archived']),
       sourceJournalEntryId: serializer.fromJson<String?>(
-        json['sourceJournalEntryId'],
+        json['source_journal_entry_id'],
       ),
     );
   }
@@ -3096,23 +3098,25 @@ class MemoryRow extends DataClass implements Insertable<MemoryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'owner_id': serializer.toJson<String>(ownerId),
       'title': serializer.toJson<String?>(title),
       'note': serializer.toJson<String?>(note),
-      'occurredAt': serializer.toJson<DateTime>(occurredAt),
-      'occurredYear': serializer.toJson<int>(occurredYear),
-      'occurredMonth': serializer.toJson<int>(occurredMonth),
-      'occurredDay': serializer.toJson<int>(occurredDay),
-      'categoryId': serializer.toJson<String?>(categoryId),
-      'locationId': serializer.toJson<String?>(locationId),
-      'coverMediaId': serializer.toJson<String?>(coverMediaId),
-      'isFavorite': serializer.toJson<bool>(isFavorite),
-      'isArchived': serializer.toJson<bool>(isArchived),
-      'sourceJournalEntryId': serializer.toJson<String?>(sourceJournalEntryId),
+      'occurred_at': serializer.toJson<DateTime>(occurredAt),
+      'occurred_year': serializer.toJson<int>(occurredYear),
+      'occurred_month': serializer.toJson<int>(occurredMonth),
+      'occurred_day': serializer.toJson<int>(occurredDay),
+      'category_id': serializer.toJson<String?>(categoryId),
+      'location_id': serializer.toJson<String?>(locationId),
+      'cover_media_id': serializer.toJson<String?>(coverMediaId),
+      'is_favorite': serializer.toJson<bool>(isFavorite),
+      'is_archived': serializer.toJson<bool>(isArchived),
+      'source_journal_entry_id': serializer.toJson<String?>(
+        sourceJournalEntryId,
+      ),
     };
   }
 
@@ -3993,23 +3997,23 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PersonRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
       name: serializer.fromJson<String>(json['name']),
       kind: $PeopleTable.$converterkind.fromJson(
         serializer.fromJson<String>(json['kind']),
       ),
       relationType: $PeopleTable.$converterrelationType.fromJson(
-        serializer.fromJson<String>(json['relationType']),
+        serializer.fromJson<String>(json['relation_type']),
       ),
-      relationLabel: serializer.fromJson<String?>(json['relationLabel']),
-      birthDate: serializer.fromJson<DateTime?>(json['birthDate']),
-      avatarMediaId: serializer.fromJson<String?>(json['avatarMediaId']),
+      relationLabel: serializer.fromJson<String?>(json['relation_label']),
+      birthDate: serializer.fromJson<DateTime?>(json['birth_date']),
+      avatarMediaId: serializer.fromJson<String?>(json['avatar_media_id']),
       note: serializer.fromJson<String?>(json['note']),
-      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      isFavorite: serializer.fromJson<bool>(json['is_favorite']),
     );
   }
   @override
@@ -4017,23 +4021,23 @@ class PersonRow extends DataClass implements Insertable<PersonRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'owner_id': serializer.toJson<String>(ownerId),
       'name': serializer.toJson<String>(name),
       'kind': serializer.toJson<String>(
         $PeopleTable.$converterkind.toJson(kind),
       ),
-      'relationType': serializer.toJson<String>(
+      'relation_type': serializer.toJson<String>(
         $PeopleTable.$converterrelationType.toJson(relationType),
       ),
-      'relationLabel': serializer.toJson<String?>(relationLabel),
-      'birthDate': serializer.toJson<DateTime?>(birthDate),
-      'avatarMediaId': serializer.toJson<String?>(avatarMediaId),
+      'relation_label': serializer.toJson<String?>(relationLabel),
+      'birth_date': serializer.toJson<DateTime?>(birthDate),
+      'avatar_media_id': serializer.toJson<String?>(avatarMediaId),
       'note': serializer.toJson<String?>(note),
-      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'is_favorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
@@ -4594,11 +4598,11 @@ class MemoryPersonRow extends DataClass implements Insertable<MemoryPersonRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryPersonRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      memoryId: serializer.fromJson<String>(json['memoryId']),
-      personId: serializer.fromJson<String>(json['personId']),
+      memoryId: serializer.fromJson<String>(json['memory_id']),
+      personId: serializer.fromJson<String>(json['person_id']),
       role: serializer.fromJson<String?>(json['role']),
     );
   }
@@ -4606,11 +4610,11 @@ class MemoryPersonRow extends DataClass implements Insertable<MemoryPersonRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'memoryId': serializer.toJson<String>(memoryId),
-      'personId': serializer.toJson<String>(personId),
+      'memory_id': serializer.toJson<String>(memoryId),
+      'person_id': serializer.toJson<String>(personId),
       'role': serializer.toJson<String?>(role),
     };
   }
@@ -5195,19 +5199,19 @@ class CollectionRow extends DataClass implements Insertable<CollectionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CollectionRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
-      coverMediaId: serializer.fromJson<String?>(json['coverMediaId']),
+      coverMediaId: serializer.fromJson<String?>(json['cover_media_id']),
       visibility: $CollectionsTable.$convertervisibility.fromJson(
         serializer.fromJson<String>(json['visibility']),
       ),
-      startDate: serializer.fromJson<DateTime?>(json['startDate']),
-      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      startDate: serializer.fromJson<DateTime?>(json['start_date']),
+      endDate: serializer.fromJson<DateTime?>(json['end_date']),
     );
   }
   @override
@@ -5215,19 +5219,19 @@ class CollectionRow extends DataClass implements Insertable<CollectionRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'owner_id': serializer.toJson<String>(ownerId),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
-      'coverMediaId': serializer.toJson<String?>(coverMediaId),
+      'cover_media_id': serializer.toJson<String?>(coverMediaId),
       'visibility': serializer.toJson<String>(
         $CollectionsTable.$convertervisibility.toJson(visibility),
       ),
-      'startDate': serializer.toJson<DateTime?>(startDate),
-      'endDate': serializer.toJson<DateTime?>(endDate),
+      'start_date': serializer.toJson<DateTime?>(startDate),
+      'end_date': serializer.toJson<DateTime?>(endDate),
     };
   }
 
@@ -5751,24 +5755,24 @@ class MemoryCollectionRow extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryCollectionRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      memoryId: serializer.fromJson<String>(json['memoryId']),
-      collectionId: serializer.fromJson<String>(json['collectionId']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      memoryId: serializer.fromJson<String>(json['memory_id']),
+      collectionId: serializer.fromJson<String>(json['collection_id']),
+      sortOrder: serializer.fromJson<int>(json['sort_order']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'memoryId': serializer.toJson<String>(memoryId),
-      'collectionId': serializer.toJson<String>(collectionId),
-      'sortOrder': serializer.toJson<int>(sortOrder),
+      'memory_id': serializer.toJson<String>(memoryId),
+      'collection_id': serializer.toJson<String>(collectionId),
+      'sort_order': serializer.toJson<int>(sortOrder),
     };
   }
 
@@ -6321,18 +6325,18 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return RitualRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
       title: serializer.fromJson<String>(json['title']),
       recurrenceType: $RitualsTable.$converterrecurrenceType.fromJson(
-        serializer.fromJson<String>(json['recurrenceType']),
+        serializer.fromJson<String>(json['recurrence_type']),
       ),
-      anchorMonth: serializer.fromJson<int?>(json['anchorMonth']),
-      anchorDay: serializer.fromJson<int?>(json['anchorDay']),
-      iconKey: serializer.fromJson<String>(json['iconKey']),
+      anchorMonth: serializer.fromJson<int?>(json['anchor_month']),
+      anchorDay: serializer.fromJson<int?>(json['anchor_day']),
+      iconKey: serializer.fromJson<String>(json['icon_key']),
     );
   }
   @override
@@ -6340,18 +6344,18 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
+      'owner_id': serializer.toJson<String>(ownerId),
       'title': serializer.toJson<String>(title),
-      'recurrenceType': serializer.toJson<String>(
+      'recurrence_type': serializer.toJson<String>(
         $RitualsTable.$converterrecurrenceType.toJson(recurrenceType),
       ),
-      'anchorMonth': serializer.toJson<int?>(anchorMonth),
-      'anchorDay': serializer.toJson<int?>(anchorDay),
-      'iconKey': serializer.toJson<String>(iconKey),
+      'anchor_month': serializer.toJson<int?>(anchorMonth),
+      'anchor_day': serializer.toJson<int?>(anchorDay),
+      'icon_key': serializer.toJson<String>(iconKey),
     };
   }
 
@@ -6854,24 +6858,24 @@ class MemoryRitualRow extends DataClass implements Insertable<MemoryRitualRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryRitualRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      memoryId: serializer.fromJson<String>(json['memoryId']),
-      ritualId: serializer.fromJson<String>(json['ritualId']),
-      occurrenceYear: serializer.fromJson<int>(json['occurrenceYear']),
+      memoryId: serializer.fromJson<String>(json['memory_id']),
+      ritualId: serializer.fromJson<String>(json['ritual_id']),
+      occurrenceYear: serializer.fromJson<int>(json['occurrence_year']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'memoryId': serializer.toJson<String>(memoryId),
-      'ritualId': serializer.toJson<String>(ritualId),
-      'occurrenceYear': serializer.toJson<int>(occurrenceYear),
+      'memory_id': serializer.toJson<String>(memoryId),
+      'ritual_id': serializer.toJson<String>(ritualId),
+      'occurrence_year': serializer.toJson<int>(occurrenceYear),
     };
   }
 
@@ -7282,24 +7286,24 @@ class MemoryMediaRow extends DataClass implements Insertable<MemoryMediaRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MemoryMediaRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      memoryId: serializer.fromJson<String>(json['memoryId']),
-      mediaId: serializer.fromJson<String>(json['mediaId']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      memoryId: serializer.fromJson<String>(json['memory_id']),
+      mediaId: serializer.fromJson<String>(json['media_id']),
+      sortOrder: serializer.fromJson<int>(json['sort_order']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'memoryId': serializer.toJson<String>(memoryId),
-      'mediaId': serializer.toJson<String>(mediaId),
-      'sortOrder': serializer.toJson<int>(sortOrder),
+      'memory_id': serializer.toJson<String>(memoryId),
+      'media_id': serializer.toJson<String>(mediaId),
+      'sort_order': serializer.toJson<int>(sortOrder),
     };
   }
 
@@ -7674,22 +7678,22 @@ class RitualPersonRow extends DataClass implements Insertable<RitualPersonRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return RitualPersonRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ritualId: serializer.fromJson<String>(json['ritualId']),
-      personId: serializer.fromJson<String>(json['personId']),
+      ritualId: serializer.fromJson<String>(json['ritual_id']),
+      personId: serializer.fromJson<String>(json['person_id']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ritualId': serializer.toJson<String>(ritualId),
-      'personId': serializer.toJson<String>(personId),
+      'ritual_id': serializer.toJson<String>(ritualId),
+      'person_id': serializer.toJson<String>(personId),
     };
   }
 
@@ -8357,23 +8361,23 @@ class JournalEntryRow extends DataClass implements Insertable<JournalEntryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return JournalEntryRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      ownerId: serializer.fromJson<String>(json['ownerId']),
-      entryDate: serializer.fromJson<DateTime>(json['entryDate']),
+      ownerId: serializer.fromJson<String>(json['owner_id']),
+      entryDate: serializer.fromJson<DateTime>(json['entry_date']),
       content: serializer.fromJson<String>(json['content']),
       title: serializer.fromJson<String?>(json['title']),
-      moodScore: serializer.fromJson<int?>(json['moodScore']),
-      promptId: serializer.fromJson<String?>(json['promptId']),
-      moodKey: serializer.fromJson<String?>(json['moodKey']),
-      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      moodScore: serializer.fromJson<int?>(json['mood_score']),
+      promptId: serializer.fromJson<String?>(json['prompt_id']),
+      moodKey: serializer.fromJson<String?>(json['mood_key']),
+      isFavorite: serializer.fromJson<bool>(json['is_favorite']),
       privacyMode: $JournalEntriesTable.$converterprivacyMode.fromJson(
-        serializer.fromJson<String>(json['privacyMode']),
+        serializer.fromJson<String>(json['privacy_mode']),
       ),
       convertedMemoryId: serializer.fromJson<String?>(
-        json['convertedMemoryId'],
+        json['converted_memory_id'],
       ),
     );
   }
@@ -8382,22 +8386,22 @@ class JournalEntryRow extends DataClass implements Insertable<JournalEntryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'ownerId': serializer.toJson<String>(ownerId),
-      'entryDate': serializer.toJson<DateTime>(entryDate),
+      'owner_id': serializer.toJson<String>(ownerId),
+      'entry_date': serializer.toJson<DateTime>(entryDate),
       'content': serializer.toJson<String>(content),
       'title': serializer.toJson<String?>(title),
-      'moodScore': serializer.toJson<int?>(moodScore),
-      'promptId': serializer.toJson<String?>(promptId),
-      'moodKey': serializer.toJson<String?>(moodKey),
-      'isFavorite': serializer.toJson<bool>(isFavorite),
-      'privacyMode': serializer.toJson<String>(
+      'mood_score': serializer.toJson<int?>(moodScore),
+      'prompt_id': serializer.toJson<String?>(promptId),
+      'mood_key': serializer.toJson<String?>(moodKey),
+      'is_favorite': serializer.toJson<bool>(isFavorite),
+      'privacy_mode': serializer.toJson<String>(
         $JournalEntriesTable.$converterprivacyMode.toJson(privacyMode),
       ),
-      'convertedMemoryId': serializer.toJson<String?>(convertedMemoryId),
+      'converted_memory_id': serializer.toJson<String?>(convertedMemoryId),
     };
   }
 
@@ -8971,24 +8975,24 @@ class JournalMediaRow extends DataClass implements Insertable<JournalMediaRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return JournalMediaRow(
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
-      journalEntryId: serializer.fromJson<String>(json['journalEntryId']),
-      mediaId: serializer.fromJson<String>(json['mediaId']),
-      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      journalEntryId: serializer.fromJson<String>(json['journal_entry_id']),
+      mediaId: serializer.fromJson<String>(json['media_id']),
+      sortOrder: serializer.fromJson<int>(json['sort_order']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
-      'journalEntryId': serializer.toJson<String>(journalEntryId),
-      'mediaId': serializer.toJson<String>(mediaId),
-      'sortOrder': serializer.toJson<int>(sortOrder),
+      'journal_entry_id': serializer.toJson<String>(journalEntryId),
+      'media_id': serializer.toJson<String>(mediaId),
+      'sort_order': serializer.toJson<int>(sortOrder),
     };
   }
 
@@ -9496,14 +9500,14 @@ class UserRow extends DataClass implements Insertable<UserRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return UserRow(
       id: serializer.fromJson<String>(json['id']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      updatedAt: serializer.fromJson<DateTime>(json['updated_at']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deleted_at']),
       version: serializer.fromJson<int>(json['version']),
       email: serializer.fromJson<String?>(json['email']),
-      displayName: serializer.fromJson<String?>(json['displayName']),
+      displayName: serializer.fromJson<String?>(json['display_name']),
       locale: serializer.fromJson<String?>(json['locale']),
-      avatarMediaId: serializer.fromJson<String?>(json['avatarMediaId']),
+      avatarMediaId: serializer.fromJson<String?>(json['avatar_media_id']),
     );
   }
   @override
@@ -9511,14 +9515,14 @@ class UserRow extends DataClass implements Insertable<UserRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'updated_at': serializer.toJson<DateTime>(updatedAt),
+      'deleted_at': serializer.toJson<DateTime?>(deletedAt),
       'version': serializer.toJson<int>(version),
       'email': serializer.toJson<String?>(email),
-      'displayName': serializer.toJson<String?>(displayName),
+      'display_name': serializer.toJson<String?>(displayName),
       'locale': serializer.toJson<String?>(locale),
-      'avatarMediaId': serializer.toJson<String?>(avatarMediaId),
+      'avatar_media_id': serializer.toJson<String?>(avatarMediaId),
     };
   }
 
@@ -10082,16 +10086,16 @@ class OutboxEntryRow extends DataClass implements Insertable<OutboxEntryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutboxEntryRow(
       id: serializer.fromJson<String>(json['id']),
-      entityType: serializer.fromJson<String>(json['entityType']),
-      entityId: serializer.fromJson<String>(json['entityId']),
+      entityType: serializer.fromJson<String>(json['entity_type']),
+      entityId: serializer.fromJson<String>(json['entity_id']),
       op: $OutboxEntriesTable.$converterop.fromJson(
         serializer.fromJson<String>(json['op']),
       ),
-      payloadJson: serializer.fromJson<String>(json['payloadJson']),
-      baseVersion: serializer.fromJson<int>(json['baseVersion']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      attemptCount: serializer.fromJson<int>(json['attemptCount']),
-      lastError: serializer.fromJson<String?>(json['lastError']),
+      payloadJson: serializer.fromJson<String>(json['payload_json']),
+      baseVersion: serializer.fromJson<int>(json['base_version']),
+      createdAt: serializer.fromJson<DateTime>(json['created_at']),
+      attemptCount: serializer.fromJson<int>(json['attempt_count']),
+      lastError: serializer.fromJson<String?>(json['last_error']),
     );
   }
   @override
@@ -10099,16 +10103,16 @@ class OutboxEntryRow extends DataClass implements Insertable<OutboxEntryRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'entityType': serializer.toJson<String>(entityType),
-      'entityId': serializer.toJson<String>(entityId),
+      'entity_type': serializer.toJson<String>(entityType),
+      'entity_id': serializer.toJson<String>(entityId),
       'op': serializer.toJson<String>(
         $OutboxEntriesTable.$converterop.toJson(op),
       ),
-      'payloadJson': serializer.toJson<String>(payloadJson),
-      'baseVersion': serializer.toJson<int>(baseVersion),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'attemptCount': serializer.toJson<int>(attemptCount),
-      'lastError': serializer.toJson<String?>(lastError),
+      'payload_json': serializer.toJson<String>(payloadJson),
+      'base_version': serializer.toJson<int>(baseVersion),
+      'created_at': serializer.toJson<DateTime>(createdAt),
+      'attempt_count': serializer.toJson<int>(attemptCount),
+      'last_error': serializer.toJson<String?>(lastError),
     };
   }
 
@@ -10562,9 +10566,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     return SyncStateRow(
       id: serializer.fromJson<String>(json['id']),
       cursor: serializer.fromJson<String?>(json['cursor']),
-      lastSyncAt: serializer.fromJson<DateTime?>(json['lastSyncAt']),
-      lastError: serializer.fromJson<String?>(json['lastError']),
-      pendingCount: serializer.fromJson<int>(json['pendingCount']),
+      lastSyncAt: serializer.fromJson<DateTime?>(json['last_sync_at']),
+      lastError: serializer.fromJson<String?>(json['last_error']),
+      pendingCount: serializer.fromJson<int>(json['pending_count']),
     );
   }
   @override
@@ -10573,9 +10577,9 @@ class SyncStateRow extends DataClass implements Insertable<SyncStateRow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'cursor': serializer.toJson<String?>(cursor),
-      'lastSyncAt': serializer.toJson<DateTime?>(lastSyncAt),
-      'lastError': serializer.toJson<String?>(lastError),
-      'pendingCount': serializer.toJson<int>(pendingCount),
+      'last_sync_at': serializer.toJson<DateTime?>(lastSyncAt),
+      'last_error': serializer.toJson<String?>(lastError),
+      'pending_count': serializer.toJson<int>(pendingCount),
     };
   }
 
@@ -11019,13 +11023,13 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SyncConflictRow(
       id: serializer.fromJson<String>(json['id']),
-      entityType: serializer.fromJson<String>(json['entityType']),
-      entityId: serializer.fromJson<String>(json['entityId']),
+      entityType: serializer.fromJson<String>(json['entity_type']),
+      entityId: serializer.fromJson<String>(json['entity_id']),
       field: serializer.fromJson<String>(json['field']),
-      localValue: serializer.fromJson<String?>(json['localValue']),
-      serverValue: serializer.fromJson<String?>(json['serverValue']),
-      detectedAt: serializer.fromJson<DateTime>(json['detectedAt']),
-      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
+      localValue: serializer.fromJson<String?>(json['local_value']),
+      serverValue: serializer.fromJson<String?>(json['server_value']),
+      detectedAt: serializer.fromJson<DateTime>(json['detected_at']),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolved_at']),
     );
   }
   @override
@@ -11033,13 +11037,13 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'entityType': serializer.toJson<String>(entityType),
-      'entityId': serializer.toJson<String>(entityId),
+      'entity_type': serializer.toJson<String>(entityType),
+      'entity_id': serializer.toJson<String>(entityId),
       'field': serializer.toJson<String>(field),
-      'localValue': serializer.toJson<String?>(localValue),
-      'serverValue': serializer.toJson<String?>(serverValue),
-      'detectedAt': serializer.toJson<DateTime>(detectedAt),
-      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
+      'local_value': serializer.toJson<String?>(localValue),
+      'server_value': serializer.toJson<String?>(serverValue),
+      'detected_at': serializer.toJson<DateTime>(detectedAt),
+      'resolved_at': serializer.toJson<DateTime?>(resolvedAt),
     };
   }
 

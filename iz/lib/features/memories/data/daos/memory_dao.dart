@@ -17,6 +17,9 @@ import 'package:iz/features/memories/data/tables/memory_tables.dart';
 import 'package:iz/features/memories/domain/entities/memory_filter.dart';
 import 'package:iz/features/people/data/tables/person_tables.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
+import 'package:iz/features/sync/data/daos/outbox_dao.dart';
+import 'package:iz/features/sync/data/outbox_payload.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'memory_dao.g.dart';
 
@@ -61,6 +64,12 @@ class MemoryDetailRow {
   final int? ritualYear;
   final LocationRow? location;
 }
+
+/// Anının outbox'taki karşılığı — sunucu bu adla tanıyor.
+///
+/// Sabit ve DEĞİŞMEZ: kullanıcının cihazında bekleyen eski kuyruk satırları
+/// bu adı taşıyor.
+const kMemoryEntityType = 'memory';
 
 @DriftAccessor(
   tables: [
@@ -422,11 +431,17 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     // AYNI ana damgalanmalı; DAO kendi saatini okusaydı transaction içinde
     // milisaniyeler ayrışırdı.
     required DateTime now,
+    // Kuyruk satırının kimliği. ÇAĞIRAN ÜRETİYOR çünkü `IdGenerator` bir
+    // bağımlılık ve DAO'nun bağımlılığı yalnız veritabanı olmalı.
+    required String outboxId,
     String? ritualId,
     int? ritualYear,
   }) {
     return transaction(() async {
       final id = memory.id.value;
+      final onceki = await (select(
+        memories,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(memories).insertOnConflictUpdate(memory);
 
@@ -434,7 +449,76 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
       await _syncCollections(id, collectionIds, now);
       await _syncMedia(id, mediaIds, now);
       await _syncRitual(id, ritualId, ritualYear, now);
+
+      await _enqueue(
+        id,
+        // Kayıt önceden yoksa bu bir OLUŞTURMA. Sunucu ikisini ayırt
+        // etmeli: var olmayan bir kaydı güncellemeye çalışmak hata.
+        op: onceki == null ? OutboxOperation.create : OutboxOperation.update,
+        baseVersion: onceki?.version ?? 0,
+        outboxId: outboxId,
+        now: now,
+      );
     });
+  }
+
+  /// Değişikliği outbox'a düşürür — AYNI TRANSACTION İÇİNDEN.
+  ///
+  /// Ayrı transaction olsaydı ikisinin arasında çöken bir uygulama
+  /// değişikliği kalıcı olarak kaybederdi: veri yerelde değişmiş ama
+  /// sunucuya gideceği hiçbir yere yazılmamış olurdu (TR-M13-01).
+  ///
+  /// Gövde SATIRLARDAN üretiliyor ve BAĞLARI da taşıyor — tombstone'lananlar
+  /// dâhil. Gerekçesi `outbox_payload.dart` başındaki notta.
+  Future<void> _enqueue(
+    String memoryId, {
+    required OutboxOperation op,
+    required int baseVersion,
+    required String outboxId,
+    required DateTime now,
+  }) async {
+    final row = await (select(
+      memories,
+    )..where((t) => t.id.equals(memoryId))).getSingleOrNull();
+    if (row == null) return;
+
+    // BAĞLAR SÜZÜLMEDEN alınıyor: tombstone'lananlar da gövdeye giriyor.
+    // Yalnız canlıları gönderseydik sunucu "eksik olan henüz gelmemiş" ile
+    // "eksik olan silinmiş"i ayırt edemezdi (rapor §1.1).
+    final kisiler = await (select(
+      memoryPeople,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final koleksiyonlar = await (select(
+      memoryCollections,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final seriler = await (select(
+      memoryRituals,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final medyalar = await (select(
+      memoryMedia,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+
+    final payload = encodeOutboxPayload(
+      entity: outboxRowJson(row),
+      links: {
+        'memory_people': [for (final link in kisiler) outboxRowJson(link)],
+        'memory_collections': [
+          for (final link in koleksiyonlar) outboxRowJson(link),
+        ],
+        'memory_rituals': [for (final link in seriler) outboxRowJson(link)],
+        'memory_media': [for (final link in medyalar) outboxRowJson(link)],
+      },
+    );
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kMemoryEntityType,
+      entityId: memoryId,
+      op: op,
+      payloadJson: payload,
+      baseVersion: baseVersion,
+      now: now,
+    );
   }
 
   // --- Bağ eşitleme ---------------------------------------------------
@@ -625,54 +709,86 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   }
 
   /// FR-019 — favori işaretini değiştirir.
-  Future<void> setFavorite(String id, {required bool isFavorite}) => _patch(
+  Future<void> setFavorite(
+    String id, {
+    required bool isFavorite,
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       isFavorite: Value(isFavorite),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// FR-014 — arşivle.
-  Future<void> setArchived(String id, {required bool isArchived}) => _patch(
+  Future<void> setArchived(
+    String id, {
+    required bool isArchived,
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       isArchived: Value(isArchived),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// FR-015 — geri alınabilir silme ("çöp kutusu").
   /// Kayıt gitmez, `deletedAt` dolar. Rapor 12.2'deki tombstone yaklaşımı.
-  Future<void> softDelete(String id) => _patch(
+  Future<void> softDelete(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
-      deletedAt: Value(DateTime.now()),
-      updatedAt: Value(DateTime.now()),
+      deletedAt: Value(now),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
+    // Sunucuya "sil" diye gitmezse ikinci cihaz silmeyi hiç öğrenmez.
+    op: OutboxOperation.delete,
   );
 
-  Future<void> restore(String id) => _patch(
+  Future<void> restore(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       // Value(null) = "bu sütunu NULL yap".
       // Value.absent() ise "bu sütuna dokunma" demektir — ikisini
       // karıştırmak Drift'te en sık yapılan hatadır.
       deletedAt: const Value(null),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// Çöp kutusunda [retention] süresini aşmış kayıtları kalıcı siler.
   /// Uygulama açılışında çalıştırılır.
+  ///
+  /// [now] DIŞARIDAN (TR-C-41): "30 gün doldu mu" kararı testte sabit bir
+  /// ana göre verilebilsin.
   Future<int> purgeExpiredTrash({
+    required DateTime now,
     Duration retention = const Duration(days: 30),
   }) {
-    final cutoff = DateTime.now().subtract(retention);
+    final cutoff = now.subtract(retention);
     return (delete(memories)..where(
           (t) =>
               t.deletedAt.isNotNull() & t.deletedAt.isSmallerThanValue(cutoff),
@@ -703,8 +819,11 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   /// Transaction içinde olduğu için araya başka yazma giremez.
   Future<void> _patch(
     String id,
-    MemoriesCompanion Function(MemoryRow current) build,
-  ) {
+    MemoriesCompanion Function(MemoryRow current) build, {
+    required DateTime now,
+    required String outboxId,
+    OutboxOperation op = OutboxOperation.update,
+  }) {
     return transaction(() async {
       final current = await (select(
         memories,
@@ -715,6 +834,14 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
       await (update(
         memories,
       )..where((t) => t.id.equals(id))).write(build(current));
+
+      await _enqueue(
+        id,
+        op: op,
+        baseVersion: current.version,
+        outboxId: outboxId,
+        now: now,
+      );
     });
   }
 }

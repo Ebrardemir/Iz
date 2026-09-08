@@ -75,6 +75,7 @@ final class RitualRepositoryImpl implements RitualRepository {
     final id = draft.id ?? _ids.newId();
     await _dao.upsertRitual(
       now: _clock.now(),
+      outboxId: _ids.newId(),
       RitualMapper.toCompanion(draft, id: id),
       occurrences: draft.occurrences,
       personIds: draft.personIds,
@@ -84,7 +85,7 @@ final class RitualRepositoryImpl implements RitualRepository {
 
   @override
   Future<Result<Unit>> softDelete(String id) => guard(() async {
-    await _dao.softDelete(id, now: _clock.now());
+    await _dao.softDelete(id, now: _clock.now(), outboxId: _ids.newId());
     return Unit.value;
   }, onError: _dbFailure);
 

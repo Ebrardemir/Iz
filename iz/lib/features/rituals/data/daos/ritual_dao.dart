@@ -9,8 +9,15 @@ import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/memories/data/tables/memory_tables.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
+import 'package:iz/features/sync/data/daos/outbox_dao.dart';
+import 'package:iz/features/sync/data/outbox_payload.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'ritual_dao.g.dart';
+
+/// Serinin outbox'taki karşılığı — sunucu bu adla tanıyor.
+/// Sabit ve DEĞİŞMEZ: bekleyen eski kuyruk satırları bu adı taşıyor.
+const kRitualEntityType = 'ritual';
 
 @DriftAccessor(tables: [Rituals, MemoryRituals, RitualPeople])
 class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
@@ -86,6 +93,8 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
     Set<String>? personIds,
     // TR-C-41 — saat dışarıdan. Seri ve bağları AYNI ana damgalanmalı.
     required DateTime now,
+    // TR-M13-01 — kuyruk satırının kimliği çağırandan.
+    required String outboxId,
   }) {
     return transaction(() async {
       final id = ritual.id.value;
@@ -107,7 +116,55 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
       if (personIds != null) {
         await _replacePeople(id, personIds, now);
       }
+
+      await _enqueue(
+        id,
+        op: current == null ? OutboxOperation.create : OutboxOperation.update,
+        baseVersion: current?.version ?? 0,
+        outboxId: outboxId,
+        now: now,
+      );
     });
+  }
+
+  /// Değişikliği outbox'a düşürür — AYNI TRANSACTION İÇİNDEN.
+  ///
+  /// Gerekçesi `memory_dao.dart`taki aynı adlı fonksiyonun notunda.
+  /// Kişi ve anı bağları tombstone'lananlar dâhil gövdeye giriyor.
+  Future<void> _enqueue(
+    String ritualId, {
+    required OutboxOperation op,
+    required int baseVersion,
+    required String outboxId,
+    required DateTime now,
+  }) async {
+    final row = await (select(
+      rituals,
+    )..where((t) => t.id.equals(ritualId))).getSingleOrNull();
+    if (row == null) return;
+
+    final kisiler = await (select(
+      ritualPeople,
+    )..where((t) => t.ritualId.equals(ritualId))).get();
+    final anilar = await (select(
+      memoryRituals,
+    )..where((t) => t.ritualId.equals(ritualId))).get();
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kRitualEntityType,
+      entityId: ritualId,
+      op: op,
+      payloadJson: encodeOutboxPayload(
+        entity: outboxRowJson(row),
+        links: {
+          'ritual_people': [for (final link in kisiler) outboxRowJson(link)],
+          'memory_rituals': [for (final link in anilar) outboxRowJson(link)],
+        },
+      ),
+      baseVersion: baseVersion,
+      now: now,
+    );
   }
 
   /// Serinin kişi bağlarını verilen kümeyle EŞİTLER — silmeden.
@@ -160,7 +217,11 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
   }
 
   /// TR-C-32 — tombstone. TR-M6-11'in seri karşılığı: anılar silinmiyor.
-  Future<void> softDelete(String id, {required DateTime now}) {
+  Future<void> softDelete(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) {
     return transaction(() async {
       final current = await (select(
         rituals,
@@ -174,6 +235,15 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
           updatedAt: Value(now),
           version: Value(current.version + 1),
         ),
+      );
+
+      // Sunucuya "sil" diye gitmezse ikinci cihaz silmeyi hiç öğrenmez.
+      await _enqueue(
+        id,
+        op: OutboxOperation.delete,
+        baseVersion: current.version,
+        outboxId: outboxId,
+        now: now,
       );
     });
   }

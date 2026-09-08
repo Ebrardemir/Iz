@@ -22,6 +22,7 @@ import 'package:iz/app/database/app_database.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/network/auth_token_provider.dart';
 import 'package:iz/core/storage/app_preferences.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_token_provider.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -92,7 +93,9 @@ Future<void> _runMaintenance(ProviderContainer container, Logger log) async {
   try {
     // FR-015 — çöp kutusunda 30 günü dolmuş anıları kalıcı sil.
     final db = container.read(appDatabaseProvider);
-    final purged = await db.memoryDao.purgeExpiredTrash();
+    final purged = await db.memoryDao.purgeExpiredTrash(
+      now: container.read(clockProvider).now(),
+    );
     if (purged > 0) {
       log.info('Çöp kutusundan $purged anı kalıcı silindi.');
     }

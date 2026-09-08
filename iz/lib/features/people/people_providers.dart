@@ -13,6 +13,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/app/database/app_database.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/people/data/repositories/person_repository_impl.dart';
 import 'package:iz/features/people/domain/repositories/person_repository.dart';
@@ -23,5 +24,6 @@ final personRepositoryProvider = Provider<PersonRepository>((ref) {
   return PersonRepositoryImpl(
     dao: ref.watch(appDatabaseProvider).personDao,
     idGenerator: ref.watch(idGeneratorProvider),
+    clock: ref.watch(clockProvider),
   );
 });
