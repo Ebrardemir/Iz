@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/rituals/data/daos/ritual_dao.dart';
 import 'package:iz/features/rituals/data/mappers/ritual_mapper.dart';
@@ -23,11 +24,14 @@ final class RitualRepositoryImpl implements RitualRepository {
   RitualRepositoryImpl({
     required RitualDao dao,
     required IdGenerator idGenerator,
+    required Clock clock,
   }) : _dao = dao,
-       _ids = idGenerator;
+       _ids = idGenerator,
+       _clock = clock;
 
   final RitualDao _dao;
   final IdGenerator _ids;
+  final Clock _clock;
 
   static final _log = appLogger('rituals.repository');
 
@@ -70,6 +74,7 @@ final class RitualRepositoryImpl implements RitualRepository {
     // Kimlik yeni kayıtta ÜRETİLİYOR, güncellemede korunuyor (TR-C-40).
     final id = draft.id ?? _ids.newId();
     await _dao.upsertRitual(
+      now: _clock.now(),
       RitualMapper.toCompanion(draft, id: id),
       occurrences: draft.occurrences,
       personIds: draft.personIds,
@@ -79,7 +84,7 @@ final class RitualRepositoryImpl implements RitualRepository {
 
   @override
   Future<Result<Unit>> softDelete(String id) => guard(() async {
-    await _dao.softDelete(id);
+    await _dao.softDelete(id, now: _clock.now());
     return Unit.value;
   }, onError: _dbFailure);
 

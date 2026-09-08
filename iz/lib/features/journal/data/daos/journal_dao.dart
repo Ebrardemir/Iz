@@ -77,7 +77,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
       );
 
       // `null` = "bağlara dokunma". Boş liste = "hepsini kaldır".
-      if (mediaIds != null) await _replaceMedia(id, mediaIds);
+      if (mediaIds != null) await _replaceMedia(id, mediaIds, now);
     });
   }
 
@@ -98,23 +98,50 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
     (row) => JournalEntriesCompanion(deletedAt: Value(now)),
   );
 
-  /// Günlük kaydının medya bağlarını verilen listeyle DEĞİŞTİRİR.
-  Future<void> _replaceMedia(String entryId, List<String> mediaIds) {
+  /// Günlük kaydının medya bağlarını verilen listeyle EŞİTLER — silmeden.
+  ///
+  /// Deseni ve gerekçesi `memory_dao.dart`taki "Bağ eşitleme" bölümünde.
+  Future<void> _replaceMedia(
+    String entryId,
+    List<String> mediaIds,
+    DateTime now,
+  ) {
     return transaction(() async {
-      await (delete(
+      final current = await (select(
         journalMedia,
-      )..where((t) => t.journalEntryId.equals(entryId))).go();
+      )..where((t) => t.journalEntryId.equals(entryId))).get();
+      final byMedia = {for (final row in current) row.mediaId: row};
 
-      await batch((batch) {
-        batch.insertAll(journalMedia, [
-          for (final (index, mediaId) in mediaIds.indexed)
-            JournalMediaCompanion.insert(
-              journalEntryId: entryId,
-              mediaId: mediaId,
-              sortOrder: Value(index),
-            ),
-        ]);
-      });
+      for (final row in current) {
+        if (row.deletedAt == null && !mediaIds.contains(row.mediaId)) {
+          await (update(journalMedia)..where(
+                (t) =>
+                    t.journalEntryId.equals(entryId) &
+                    t.mediaId.equals(row.mediaId),
+              ))
+              .write(
+                JournalMediaCompanion(
+                  deletedAt: Value(now),
+                  updatedAt: Value(now),
+                  version: Value(row.version + 1),
+                ),
+              );
+        }
+      }
+
+      for (final (index, mediaId) in mediaIds.indexed) {
+        final existing = byMedia[mediaId];
+        await into(journalMedia).insertOnConflictUpdate(
+          JournalMediaCompanion.insert(
+            journalEntryId: entryId,
+            mediaId: mediaId,
+            sortOrder: Value(index),
+            updatedAt: Value(now),
+            deletedAt: const Value(null),
+            version: Value((existing?.version ?? 0) + 1),
+          ),
+        );
+      }
     });
   }
 

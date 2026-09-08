@@ -132,6 +132,7 @@ final class MemoryRepositoryImpl implements MemoryRepository {
         personIds: draft.personIds,
         collectionIds: draft.collectionIds,
         mediaIds: draft.mediaIds,
+        now: now,
         ritualId: draft.ritualId,
         ritualYear: draft.ritualYear ?? draft.occurredAt.year,
       );

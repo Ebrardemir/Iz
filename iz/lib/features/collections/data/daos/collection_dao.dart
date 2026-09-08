@@ -52,7 +52,11 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   ///
   /// Sıra korunuyor (`sortOrder`): kullanıcının formda dizdiği düzen.
   Stream<Map<String, List<String>>> watchMemoryLinks() {
+    // `deletedAt IS NULL` ZORUNLU (şema v8): bağlar artık silinmiyor,
+    // tombstone'lanıyor. Süzgeci atlayan sorgu koleksiyondan çıkarılmış
+    // anıyı göstermeye devam eder.
     final query = select(memoryCollections)
+      ..where((t) => t.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
 
     return query.watch().map((rows) {
@@ -72,6 +76,8 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   /// `version` YAZAN TARAF artırır (TR-C-31) — tek yazma yolu burası.
   Future<void> upsertCollection(
     CollectionsCompanion collection, {
+    // TR-C-41 — saat dışarıdan. Koleksiyon ve bağları AYNI ana damgalanmalı.
+    required DateTime now,
     List<String>? memoryIds,
   }) {
     return transaction(() async {
@@ -82,7 +88,7 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
 
       await into(collections).insertOnConflictUpdate(
         collection.copyWith(
-          updatedAt: Value(DateTime.now()),
+          updatedAt: Value(now),
           version: Value((current?.version ?? 0) + 1),
         ),
       );
@@ -90,7 +96,7 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
       // `null` = "bağlara dokunma". Boş liste = "hepsini kaldır". İkisi ayrı
       // niyet: yalnız başlığı düzenleyen bir form anıları silmemeli.
       if (memoryIds != null) {
-        await _replaceMemories(id, memoryIds);
+        await _replaceMemories(id, memoryIds, now);
       }
     });
   }
@@ -101,7 +107,7 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   /// bilerek bırakıyoruz: tombstone'un amacı "bu kaydı sildim" olayını
   /// senkronizasyonda taşımak; bağları şimdi silsek, silme geri alınamaz
   /// hâle gelirdi.
-  Future<void> softDelete(String id) {
+  Future<void> softDelete(String id, {required DateTime now}) {
     return transaction(() async {
       final current = await (select(
         collections,
@@ -111,36 +117,61 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
 
       await (update(collections)..where((t) => t.id.equals(id))).write(
         CollectionsCompanion(
-          deletedAt: Value(DateTime.now()),
-          updatedAt: Value(DateTime.now()),
+          deletedAt: Value(now),
+          updatedAt: Value(now),
           version: Value(current.version + 1),
         ),
       );
     });
   }
 
-  /// Koleksiyonun anı bağlarını verilen listeyle DEĞİŞTİRİR.
+  /// Koleksiyonun anı bağlarını verilen listeyle EŞİTLER — silmeden.
   ///
-  /// Silip yeniden yazıyoruz çünkü form kullanıcıya tam listeyi gösteriyor;
-  /// "hangileri eklendi, hangileri çıkarıldı" hesabını burada yapmak, aynı
-  /// bilginin iki yerde tutulması demekti.
-  Future<void> _replaceMemories(String collectionId, List<String> memoryIds) {
+  /// Deseni ve gerekçesi `memory_dao.dart`taki "Bağ eşitleme" bölümünde:
+  /// bağı gerçekten silersek ikinci cihaz onu geri ekler (rapor §1.1).
+  Future<void> _replaceMemories(
+    String collectionId,
+    List<String> memoryIds,
+    DateTime now,
+  ) {
     return transaction(() async {
-      await (delete(
+      final current = await (select(
         memoryCollections,
-      )..where((t) => t.collectionId.equals(collectionId))).go();
+      )..where((t) => t.collectionId.equals(collectionId))).get();
+      final byMemory = {for (final row in current) row.memoryId: row};
 
-      await batch((batch) {
-        batch.insertAll(memoryCollections, [
-          for (final (index, memoryId) in memoryIds.indexed)
-            MemoryCollectionsCompanion.insert(
-              memoryId: memoryId,
-              collectionId: collectionId,
-              // Kullanıcının formdaki sırası korunuyor.
-              sortOrder: Value(index),
-            ),
-        ]);
-      });
+      for (final row in current) {
+        if (row.deletedAt == null && !memoryIds.contains(row.memoryId)) {
+          await (update(memoryCollections)..where(
+                (t) =>
+                    t.collectionId.equals(collectionId) &
+                    t.memoryId.equals(row.memoryId),
+              ))
+              .write(
+                MemoryCollectionsCompanion(
+                  deletedAt: Value(now),
+                  updatedAt: Value(now),
+                  version: Value(row.version + 1),
+                ),
+              );
+        }
+      }
+
+      for (final (index, memoryId) in memoryIds.indexed) {
+        final existing = byMemory[memoryId];
+        await into(memoryCollections).insertOnConflictUpdate(
+          MemoryCollectionsCompanion.insert(
+            memoryId: memoryId,
+            collectionId: collectionId,
+            // Kullanıcının formdaki sırası korunuyor. HER ZAMAN yazılıyor:
+            // canlı bir bağın yeri değişmiş olabilir.
+            sortOrder: Value(index),
+            updatedAt: Value(now),
+            deletedAt: const Value(null),
+            version: Value((existing?.version ?? 0) + 1),
+          ),
+        );
+      }
     });
   }
 }

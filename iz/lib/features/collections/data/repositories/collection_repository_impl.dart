@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/collections/data/daos/collection_dao.dart';
 import 'package:iz/features/collections/data/mappers/collection_mapper.dart';
@@ -26,11 +27,14 @@ final class CollectionRepositoryImpl implements CollectionRepository {
   CollectionRepositoryImpl({
     required CollectionDao dao,
     required IdGenerator idGenerator,
+    required Clock clock,
   }) : _dao = dao,
-       _ids = idGenerator;
+       _ids = idGenerator,
+       _clock = clock;
 
   final CollectionDao _dao;
   final IdGenerator _ids;
+  final Clock _clock;
 
   static final _log = appLogger('collections.repository');
 
@@ -71,6 +75,7 @@ final class CollectionRepositoryImpl implements CollectionRepository {
     final id = draft.id ?? _ids.newId();
     await _dao.upsertCollection(
       CollectionMapper.toCompanion(draft, id: id),
+      now: _clock.now(),
       memoryIds: draft.memoryIds,
     );
     return id;
@@ -78,7 +83,7 @@ final class CollectionRepositoryImpl implements CollectionRepository {
 
   @override
   Future<Result<Unit>> softDelete(String id) => guard(() async {
-    await _dao.softDelete(id);
+    await _dao.softDelete(id, now: _clock.now());
     return Unit.value;
   }, onError: _dbFailure);
 
