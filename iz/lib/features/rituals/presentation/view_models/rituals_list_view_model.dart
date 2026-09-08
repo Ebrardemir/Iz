@@ -49,3 +49,13 @@ final ritualOccurrencesProvider =
     StreamProvider<Map<String, List<RitualOccurrence>>>((ref) {
       return ref.watch(ritualRepositoryProvider).watchOccurrences().unwrap();
     });
+
+/// Seri kimliği → bağlı kişi kimlikleri.
+///
+/// Anı bağlarından AYRI akış: kişi değişince anı listesini yeniden çekmek
+/// gereksiz iş olurdu.
+final ritualPeopleLinksProvider = StreamProvider<Map<String, Set<String>>>((
+  ref,
+) {
+  return ref.watch(ritualRepositoryProvider).watchPeopleLinks().unwrap();
+});

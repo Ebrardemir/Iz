@@ -18,16 +18,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
+import 'package:iz/features/collections/collections_providers.dart';
+import 'package:iz/features/collections/domain/entities/memory_collection.dart';
+import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/people/people_providers.dart';
-import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/views/person_detail_view.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_header.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_rows.dart';
 import 'package:iz/features/people/presentation/widgets/person_row.dart';
+import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_collection_repository.dart';
+import '../helpers/fake_memory_repository.dart';
 import '../helpers/fake_person_repository.dart';
+import '../helpers/fake_ritual_repository.dart';
 import '../helpers/people_fixture.dart';
 import '../helpers/real_fonts.dart';
 
@@ -48,15 +56,59 @@ Future<void> pumpDetail(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  // Kişi artık depodan okunuyor. Koleksiyon ve ritüeller HÂLÂ önizleme
-  // verisinden geliyor (M6 bekliyor), o yüzden fixture'daki kimlikleri
-  // kullanmaya devam ediyoruz — ikisinin eşleşmesi şart.
+  // KOLEKSİYON VE SERİLER ARTIK TÜRETİLİYOR (bkz.
+  // `app/composition/person_detail_data.dart`): kişinin koleksiyonları
+  // anılarından, serileri bağ tablosundan çıkıyor. Testin işi o zinciri
+  // gerçekten kurmak — sahte bir listeyle karşılaştırmak türetmeyi hiç
+  // sınamazdı.
   final repository = FakePersonRepository(PeopleFixture.people);
   addTearDown(repository.dispose);
 
+  // Kişinin iki anısı var; ikisi de "Kapadokya 2026" koleksiyonunda.
+  final memories =
+      FakeMemoryRepository([
+          _memory('mem-1', DateTime(2026, 5, 10)),
+          _memory('mem-2', DateTime(2026, 5, 12)),
+        ])
+        // BAĞ YALNIZ [_full] KİŞİSİNE: boş-durum testleri koleksiyonu olmayan
+        // bir kişiyle açılıyor ve o kişi için liste gerçekten boş kalmalı.
+        ..personLinks[_full] = {'mem-1', 'mem-2'};
+  addTearDown(memories.dispose);
+
+  final collections = FakeCollectionRepository(const [
+    MemoryCollection(
+      id: 'kol-kapadokya',
+      title: 'Kapadokya 2026',
+      visibility: CollectionVisibility.private,
+    ),
+  ])..links['kol-kapadokya'] = ['mem-1', 'mem-2'];
+  addTearDown(collections.dispose);
+
+  final rituals =
+      FakeRitualRepository(const [
+          Ritual(
+            id: 'seri-yaz',
+            title: 'Yaz Tatillerimiz',
+            recurrenceType: RecurrenceType.seasonal,
+            anchorMonth: 7,
+            iconKey: 'summer',
+          ),
+        ])
+        ..peopleLinks['seri-yaz'] = {_full}
+        ..occurrences['seri-yaz'] = [
+          (memoryId: 'mem-1', year: 2025),
+          (memoryId: 'mem-2', year: 2026),
+        ];
+  addTearDown(rituals.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [personRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        personRepositoryProvider.overrideWithValue(repository),
+        memoryRepositoryProvider.overrideWithValue(memories),
+        collectionRepositoryProvider.overrideWithValue(collections),
+        ritualRepositoryProvider.overrideWithValue(rituals),
+      ],
       child: MaterialApp(
         theme: AppTheme.light(),
         locale: const Locale('tr'),
@@ -138,14 +190,12 @@ void main() {
     ) async {
       await pumpDetail(tester);
 
-      final collections = PersonDetailPreviewData.collectionsOf(_full);
-      expect(collections, isNotEmpty);
-
-      for (final collection in collections) {
-        expect(find.text(collection.title), findsOneWidget);
-        // Türkçede sayıdan sonra çoğul eki yok: "8 anı".
-        expect(find.text('${collection.memoryCount} anı'), findsOneWidget);
-      }
+      // Koleksiyon kişinin ANILARINDAN türedi: ikisi de o koleksiyonda.
+      expect(find.text('Kapadokya 2026'), findsOneWidget);
+      // Türkçede sayıdan sonra çoğul eki yok: "2 anı".
+      //
+      // SAYAÇ O KİŞİYLE PAYLAŞILAN anı sayısı — koleksiyonun toplamı değil.
+      expect(find.text('2 anı'), findsOneWidget);
     });
 
     testWidgets('satır dokunulabilir', (tester) async {
@@ -177,13 +227,11 @@ void main() {
     testWidgets('ad ve kaç yıldır sürdüğü duruyor', (tester) async {
       await pumpDetail(tester);
 
-      final rituals = PersonDetailPreviewData.ritualsOf(_full);
-      expect(rituals, isNotEmpty);
-
-      for (final ritual in rituals) {
-        expect(find.text(ritual.title), findsOneWidget);
-        expect(find.text('${ritual.years} yıl'), findsOneWidget);
-      }
+      // Seri bağı DOĞRUDAN: kullanıcı seriyi kurarken kimlerle paylaştığını
+      // söylüyor (şema v7, `RitualPeople`).
+      expect(find.text('Yaz Tatillerimiz'), findsOneWidget);
+      // "Kaç yıl" = kaç ayrı yılda anısı var (BR-012): 2025 ve 2026.
+      expect(find.text('2 yıl'), findsOneWidget);
     });
 
     testWidgets('ritüel satırında OK YOK', (tester) async {
@@ -391,3 +439,15 @@ void main() {
     });
   });
 }
+
+/// Kişiye etiketli sahte anı.
+///
+/// `FakeMemoryRepository` kişi ilişkisini tutmuyor (bkz. kendi notu); testte
+/// önemli olan anının VAR olması, koleksiyon bağı `links` üzerinden kuruluyor.
+Memory _memory(String id, DateTime occurredAt) => Memory(
+  id: id,
+  occurredAt: occurredAt,
+  isFavorite: false,
+  mediaCount: 0,
+  personCount: 1,
+);
