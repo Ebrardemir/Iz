@@ -24,9 +24,11 @@
 /// aynı kararı verdik — çalışmayan düğmeler güveni aşındırıyor.
 ///
 /// ⚠️ VERİ KAYNAĞI GEÇİCİ: bu oturumda yazılan kayıtlar
-/// (`createdJournalEntriesProvider`). Repository geldiğinde yalnızca
+/// (`JournalRepository`). Repository geldiğinde yalnızca
 /// `ref.watch` satırı değişecek.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,7 +37,7 @@ import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/journal/domain/journal_filter.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
+import 'package:iz/features/journal/presentation/view_models/journal_list_view_model.dart';
 import 'package:iz/features/journal/presentation/views/journal_view.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_empty_illustration.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_entry_row.dart';
@@ -57,7 +59,7 @@ class _JournalAllEntriesViewState extends ConsumerState<JournalAllEntriesView> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final entries = ref.watch(createdJournalEntriesProvider);
+    final entries = ref.watch(journalListProvider).value ?? const [];
 
     final visible = filterJournalEntries(
       entries,
@@ -65,13 +67,13 @@ class _JournalAllEntriesViewState extends ConsumerState<JournalAllEntriesView> {
       // Saati ENJEKTE EDİYORUZ: "bu hafta"nın testte de sabit bir anlamı
       // olsun (bkz. `clockProvider`).
       today: ref.read(clockProvider).now(),
-      dateOf: (item) => item.entry.entryDate,
-      isFavoriteOf: (item) => item.entry.isFavorite,
+      dateOf: (item) => item.entryDate,
+      isFavoriteOf: (item) => item.isFavorite,
     );
 
     final groups = groupJournalEntriesByDay(
       visible,
-      dateOf: (item) => item.entry.entryDate,
+      dateOf: (item) => item.entryDate,
     );
 
     return Scaffold(
@@ -107,9 +109,11 @@ class _JournalAllEntriesViewState extends ConsumerState<JournalAllEntriesView> {
                             showTimestamp: false,
                             onTap: () =>
                                 context.showSnack(l10n.screenComingSoonMessage),
-                            onToggleFavorite: () => ref
-                                .read(createdJournalEntriesProvider.notifier)
-                                .toggleFavorite(row.entry.id),
+                            onToggleFavorite: () => unawaited(
+                              ref
+                                  .read(journalListProvider.notifier)
+                                  .toggleFavorite(row),
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
                         ],

@@ -18,7 +18,7 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/features/journal/domain/entities/journal_entry.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/journal/presentation/views/journal_all_entries_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_editor_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_view.dart';
@@ -28,32 +28,31 @@ import 'package:iz/features/journal/presentation/widgets/journal_hero_card.dart'
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_journal_repository.dart';
 import '../helpers/real_fonts.dart';
 
 late ProviderContainer container;
+late FakeJournalRepository journal;
 
-CreatedJournalEntry _entry(
+JournalEntry _entry(
   String id, {
   String? title,
   String text = 'Bugün sakin geçti.',
   int day = 26,
   bool favorite = false,
-}) => (
-  entry: JournalEntry(
-    id: id,
-    entryDate: DateTime(2026, 7, day),
-    createdAt: DateTime(2026, 7, day, 21, 30),
-    text: text,
-    title: title,
-    privacyMode: JournalPrivacyMode.standard,
-    isFavorite: favorite,
-  ),
-  photos: const [],
+}) => JournalEntry(
+  id: id,
+  entryDate: DateTime(2026, 7, day),
+  createdAt: DateTime(2026, 7, day, 21, 30),
+  text: text,
+  title: title,
+  privacyMode: JournalPrivacyMode.standard,
+  isFavorite: favorite,
 );
 
 Future<void> pumpHome(
   WidgetTester tester, {
-  List<CreatedJournalEntry> entries = const [],
+  List<JournalEntry> entries = const [],
   Size size = const Size(390, 1000),
 }) async {
   tester.view
@@ -61,15 +60,13 @@ Future<void> pumpHome(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  container = ProviderContainer();
-  addTearDown(container.dispose);
+  journal = FakeJournalRepository([...entries]);
+  addTearDown(journal.dispose);
 
-  final notifier = container.read(createdJournalEntriesProvider.notifier);
-  // Ters sırayla ekliyoruz: depo her yeni kaydı BAŞA koyuyor, yani listenin
-  // ilk elemanı son eklenendir.
-  for (final entry in entries.reversed) {
-    notifier.add(entry);
-  }
+  container = ProviderContainer(
+    overrides: [journalRepositoryProvider.overrideWithValue(journal)],
+  );
+  addTearDown(container.dispose);
 
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -264,19 +261,13 @@ void main() {
       await tester.tap(find.byTooltip('Yıldızla'));
       await settle(tester);
 
-      expect(
-        container.read(createdJournalEntriesProvider).single.entry.isFavorite,
-        isTrue,
-      );
+      expect(journal.entries.single.isFavorite, isTrue);
       expect(find.byTooltip('Yıldızı kaldır'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Yıldızı kaldır'));
       await settle(tester);
 
-      expect(
-        container.read(createdJournalEntriesProvider).single.entry.isFavorite,
-        isFalse,
-      );
+      expect(journal.entries.single.isFavorite, isFalse);
     });
 
     testWidgets('yıldız DOĞRU kayda basılıyor', (tester) async {
@@ -293,9 +284,15 @@ void main() {
       await tester.tap(find.byTooltip('Yıldızla').last);
       await settle(tester);
 
-      final entries = container.read(createdJournalEntriesProvider);
-      expect(entries.first.entry.isFavorite, isFalse);
-      expect(entries.last.entry.isFavorite, isTrue);
+      // Liste EN YENİ GÜN ÜSTTE; son satır 25 Temmuz olan 'j2'.
+      expect(
+        journal.entries.firstWhere((e) => e.id == 'j1').isFavorite,
+        isFalse,
+      );
+      expect(
+        journal.entries.firstWhere((e) => e.id == 'j2').isFavorite,
+        isTrue,
+      );
     });
   });
 

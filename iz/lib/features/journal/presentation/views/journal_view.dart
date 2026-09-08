@@ -23,7 +23,7 @@
 ///     kullanıcıyı yazıya değil bir alıntıya bakmaya çağırıyordu.
 ///
 /// ⚠️ VERİ KAYNAĞI GEÇİCİ. Listelediği şey bu oturumda yazılan kayıtlar
-/// (`createdJournalEntriesProvider`) — uygulama kapanınca gidiyorlar.
+/// Kayıtlar VERİTABANINDAN geliyor (`JournalRepository`).
 /// Doldurmak için ARCHITECTURE.md'deki "Yeni feature ekleme reçetesi":
 ///   1. journal/data/daos/journal_dao.dart
 ///   2. journal/domain/repositories/journal_repository.dart
@@ -36,6 +36,8 @@
 ///   • journal/domain/entities/journal_entry.dart
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,7 +46,8 @@ import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
+import 'package:iz/features/journal/domain/entities/journal_entry.dart';
+import 'package:iz/features/journal/presentation/view_models/journal_list_view_model.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_empty_illustration.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_entry_row.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_hero_card.dart';
@@ -62,7 +65,7 @@ class JournalView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final entries = ref.watch(createdJournalEntriesProvider);
+    final entries = ref.watch(journalListProvider).value ?? const [];
     final recent = entries.take(kRecentCount).toList();
 
     return Scaffold(
@@ -119,9 +122,9 @@ class JournalView extends ConsumerWidget {
                 entry: journalRowOf(entry),
                 // Kaydın kendi ekranı henüz tasarlanmadı.
                 onTap: () => context.showSnack(l10n.screenComingSoonMessage),
-                onToggleFavorite: () => ref
-                    .read(createdJournalEntriesProvider.notifier)
-                    .toggleFavorite(entry.entry.id),
+                onToggleFavorite: () => unawaited(
+                  ref.read(journalListProvider.notifier).toggleFavorite(entry),
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
@@ -143,19 +146,24 @@ class JournalView extends ConsumerWidget {
   }
 }
 
-/// Oturum kaydını satırın beklediği hâle çevirir.
+/// Kaydı satırın beklediği hâle çevirir.
 ///
 /// AYRI BİR FONKSİYON: aynı çeviriyi "Tüm Yazılarım" ekranı da yapıyor ve
 /// ikisinin ayrışması, aynı kaydın iki listede farklı görünmesi demekti.
-JournalRowData journalRowOf(CreatedJournalEntry item) => (
-  id: item.entry.id,
-  date: item.entry.entryDate,
-  createdAt: item.entry.createdAt,
-  title: item.entry.title,
+///
+/// ⚠️ FOTOĞRAF SATIRDA GÖRÜNMÜYOR: kayıt yalnız medya KİMLİKLERİ taşıyor
+/// (`mediaIds`) ve listede her satır için ayrı bir medya sorgusu açmak
+/// NFR-003'ü ihlal ederdi. Toplu çözme, günlük detay ekranıyla birlikte
+/// gelecek — o ekran henüz tasarlanmadı.
+JournalRowData journalRowOf(JournalEntry entry) => (
+  id: entry.id,
+  date: entry.entryDate,
+  createdAt: entry.createdAt,
+  title: entry.title,
   // `preview` domainde: kısaltma kuralı ekranın değil kaydın bilgisi.
-  preview: item.entry.preview,
-  photo: item.photos.firstOrNull,
-  isFavorite: item.entry.isFavorite,
+  preview: entry.preview,
+  photo: null,
+  isFavorite: entry.isFavorite,
 );
 
 /// Hiç kayıt yokken: çizim + iki kısa satır.

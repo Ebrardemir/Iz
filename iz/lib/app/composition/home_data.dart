@@ -13,20 +13,15 @@ import 'package:iz/core/result/result_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/features/collections/presentation/view_models/collections_list_view_model.dart';
 import 'package:iz/features/home/presentation/widgets/home_stats_grid.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/domain/entities/memory_filter.dart';
-import 'package:iz/features/memories/presentation/view_models/memory_list_view_model.dart';
 import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
 import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
 import 'package:iz/features/rituals/presentation/view_models/rituals_list_view_model.dart';
 
 /// Ana sayfadaki dört sayaç.
-///
-/// GÜNLÜK SAYACI HENÜZ GERÇEK DEĞİL: `JournalDao` yazılmadı, günlük kayıtları
-/// oturum belleğinde duruyor. Sıfır göstermek yalan olmazdı ama eksik olanın
-/// ne olduğu kodda görünmeli — o yüzden burada açıkça yazılı ve tek satırda
-/// düzelecek.
 typedef HomeCounts = ({int journal, int people, int series, int collections});
 
 /// Ana sayfanın son anıları — en yeniden eskiye, en fazla üç tane.
@@ -56,17 +51,13 @@ final homeHeroMemoryProvider = Provider<AsyncValue<Memory?>>((ref) {
 
 /// Sayaçların ham değerleri.
 final homeCountsProvider = Provider<HomeCounts>((ref) {
-  final memories = ref.watch(memoryCountProvider).value ?? 0;
+  final journal = ref.watch(journalCountProvider).value ?? 0;
   final people = ref.watch(peopleListProvider).value?.length ?? 0;
   final series = ref.watch(ritualsListProvider).value?.length ?? 0;
   final collections = ref.watch(collectionsListProvider).value?.length ?? 0;
 
   return (
-    // ⚠️ ANI sayısını gösteriyoruz, GÜNLÜK değil: günlüğün veri katmanı
-    // yazılmadı ve elimizde sayılacak bir şey yok. İkisi de "kaç kayıt
-    // bıraktım" sorusunu cevapladığı için ekran anlamlı kalıyor; hat
-    // kurulunca burası `journalCountProvider` olacak.
-    journal: memories,
+    journal: journal,
     people: people,
     series: series,
     collections: collections,
@@ -120,3 +111,11 @@ List<HomeStat> homeStats(
     ),
   ];
 }
+
+/// Günlük kaydı sayısı.
+///
+/// Listeyi çekip uzunluğuna bakmıyoruz: 2.000 kayıtta hepsini belleğe almak
+/// bir sayı için ağır olurdu (NFR-003). Sorgu `COUNT(*)` yapıyor.
+final journalCountProvider = StreamProvider<int>((ref) {
+  return ref.watch(journalRepositoryProvider).watchCount().unwrap();
+});

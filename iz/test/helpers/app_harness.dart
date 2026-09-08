@@ -21,14 +21,18 @@ import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
+import 'package:iz/features/categories/categories_providers.dart';
 import 'package:iz/features/collections/collections_providers.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'fake_category_repository.dart';
 import 'fake_collection_repository.dart';
+import 'fake_journal_repository.dart';
 import 'fake_media_picker.dart';
 import 'fake_media_repository.dart';
 import 'fake_memory_repository.dart';
@@ -118,6 +122,10 @@ Future<void> pumpApp(
   // Seri deposu. Varsayılan BOŞ: çoğu test seriyle ilgilenmiyor ve boş liste
   // gerçek bir yeni kullanıcının durumu.
   FakeRitualRepository? rituals,
+  // Günlük deposu. Varsayılan BOŞ: yeni bir kullanıcının durumu. "Yaz →
+  // günlük sekmesinde gör" akışı DEPO seviyesinde sahtelendiği için uçtan
+  // uca çalışıyor.
+  FakeJournalRepository? journal,
 }) async {
   // Varsayılan test yüzeyi 800×600'dür — yani YATAY bir masaüstü ölçüsü.
   // İZ bir telefon uygulaması; düzen kararları (görsel yüksekliği, sosyal
@@ -163,6 +171,12 @@ Future<void> pumpApp(
         // Gerçeği hem Drift'e hem dosya sistemine dokunuyor; widget
         // testinde ikisi de eklenti istiyor.
         mediaRepositoryProvider.overrideWithValue(FakeMediaRepository()),
+        journalRepositoryProvider.overrideWithValue(
+          journal ?? FakeJournalRepository(),
+        ),
+        // Kategoriler gün kartında ve anı formunda okunuyor; sahtesi gerçek
+        // veritabanındaki sistem tohumunun aynısını veriyor.
+        categoryRepositoryProvider.overrideWithValue(FakeCategoryRepository()),
       ],
       child: const IzApp(),
     ),
