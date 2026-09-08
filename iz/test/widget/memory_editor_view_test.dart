@@ -30,6 +30,7 @@ import 'package:iz/features/memories/presentation/widgets/memory_info_card.dart'
 import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
@@ -38,6 +39,7 @@ import '../helpers/fake_media_picker.dart';
 import '../helpers/fake_media_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/fake_person_repository.dart';
+import '../helpers/fake_ritual_repository.dart';
 import '../helpers/real_fonts.dart';
 
 /// Testin "bugün"ü — tarih alanının başlangıç değeri buna bağlı.
@@ -108,6 +110,7 @@ late FakeMediaRepository media;
 /// besleniyor; testin de bir listesi olmalı.
 late FakePersonRepository people;
 late FakeCollectionRepository collections;
+late FakeRitualRepository rituals;
 
 Future<ProviderContainer> pumpForm(
   WidgetTester tester, {
@@ -150,6 +153,17 @@ Future<ProviderContainer> pumpForm(
   ]);
   addTearDown(collections.dispose);
 
+  rituals = FakeRitualRepository(const [
+    Ritual(
+      id: 'seri-yaz',
+      title: 'Yaz Tatillerimiz',
+      recurrenceType: RecurrenceType.seasonal,
+      anchorMonth: 7,
+      iconKey: 'summer',
+    ),
+  ]);
+  addTearDown(rituals.dispose);
+
   repository = existing == null
       ? FakeMemoryRepository()
       : (FakeMemoryRepository([existing.memory])..detail = existing);
@@ -166,6 +180,7 @@ Future<ProviderContainer> pumpForm(
       mediaRepositoryProvider.overrideWithValue(media),
       personRepositoryProvider.overrideWithValue(people),
       collectionRepositoryProvider.overrideWithValue(collections),
+      ritualRepositoryProvider.overrideWithValue(rituals),
       currentPlanProvider.overrideWithValue(plan),
     ],
   );
@@ -561,7 +576,13 @@ void main() {
       await tester.tap(find.text('Yaz Tatillerimiz'));
       await settle(tester);
 
-      expect(readState(container).series?.id, 'series_1');
+      expect(readState(container).series?.id, 'seri-yaz');
+      // BR-012 — bağ hangi yıla ait olduğunu taşıyor; yıl anının tarihinden.
+      expect(readState(container).draft.ritualId, 'seri-yaz');
+      expect(
+        readState(container).draft.ritualYear,
+        readState(container).draft.occurredAt.year,
+      );
     });
 
     testWidgets('seçim yapılmadan önce "Seç" yer tutucusu duruyor', (

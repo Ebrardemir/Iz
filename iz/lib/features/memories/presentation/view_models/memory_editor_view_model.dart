@@ -313,9 +313,7 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
   // KİŞİ, KATEGORİ ve KOLEKSİYON taslağa da yazılıyor: üçünün de veritabanında
   // gerçek satırları var, dolayısıyla kaydedilebiliyorlar.
   //
-  // SERİ yazılmıyor: `Rituals` tablosuna satır yazan bir yol henüz yok ve
-  // `PRAGMA foreign_keys = ON` olduğu için var olmayan bir kimlikle kaydetmek
-  // `saveDraft`ı düşürürdü.
+  // SERİ de yazılıyor: `Rituals` tablosunun artık gerçek satırları var.
 
   void setPeople(List<MemoryFormSelection> people) => state = state.copyWith(
     draft: state.draft.copyWith(
@@ -345,6 +343,13 @@ class MemoryEditorViewModel extends Notifier<MemoryEditorState> {
       );
 
   void setSeries(MemoryFormSelection? series) => state = state.copyWith(
+    // BR-012 — bağ hangi YILA ait olduğunu taşımak zorunda. Yılı anının
+    // tarihinden alıyoruz; kullanıcı forma ayrıca yıl girmiyor.
+    draft: state.draft.copyWith(
+      ritualId: series?.id,
+      ritualYear: state.draft.occurredAt.year,
+      clearRitual: series == null,
+    ),
     series: series,
     clearSeries: series == null,
     clearErrors: true,

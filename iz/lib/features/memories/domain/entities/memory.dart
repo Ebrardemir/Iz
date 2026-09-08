@@ -275,6 +275,8 @@ final class MemoryDraft extends Equatable {
     String? coverMediaId,
     String? ritualId,
     int? ritualYear,
+    // `ritualId: null` "değiştirme" demek olduğu için ayrı bayrak.
+    bool clearRitual = false,
     String? locationId,
     String? locationLabel,
     // `locationId: null` "değiştirme" demek olduğu için ayrı bayrak:
@@ -291,8 +293,8 @@ final class MemoryDraft extends Equatable {
     collectionIds: collectionIds ?? this.collectionIds,
     mediaIds: mediaIds ?? this.mediaIds,
     coverMediaId: coverMediaId ?? this.coverMediaId,
-    ritualId: ritualId ?? this.ritualId,
-    ritualYear: ritualYear ?? this.ritualYear,
+    ritualId: clearRitual ? null : (ritualId ?? this.ritualId),
+    ritualYear: clearRitual ? null : (ritualYear ?? this.ritualYear),
     locationId: clearLocation ? null : (locationId ?? this.locationId),
     locationLabel: locationLabel ?? this.locationLabel,
     isFavorite: isFavorite ?? this.isFavorite,

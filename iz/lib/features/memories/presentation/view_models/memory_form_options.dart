@@ -1,8 +1,7 @@
 /// Anı formundaki seçme kutularının GERÇEK içeriği.
 ///
 /// Form üç şey soruyor: "kimler vardı?", "hangi koleksiyona girsin?",
-/// "hangi seriye ait?". İlk ikisinin artık veri katmanı var; üçüncüsü
-/// (ritüel) yazılmadı.
+/// "hangi seriye ait?". Üçünün de artık veri katmanı var.
 ///
 /// NEDEN BURADA, EKRANIN İÇİNDE DEĞİL?
 /// Ekran `ref.watch` edip listeyi kendisi kurabilirdi ama o zaman "kişiyi
@@ -20,6 +19,7 @@ import 'package:iz/core/result/result_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/people/people_providers.dart';
+import 'package:iz/features/rituals/rituals_providers.dart';
 import 'package:iz/shared/widgets/iz_selection_dialog.dart';
 
 /// Anıya bağlanabilecek kişiler.
@@ -60,3 +60,25 @@ final memoryCollectionOptionsProvider = StreamProvider<List<IzSelectionOption>>(
         );
   },
 );
+
+/// Anının bağlanabileceği seriler.
+final memorySeriesOptionsProvider = StreamProvider<List<IzSelectionOption>>((
+  ref,
+) {
+  return ref
+      .watch(ritualRepositoryProvider)
+      .watchRituals()
+      .unwrap()
+      .map(
+        (rituals) => [
+          for (final ritual in rituals)
+            (
+              id: ritual.id,
+              label: ritual.title,
+              // İKON ANAHTARDAN: ritüelin kendi `iconKey`i var ve kullanıcı
+              // onu seçiyor; her yerde aynı simgeyi görmeli.
+              icon: AppIcons.forKey(ritual.iconKey),
+            ),
+        ],
+      );
+});
