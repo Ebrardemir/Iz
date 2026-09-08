@@ -87,42 +87,16 @@ const _allowedFiles = <String>{
   // olmasından önemli.
   'lib/shared/widgets/app_crash_view.dart',
 
-  // Tasarım önizlemesi için yazılmış SAHTE KULLANICI VERİSİ ("Kahve
-  // Molası", "3 gün önce"...). Bunlar arayüz metni değil, kullanıcının
-  // gireceği içeriğin taklidi — çeviriden geçmemeleri gerekiyor.
-  // Veri bağlandığında dosya silinecek, istisna da kalkacak.
-  'lib/features/home/presentation/views/home_preview_data.dart',
-
-  // Aynı gerekçe, "Hayatım" ekranı için: takvimin altındaki panelin dolu
-  // hâlini görebilmek için yazılmış sahte anı başlıkları ve kategori adları
-  // ("Kahve Molası", "Seyahat"). Kategori adı özellikle dikkat isteyen bir
-  // durum: SİSTEM kategorilerinin adı çeviriden gelir
-  // (bkz. category_l10n.dart), ama burada taklit ettiğimiz şey veritabanından
-  // okunmuş hâlidir — yani veri.
-  'lib/features/my_life/presentation/views/my_life_preview_data.dart',
-
-  // Aynı gerekçe, RİTÜEL formundaki seçim listeleri ve anı seçme sayfası için:
-  // kişi ve anı kayıtlarını okuyacak katman yok, listelerin dolu hâlini
-  // görebilmek için sahte adlar ("Annem", "Kahve Molası") yazdık. Kategori bu
-  // dosyada YOK — o gerçekten çeviriden geliyor (bkz. category_l10n.dart).
-  'lib/shared/preview/form_preview_data.dart',
-
-  // Aynı gerekçe, seri detay ekranı için: seriye bağlı anıları okuyacak sorgu
-  // yok, ekranın dolu hâlini görebilmek için sahte anı başlıkları ve kategori
-  // adları yazdık ("Kaş'ta gün batımı", "Seyahat").
-  'lib/features/rituals/presentation/views/ritual_detail_preview_data.dart',
-
-  // Aynı gerekçe, anı formundaki seçim listeleri için: kişi/koleksiyon/seri
-  // kayıtlarını okuyacak katman yok, listelerin dolu hâlini görebilmek için
-  // sahte adlar ("Annem", "Kapadokya 2026") yazdık. Kategori bu dosyada
-  // YOK — o gerçekten çeviriden geliyor (bkz. category_l10n.dart).
-  'lib/features/memories/presentation/views/memory_form_preview_data.dart',
-
-  // NOT: kişi listesinin sahte verisi buradaydı ve KALDIRILDI. Dosya
-  // `test/helpers/people_fixture.dart`a taşındı — sahte kullanıcı verisinin
-  // yeri `lib/` değil test. Tarayıcı yalnız `lib/` altına baktığı için
-  // istisnaya da gerek kalmadı. Kalan üç önizleme dosyası kendi modülleri
-  // veriye bağlandıkça aynı yolu izleyecek (TR-D-02).
+  // NOT: ÖNİZLEME DOSYALARININ HEPSİ KALDIRILDI.
+  //
+  // Burada bir zamanlar altı istisna vardı: tasarım önizlemesi için yazılmış
+  // sahte kullanıcı verisi ("Kahve Molası", "Annem", "3 gün önce"). Arayüz
+  // metni olmadıkları için çeviriden geçmemeleri gerekiyordu.
+  //
+  // Her modül gerçek veriye bağlandıkça o dosyalar silindi ve veri
+  // `test/helpers/*_fixture.dart`a taşındı — sahte kullanıcı verisinin yeri
+  // `lib/` değil test. Tarayıcı yalnız `lib/` altına baktığı için istisnaya
+  // da gerek kalmadı (TR-D-02).
 
   // BAMBAŞKA BİR GEREKÇE: burada Türkçe kelimeler var ama hiçbiri kullanıcıya
   // GÖSTERİLMİYOR. Dosyanın tek işi kullanıcının yazdığı ilişki metnini

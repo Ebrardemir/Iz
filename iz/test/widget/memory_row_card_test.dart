@@ -11,12 +11,13 @@ import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/features/home/presentation/widgets/memory_row_card.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/real_fonts.dart';
 
 const MemoryRowData _memory = (
   id: 'test-1',
-  imageAsset: 'assets/images/home/memory_coffee.jpg',
+  cover: null,
   title: 'Kahve Molası',
   dateLabel: '3 gün önce',
 );
@@ -80,7 +81,7 @@ void main() {
     expect(card.height, MemoryRowCard.kHeight);
 
     // Küçük resim 64 × 64, kartın 8'lik dolgusuyla ekranda 28'de başlar.
-    final thumb = tester.getRect(find.byType(Image));
+    final thumb = tester.getRect(find.byType(MediaThumbnail));
     expect(thumb.width, MemoryRowCard.kThumbSize);
     expect(thumb.height, MemoryRowCard.kThumbSize);
     expect(thumb.left, 28);
@@ -156,7 +157,7 @@ void main() {
           body: MemoryRowCard(
             memory: (
               id: 'test-2',
-              imageAsset: 'assets/images/home/memory_coffee.jpg',
+              cover: null,
               title: 'Çok uzun bir anı başlığı — tek satıra asla sığmayacak',
               dateLabel: '3 gün önce',
             ),

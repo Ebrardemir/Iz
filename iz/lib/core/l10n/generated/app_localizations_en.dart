@@ -634,6 +634,33 @@ class AppL10nEn extends AppL10n {
   }
 
   @override
+  String get dateRelativeToday => 'Today';
+
+  @override
+  String get dateRelativeYesterday => 'Yesterday';
+
+  @override
+  String dateRelativeDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateRelativeWeeks(int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks weeks ago',
+      one: '1 week ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get memoryFieldTitle => 'Title';
 
   @override

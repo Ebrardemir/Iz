@@ -28,8 +28,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
-import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Kartta gösterilecek anı.
 ///
@@ -38,7 +39,10 @@ import 'package:iz/core/theme/app_spacing.dart';
 /// widget'ın üstünde çözülür (bkz. `category_l10n.dart`).
 typedef DayMemoryData = ({
   String id,
-  String imageAsset,
+
+  /// Anının kapağı. `MediaThumbnail` kapağı olmayanı ve dosyası kaybolanı
+  /// kendi içinde çiziyor (NFR-021 / TR-M4-13).
+  MediaItem? cover,
   String title,
   String dateLabel,
   String categoryLabel,
@@ -110,7 +114,7 @@ class DayMemoryCard extends StatelessWidget {
                     padding: const EdgeInsets.all(_kPadding),
                     child: Row(
                       children: [
-                        _Cover(asset: memory.imageAsset),
+                        _Cover(media: memory.cover),
                         const SizedBox(width: _kCoverGap),
                         Expanded(child: _Texts(memory: memory)),
                       ],
@@ -178,34 +182,20 @@ class _Texts extends StatelessWidget {
 /// ⚠️ Şimdilik asset. Veri bağlandığında burası `Memory.coverMedia`den
 /// gelecek — değişecek tek yer bu widget (bkz. `MediaThumbnail`).
 class _Cover extends StatelessWidget {
-  const _Cover({required this.asset});
+  const _Cover({required this.media});
 
-  final String asset;
+  final MediaItem? media;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.all(DayMemoryCard._kCoverRadius),
-      child: Image.asset(
-        asset,
-        width: DayMemoryCard.kCoverWidth,
-        height: DayMemoryCard.kCoverHeight,
-        // Figma: `scale: crop` — oranı bozmadan kutuyu doldur.
-        fit: BoxFit.cover,
-        // Kapak bulunamazsa kart çökmesin.
-        errorBuilder: (context, error, stack) => ColoredBox(
-          color: context.colors.surfaceContainerHigh,
-          child: SizedBox(
-            width: DayMemoryCard.kCoverWidth,
-            height: DayMemoryCard.kCoverHeight,
-            child: Icon(
-              AppIcons.photo,
-              size: AppIconSize.md,
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
+    // Kapağı olmayanı ve dosyası kaybolanı `MediaThumbnail` kendi içinde
+    // çiziyor (NFR-021 / TR-M4-13).
+    return MediaThumbnail(
+      media: media,
+      width: DayMemoryCard.kCoverWidth,
+      height: DayMemoryCard.kCoverHeight,
+      // Figma: kapak köşesi 12 (kartın 16'sından küçük).
+      borderRadius: DayMemoryCard._kCoverRadius,
     );
   }
 }

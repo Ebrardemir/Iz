@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/app/composition/collections_with_memories.dart';
+import 'package:iz/app/composition/home_data.dart';
 import 'package:iz/app/composition/person_detail_data.dart';
 import 'package:iz/app/composition/rituals_with_memories.dart';
 import 'package:iz/app/router/app_routes.dart';
@@ -27,7 +28,6 @@ import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/features/auth/presentation/views/sign_in_view.dart';
 import 'package:iz/features/auth/presentation/views/sign_up_view.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
-import 'package:iz/features/home/presentation/views/home_preview_data.dart';
 import 'package:iz/features/home/presentation/views/home_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_all_entries_view.dart';
 import 'package:iz/features/journal/presentation/views/journal_editor_view.dart';
@@ -38,7 +38,6 @@ import 'package:iz/features/memories/presentation/views/memory_detail_view.dart'
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_list_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_new_photos_view.dart';
-import 'package:iz/features/my_life/presentation/views/my_life_preview_data.dart';
 import 'package:iz/features/my_life/presentation/views/my_life_view.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
@@ -178,11 +177,11 @@ RitualDetailData? _ritualDetail(
 ///
 /// Sırayla seri şeridi, koleksiyon ve ana sayfa kayıtlarına bakıyor. Hiçbiri
 /// tutmazsa null: detay ekranı o zaman repository'ye düşüyor.
-MemoryDetail? _previewMemoryDetail(String memoryId) =>
-    // Seri şeridi BURADAN ÇIKTI: seriler artık veritabanından geliyor,
-    // anıları da gerçek ve detay ekranı onları kimlikten yüklüyor.
-    MyLifePreviewData.collectionMemoryDetail(memoryId) ??
-    HomePreviewData.detailFor(memoryId);
+// `_previewMemoryDetail` KALDIRILDI: bir zamanlar tasarım önizlemesindeki
+// anıların kaydını `extra` ile taşıyordu, çünkü o kimliklerin veritabanında
+// karşılığı yoktu ve düz bir geçiş kullanıcıyı "Bulunamadı" ekranına
+// düşürürdü. Artık her ekran gerçek anıları gösteriyor; detay ekranı da
+// anıyı kimlikten kendisi yüklüyor.
 
 /// Veritabanındaki koleksiyonları "Hayatım" kartlarına çevirir.
 ///
@@ -301,7 +300,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoute.home.path,
                 name: AppRoute.home.name,
-                builder: (context, state) => const HomeView(),
+                // SAYAÇLARI BURASI KURUYOR: hedefleri "Hayatım"ın
+                // sekmeleri ve o tip başka feature'ın presentation'ında.
+                builder: (context, state) => Consumer(
+                  builder: (context, ref, _) => HomeView(
+                    stats: homeStats(
+                      context.l10n,
+                      ref.watch(homeCountsProvider),
+                      onOpen: (route, {query = const {}}) =>
+                          context.goNamed(route.name, queryParameters: query),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -562,13 +572,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ref.watch(ritualsWithMemoriesProvider).value ?? const [],
                 context.l10n,
               ),
-              // Anıya gitmeyi EKRAN değil burası biliyor: önizleme anılarının
-              // veritabanında karşılığı yok, kaydı yanımızda götürüyoruz.
+              // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında
+              // taşınmıyor.
               onOpenMemory: (memoryId) => unawaited(
                 context.pushNamed(
                   AppRoute.memoryDetail.name,
                   pathParameters: {'id': memoryId},
-                  extra: _previewMemoryDetail(memoryId),
                 ),
               ),
             ),

@@ -11,6 +11,7 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/features/my_life/presentation/widgets/day_memories_panel.dart';
 import 'package:iz/features/my_life/presentation/widgets/day_memory_card.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/real_fonts.dart';
 
@@ -19,7 +20,7 @@ final _day = DateTime(2026, 8, 15);
 const _oneMemory = <DayMemoryData>[
   (
     id: 'test-1',
-    imageAsset: 'assets/images/home/memory_coffee.jpg',
+    cover: null,
     title: 'Kahve Molası',
     dateLabel: '15 Ağustos 2026',
     categoryLabel: 'Günlük',
@@ -30,7 +31,7 @@ const _twoMemories = <DayMemoryData>[
   ..._oneMemory,
   (
     id: 'test-2',
-    imageAsset: 'assets/images/home/hero_today.jpg',
+    cover: null,
     title: 'Sahilde Sabah',
     dateLabel: '15 Ağustos 2026',
     categoryLabel: 'Seyahat',
@@ -191,7 +192,7 @@ void main() {
         ..._twoMemories,
         (
           id: 'test-3',
-          imageAsset: 'assets/images/auth/hero_light.jpg',
+          cover: null,
           title: 'Meydandaki Kahve',
           dateLabel: '15 Ağustos 2026',
           categoryLabel: 'İlişkiler',
@@ -232,8 +233,10 @@ void main() {
     testWidgets('kapak tasarımdaki 86 × 64', (tester) async {
       await pumpPanel(tester, memories: _oneMemory);
 
+      // Kapak artık `Image` değil `MediaThumbnail`: gerçek medya hattı
+      // kurulunca yer tutucu asset yerine `MediaItem` çiziliyor.
       expect(
-        tester.getSize(find.byType(Image).first),
+        tester.getSize(find.byType(MediaThumbnail).first),
         const Size(DayMemoryCard.kCoverWidth, DayMemoryCard.kCoverHeight),
       );
     });
@@ -246,18 +249,23 @@ void main() {
       await pumpPanel(tester, memories: _oneMemory);
 
       final expected = AppTheme.light().colorScheme.outlineVariant;
-      final rule = find.descendant(
+      // ⚠️ `MediaThumbnail` DE aynı renkte bir `ColoredBox` çiziyor: kapağı
+      // olmayan medyanın yer tutucusu. İkisini renk ayırt edemiyor, ÖLÇÜ
+      // ayırt ediyor — hairline 1px yüksekliğinde.
+      final boxes = find.descendant(
         of: find.byType(DayMemoryCard),
         matching: find.byWidgetPredicate(
           (w) => w is ColoredBox && w.color == expected,
         ),
       );
 
-      expect(rule, findsOneWidget);
-      expect(tester.getSize(rule).height, 1);
+      final rule = boxes.evaluate().where((e) => e.size?.height == 1);
+
+      expect(rule, hasLength(1));
+      expect(rule.single.size!.height, 1);
       // Köşe kırpması yüzünden çizgi kartın tam genişliği kadar görünmez ama
       // kutunun kendisi tam genişlikte olmalı.
-      expect(tester.getSize(rule).width, 330);
+      expect(rule.single.size!.width, 330);
     });
   });
 

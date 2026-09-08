@@ -78,6 +78,40 @@ abstract final class CollectionsFixture {
     'person-annem': {'mem-balon', 'mem-vadi'},
   };
 
+  /// ANA SAYFANIN anıları — en yeniden eskiye.
+  ///
+  /// Koleksiyon fikstüründen ayrı: ana sayfa "son üç anı" gösteriyor ve
+  /// testler o üçünün başlıklarına bakıyor. Koleksiyon anılarıyla
+  /// karıştırsaydık hangi anının neden listede olduğu okunamazdı.
+  /// BAŞLIKLAR BENZERSİZ: koleksiyon ve seri fikstürlerindeki hiçbir anıyla
+  /// aynı adı taşımıyorlar. Aynı adı iki anı taşısaydı `find.text(...)`
+  /// birden fazla widget bulur ve dokunma testleri belirsizleşirdi.
+  static List<Memory> get homeMemories => [
+    _plain('mem-venedik', 'Venedik Balayımız', DateTime(2026, 9, 4)),
+    _plain('mem-izmir', 'İlk İzmir Tatilimiz', DateTime(2026, 8, 31)),
+    _plain('mem-bisiklet', 'Sahilde bisiklet', DateTime(2026, 8, 20)),
+  ];
+
+  static Memory _plain(String id, String title, DateTime date) => Memory(
+    id: id,
+    occurredAt: date,
+    title: title,
+    isFavorite: false,
+    mediaCount: 1,
+    personCount: 0,
+  );
+
+  /// TAKVİM testlerinin anıları — görünen ayın (Eylül 2026) içinde.
+  ///
+  /// Günler 6, 18 ve 29: testler bu günlere dokunuyor. 18 özellikle seçildi
+  /// çünkü tarih metni "18 Eylül 2026" ve "6" yılın içinde de geçiyor —
+  /// 6 ile arayan bir test kendi kendini kandırırdı.
+  static List<Memory> get calendarMemories => [
+    _plain('mem-cal-6', 'Sabah yürüyüşü', DateTime(2026, 9, 6)),
+    _plain('mem-cal-18', 'Sahilde Sabah', DateTime(2026, 9, 18)),
+    _plain('mem-cal-29', 'Ay sonu notu', DateTime(2026, 9, 29)),
+  ];
+
   /// Sahte anı deposunun tohumu.
   static List<Memory> get memories => [
     for (final entry in withMemories()) ...entry.memories,
