@@ -27,6 +27,8 @@ import 'package:iz/features/collections/collections_providers.dart';
 import 'package:iz/features/collections/domain/entities/memory_collection.dart';
 import 'package:iz/features/collections/presentation/views/collection_editor_view.dart';
 import 'package:iz/features/media/media_providers.dart';
+import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/widgets/iz_cover_illustration.dart';
 import 'package:iz/shared/widgets/iz_cover_picker.dart';
 import 'package:iz/shared/widgets/iz_form_row.dart';
@@ -35,6 +37,7 @@ import '../helpers/app_harness.dart';
 import '../helpers/fake_collection_repository.dart';
 import '../helpers/fake_media_picker.dart';
 import '../helpers/fake_media_repository.dart';
+import '../helpers/fake_memory_repository.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 13);
@@ -42,27 +45,45 @@ final _today = DateTime(2026, 8, 13);
 late ProviderContainer container;
 late FakeCollectionRepository collections;
 late FakeMediaRepository media;
+late FakeMemoryRepository memoryRepo;
 
 Future<void> pumpForm(
   WidgetTester tester, {
   List<String> pickerReturns = const [],
   double textScale = 1,
   Size size = const Size(390, 940),
+  // Dolu ise form DÜZENLEME kipinde açılıyor.
+  MemoryCollection? editing,
+  // Düzenlenen koleksiyondaki anılar.
+  List<Memory> memories = const [],
 }) async {
   tester.view
     ..physicalSize = size
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  collections = FakeCollectionRepository();
+  // DEPOLAR ÖNCE DOLUYOR: form kaydı `didChangeDependencies`te okuyor, yani
+  // ilk karede orada olmalı. Sonradan eklemek "kayıt bulunamadı" yoluna
+  // düşer ve form boş kalırdı.
+  collections = FakeCollectionRepository(editing == null ? null : [editing]);
+  if (editing != null) {
+    collections.links[editing.id] = [for (final memory in memories) memory.id];
+  }
+
   media = FakeMediaRepository();
   addTearDown(collections.dispose);
+
+  memoryRepo = FakeMemoryRepository(memories);
+  addTearDown(memoryRepo.dispose);
 
   container = ProviderContainer(
     overrides: [
       clockProvider.overrideWithValue(FixedClock(_today)),
       collectionRepositoryProvider.overrideWithValue(collections),
       mediaRepositoryProvider.overrideWithValue(media),
+      // DÜZENLEME KİPİ anıların kendisini anı deposundan okuyor; sırayı
+      // veren bağ ise koleksiyon deposundan geliyor.
+      memoryRepositoryProvider.overrideWithValue(memoryRepo),
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
@@ -85,7 +106,7 @@ Future<void> pumpForm(
         ),
         // ROUTER'LI: ekran oluşturduktan sonra kendini kapatıyor.
         routerConfig: GoRouter(
-          initialLocation: '/new',
+          initialLocation: editing == null ? '/new' : '/edit',
           routes: [
             GoRoute(
               path: '/',
@@ -94,6 +115,11 @@ Future<void> pumpForm(
                 GoRoute(
                   path: 'new',
                   builder: (_, _) => const CollectionEditorView(),
+                ),
+                GoRoute(
+                  path: 'edit',
+                  builder: (_, _) =>
+                      CollectionEditorView(collectionId: editing?.id),
                 ),
               ],
             ),
@@ -105,8 +131,87 @@ Future<void> pumpForm(
   await settle(tester);
 }
 
+/// Düzenleme testlerinin ortak koleksiyonu.
+final _kapadokya = MemoryCollection(
+  id: 'kol-1',
+  title: 'Kapadokya 2026',
+  description: 'Balonlar',
+  // BR-003 — varsayılan private.
+  visibility: CollectionVisibility.private,
+  startDate: DateTime(2026, 5, 10),
+  endDate: DateTime(2026, 5, 14),
+);
+
+Memory _ani(String id, String baslik) => Memory(
+  id: id,
+  occurredAt: DateTime(2026, 5, 11),
+  title: baslik,
+  isFavorite: false,
+  mediaCount: 0,
+  personCount: 0,
+);
+
 void main() {
   setUpAll(loadRealFonts);
+
+  group('düzenleme kipi', () {
+    testWidgets('başlık ve eylem düğmesi DÜZENLEME diyor', (tester) async {
+      await pumpForm(tester, editing: _kapadokya);
+
+      expect(find.text('Koleksiyonu Düzenle'), findsOneWidget);
+      expect(find.text('Değişiklikleri Kaydet'), findsOneWidget);
+      expect(find.text('Yeni Koleksiyon'), findsNothing);
+    });
+
+    testWidgets('alanlar DOLU geliyor', (tester) async {
+      // Boş bir form kullanıcıya her şeyi yeniden yazdırırdı.
+      await pumpForm(tester, editing: _kapadokya);
+
+      expect(find.text('Kapadokya 2026'), findsOneWidget);
+      expect(find.text('Balonlar'), findsOneWidget);
+      expect(find.textContaining('10'), findsWidgets);
+    });
+
+    testWidgets('seçili anı SAYISI görünüyor', (tester) async {
+      await pumpForm(
+        tester,
+        editing: _kapadokya,
+        memories: [_ani('ani-1', 'Balon'), _ani('ani-2', 'Vadi')],
+      );
+
+      expect(find.text('2 anı seçildi'), findsOneWidget);
+    });
+
+    testWidgets('kaydetme AYNI KİMLİĞE yazıyor, yeni kayıt açmıyor', (
+      tester,
+    ) async {
+      await pumpForm(tester, editing: _kapadokya);
+
+      await tester.tap(find.text('Değişiklikleri Kaydet'));
+      await settle(tester);
+
+      expect(collections.saved.single.id, _kapadokya.id);
+    });
+
+    testWidgets('SADECE ADI değiştirmek anıları KAYBETMİYOR', (tester) async {
+      // Bu testin sebebi: form anıları yüklemeyi atlarsa kaydetme
+      // `memoryIds: []` yazar ve kullanıcı yalnız başlığı düzeltmek için
+      // formu açtığında koleksiyonun içi sessizce boşalırdı.
+      await pumpForm(
+        tester,
+        editing: _kapadokya,
+        memories: [_ani('ani-1', 'Balon'), _ani('ani-2', 'Vadi')],
+      );
+
+      await tester.enterText(find.byType(TextField).first, 'Kapadokya');
+      await tester.tap(find.text('Değişiklikleri Kaydet'));
+      await settle(tester);
+
+      final draft = collections.saved.single;
+      expect(draft.title, 'Kapadokya');
+      expect(draft.memoryIds, ['ani-1', 'ani-2']);
+    });
+  });
 
   group('yerleşim', () {
     testWidgets('kapak, altı satır ve oluştur düğmesi duruyor', (tester) async {

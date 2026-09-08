@@ -174,7 +174,13 @@ class AppL10nTr extends AppL10n {
   String get collectionExpand => 'Koleksiyonu aç';
 
   @override
+  String get collectionMoreActions => 'Koleksiyon işlemleri';
+
+  @override
   String get collectionNewTitle => 'Yeni Koleksiyon';
+
+  @override
+  String get collectionEditTitle => 'Koleksiyonu Düzenle';
 
   @override
   String get collectionFieldName => 'Koleksiyon Adı';
@@ -221,11 +227,20 @@ class AppL10nTr extends AppL10n {
   String get collectionCreateAction => 'Koleksiyonu Oluştur';
 
   @override
+  String get collectionSaveAction => 'Değişiklikleri Kaydet';
+
+  @override
+  String get collectionEdit => 'Düzenle';
+
+  @override
   String get collectionNameRequired => 'Bir isim yazmadan oluşturamayız.';
 
   @override
   String get collectionCreated =>
       'Koleksiyonun oluştu, Hayatım’da seni bekliyor.';
+
+  @override
+  String get collectionUpdated => 'Koleksiyonun güncellendi.';
 
   @override
   String get collectionCollapse => 'Koleksiyonu kapat';

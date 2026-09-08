@@ -29,6 +29,7 @@ class CollectionsSection extends StatefulWidget {
     required this.collections,
     required this.onOpenMemory,
     required this.onMemoryActions,
+    required this.onCollectionActions,
     super.key,
   });
 
@@ -40,6 +41,10 @@ class CollectionsSection extends StatefulWidget {
   /// İkinci parametre dokunulan üç nokta düğmesinin EKRAN koordinatlarındaki
   /// kutusu; menü ona çıpalanıyor (bkz. [CollectionCard.onMemoryActions]).
   final void Function(CollectionMemoryData memory, Rect anchor) onMemoryActions;
+
+  /// Koleksiyonun kendisine ait eylemler; ilk parametre hangi koleksiyon.
+  final void Function(CollectionCardData collection, Rect anchor)
+  onCollectionActions;
 
   /// Figma: kartlar arası boşluk. Tasarım çerçevesi `space-between` diyor
   /// ama o, sabit yüksekliğe (641) yayılmış üç kart için geçerliydi; liste
@@ -119,6 +124,8 @@ class _CollectionsSectionState extends State<CollectionsSection> {
               onToggle: () => _toggle(collection.id),
               onOpenMemory: widget.onOpenMemory,
               onMemoryActions: widget.onMemoryActions,
+              onCollectionActions: (anchor) =>
+                  widget.onCollectionActions(collection, anchor),
             ),
           ],
 

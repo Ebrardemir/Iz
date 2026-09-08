@@ -74,6 +74,7 @@ enum AppRoute {
   // ile açıp seçilen kimlikleri `pop` ile geri alıyor.
   ritualNew('ritual-new', '/ritual/new'),
   collectionNew('collection-new', '/collection/new'),
+  collectionEdit('collection-edit', '/collection/:id/edit'),
   journalNew('journal-new', '/journal/new'),
   journalAll('journal-all', '/journal/all'),
   ritualDetail('ritual-detail', '/ritual/:id'),

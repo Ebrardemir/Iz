@@ -13,9 +13,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/app/composition/calendar_data.dart';
+import 'package:iz/app/composition/collections_with_memories.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/extensions/date_x.dart';
+import 'package:iz/core/l10n/failure_l10n.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
@@ -308,6 +310,7 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           // taşınmıyor.
           onOpenMemory: (memory) => _openMemory(memory.id, null),
           onMemoryActions: _showMemoryActions,
+          onCollectionActions: _showCollectionActions,
         ),
       ],
     );
@@ -382,6 +385,37 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
     extra: detail,
   );
 
+  /// Koleksiyon başlığındaki üç noktanın açtığı menü.
+  ///
+  /// ŞİMDİLİK TEK EYLEM. Silme buraya EKLENMEDİ: koleksiyon silme
+  /// TR-M6-11 gereği anıları silmiyor, yalnız bağı koparıyor ve bunu
+  /// kullanıcıya anlatan bir onay metni gerekiyor. Tek eylemli bir menü,
+  /// yanlış anlaşılan bir silmeden iyidir.
+  Future<void> _showCollectionActions(
+    CollectionCardData collection,
+    Rect anchor,
+  ) async {
+    final l10n = context.l10n;
+
+    await showIzPopoverMenu(
+      context,
+      anchor: anchor,
+      actions: [
+        (
+          icon: AppIcons.edit,
+          label: l10n.collectionEdit,
+          isDestructive: false,
+          onPressed: () => unawaited(
+            context.pushNamed(
+              AppRoute.collectionEdit.name,
+              pathParameters: {'id': collection.id},
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Anı satırındaki üç noktanın açtığı menü.
   ///
   /// MENÜYÜ EKRAN AÇIYOR, KART DEĞİL: `CollectionCard` saf bir widget ve
@@ -410,7 +444,7 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           icon: AppIcons.delete,
           label: l10n.commonDelete,
           isDestructive: true,
-          onPressed: _confirmDelete,
+          onPressed: () => _confirmDelete(memory.id),
         ),
       ],
     );
@@ -419,7 +453,7 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
   /// NFR-034: "Kritik silme/paylaşma/sipariş işlemlerinde açık onay ve geri
   /// bildirim bulunmalıdır." Silme eylem sayfasından DOĞRUDAN çalışmıyor;
   /// araya onay giriyor.
-  Future<void> _confirmDelete() async {
+  Future<void> _confirmDelete(String memoryId) async {
     final l10n = context.l10n;
 
     final confirmed = await context.confirm(
@@ -431,10 +465,30 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
 
     if (!confirmed || !mounted) return;
 
-    // Silinecek gerçek bir kayıt yok; veri bağlandığında burası
-    // `memoryListProvider.notifier.moveToTrash(id)` olacak ve dönüşte
-    // "Geri al" eylemli bir bildirim çıkacak (FR-015).
-    context.showSnack(l10n.screenComingSoonMessage);
+    // "GERİ AL" CONTAINER ÜZERİNDEN. SnackBar bu widget'tan daha uzun
+    // yaşayabiliyor: kullanıcı bildirim ekrandayken başka bir sekmeye
+    // geçerse `ref` dispose olur. Container uygulama boyunca yaşıyor.
+    // (Anı düzenleme ekranındaki silme akışının aynısı.)
+    final container = ProviderScope.containerOf(context, listen: false);
+
+    final result = await container
+        .read(memoryTrashProvider)
+        .moveToTrash(memoryId);
+    if (!mounted) return;
+
+    result.fold(
+      // FR-015 — kayıt gitmiyor, 30 gün çöp kutusunda duruyor. Bildirim bunu
+      // söylüyor ve çıkışı da gösteriyor.
+      onOk: (_) => context.showSnack(
+        l10n.memoryDeleted,
+        action: SnackBarAction(
+          label: l10n.memoryRestore,
+          onPressed: () =>
+              unawaited(container.read(memoryTrashProvider).restore(memoryId)),
+        ),
+      ),
+      onErr: (failure) => context.showSnack(failure.localizedMessage(l10n)),
+    );
   }
 }
 

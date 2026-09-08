@@ -84,6 +84,7 @@ class CollectionCard extends StatelessWidget {
     required this.onToggle,
     required this.onOpenMemory,
     required this.onMemoryActions,
+    required this.onCollectionActions,
     super.key,
   });
 
@@ -101,6 +102,13 @@ class CollectionCard extends StatelessWidget {
   /// Menü ona çıpalanıyor; `BuildContext` taşımak yerine hazır bir [Rect]
   /// veriyoruz ki çağıran tarafın render ağacıyla uğraşması gerekmesin.
   final void Function(CollectionMemoryData memory, Rect anchor) onMemoryActions;
+
+  /// Koleksiyonun KENDİSİNE ait eylemler (düzenle).
+  ///
+  /// YALNIZ AÇIK KARTTA görünüyor. Kapalı listede her karta bir üç nokta
+  /// koymak, tasarımın en sade hâli olan o listeyi kalabalıklaştırırdı;
+  /// açık kart zaten ekranın odağı ve orada bir düğme daha yer buluyor.
+  final void Function(Rect anchor) onCollectionActions;
 
   /// Figma: kapalı 86, açık 370 (üç anıyla).
   static const double kCollapsedHeight = 86;
@@ -232,6 +240,7 @@ class CollectionCard extends StatelessWidget {
                       titleStyle: context.text.titleLarge,
                     ),
                   ),
+                  _CollectionActionsButton(onActions: onCollectionActions),
                   Icon(
                     AppIcons.collapse,
                     size: _kChevronSize,
@@ -488,6 +497,49 @@ class _Cover extends StatelessWidget {
       width: width ?? double.infinity,
       height: height,
       borderRadius: radius,
+    );
+  }
+}
+
+/// Açık kartın başlığındaki üç nokta.
+///
+/// AYRI WIDGET çünkü düğmenin EKRAN koordinatlarındaki kutusunu ölçmek için
+/// bir `GlobalKey` gerekiyor ve o key'in bir `State`te yaşaması lazım;
+/// `CollectionCard` bilerek `StatelessWidget`.
+class _CollectionActionsButton extends StatefulWidget {
+  const _CollectionActionsButton({required this.onActions});
+
+  final void Function(Rect anchor) onActions;
+
+  @override
+  State<_CollectionActionsButton> createState() =>
+      _CollectionActionsButtonState();
+}
+
+class _CollectionActionsButtonState extends State<_CollectionActionsButton> {
+  final _actionKey = GlobalKey();
+
+  /// Gerekçesi `_MemoryRowState._reportAnchor`daki notta: anahtar
+  /// `IzIconAction`ın kendisinde olmak zorunda.
+  void _reportAnchor() {
+    final box = _actionKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    widget.onActions(box.localToGlobal(Offset.zero) & box.size);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IzIconActionRow(
+      actions: [
+        IzIconAction(
+          key: _actionKey,
+          icon: AppIcons.more,
+          tooltip: context.l10n.collectionMoreActions,
+          onPressed: _reportAnchor,
+          size: _MemoryRow._kActionIconSize,
+          color: context.colors.onSurfaceVariant,
+        ),
+      ],
     );
   }
 }

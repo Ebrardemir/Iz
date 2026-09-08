@@ -184,15 +184,32 @@ class FakeMemoryRepository implements MemoryRepository {
     return okUnit;
   }
 
+  /// Testlerin doğrulayabilmesi için.
+  final List<String> trashed = [];
+  final List<String> restored = [];
+
+  final List<Memory> _trash = [];
+
   @override
   Future<Result<Unit>> moveToTrash(String id) async {
-    _memories.removeWhere((m) => m.id == id);
+    trashed.add(id);
+    // FR-015 — kayıt YOK OLMUYOR, çöp kutusuna geçiyor. Gerçeğinde
+    // `deletedAt` doluyor; burada ayrı bir listeye alıyoruz ki "geri al"
+    // gerçekten geri getirebilsin.
+    final index = _memories.indexWhere((m) => m.id == id);
+    if (index >= 0) _trash.add(_memories.removeAt(index));
     _notify();
     return okUnit;
   }
 
   @override
-  Future<Result<Unit>> restoreFromTrash(String id) async => okUnit;
+  Future<Result<Unit>> restoreFromTrash(String id) async {
+    restored.add(id);
+    final index = _trash.indexWhere((m) => m.id == id);
+    if (index >= 0) _memories.add(_trash.removeAt(index));
+    _notify();
+    return okUnit;
+  }
 
   @override
   Future<Result<int>> purgeExpiredTrash() async => const Ok(0);

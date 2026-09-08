@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
-import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/categories/categories_providers.dart';
@@ -27,13 +26,16 @@ import '../helpers/rituals_fixture.dart';
 
 final _today = DateTime(2026, 8, 12);
 
+/// Testlerin `trashed`/`restored` listelerine bakabilmesi için dışarıda.
+late FakeMemoryRepository memories;
+
 Future<void> pumpMyLife(WidgetTester tester) async {
   tester.view
     ..physicalSize = const Size(390, 844)
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  final memories = FakeMemoryRepository(CollectionsFixture.calendarMemories);
+  memories = FakeMemoryRepository(CollectionsFixture.calendarMemories);
   addTearDown(memories.dispose);
 
   await tester.pumpWidget(
@@ -148,7 +150,7 @@ void main() {
     testWidgets('üç noktaya dokunmak menüyü açar', (tester) async {
       await openCollections(tester);
 
-      await tester.tap(find.byIcon(AppIcons.more).first);
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Anıya git'), findsOneWidget);
@@ -160,7 +162,7 @@ void main() {
 
       // İkinci satırın üç noktası — ortada bir yer, hem aşağı hem yukarı
       // açılabilecek kadar boşluk var.
-      final dots = find.byIcon(AppIcons.more).at(1);
+      final dots = find.byTooltip('Anı işlemleri').at(1);
       final dotsRect = tester.getRect(dots);
 
       await tester.tap(dots);
@@ -177,7 +179,7 @@ void main() {
     testWidgets('Sil, NFR-034 gereği onay diyaloğundan geçer', (tester) async {
       await openCollections(tester);
 
-      await tester.tap(find.byIcon(AppIcons.more).first);
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Sil'));
@@ -190,10 +192,53 @@ void main() {
       expect(find.text('Anıya git'), findsNothing);
     });
 
+    testWidgets('onaylanınca anı GERÇEKTEN çöp kutusuna gidiyor', (
+      tester,
+    ) async {
+      // Bir süre burada yalnızca "yakında" bildirimi çıkıyordu: onay
+      // penceresi çalışıyor, silme hiçbir şey yapmıyordu. Onay diyaloğunu
+      // sınayan test bunu göremiyordu.
+      await openCollections(tester);
+
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sil'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sil').last);
+      await tester.pumpAndSettle();
+
+      // DOĞRU anı: hep ilkini silen bir hata da "bir tanesi silindi"
+      // testini geçerdi.
+      final beklenen =
+          CollectionsFixture.withMemories().first.memories.first.id;
+      expect(memories.trashed, [beklenen]);
+
+      // FR-015 — kayıt gitmedi, çöp kutusunda. Bildirim bunu söylüyor ve
+      // çıkışı da gösteriyor.
+      expect(find.text('Anı çöp kutusuna taşındı'), findsOneWidget);
+      expect(find.text('Geri al'), findsOneWidget);
+    });
+
+    testWidgets('"Geri al" anıyı geri getiriyor', (tester) async {
+      await openCollections(tester);
+
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sil'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sil').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Geri al'));
+      await tester.pumpAndSettle();
+
+      expect(memories.restored, memories.trashed);
+    });
+
     testWidgets('onayda Vazgeç seçilince hiçbir şey olmaz', (tester) async {
       await openCollections(tester);
 
-      await tester.tap(find.byIcon(AppIcons.more).first);
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Sil'));
       await tester.pumpAndSettle();
@@ -208,7 +253,7 @@ void main() {
     testWidgets('menü dışına dokunmak onu kapatır', (tester) async {
       await openCollections(tester);
 
-      await tester.tap(find.byIcon(AppIcons.more).first);
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
       await tester.pumpAndSettle();
 
       // Perde görünmez ama dokunuşu yakalıyor: yıkıcı bir eylem içeren menüyü
