@@ -45,3 +45,27 @@ mixin SyncableTable on Table {
 mixin OwnedTable on Table {
   TextColumn get ownerId => text().withDefault(const Constant('local'))();
 }
+
+/// N-N **bağ** tabloları için — `SyncableTable`ın kimliksiz kardeşi.
+///
+/// NEDEN AYRI BİR MIXIN?
+/// `SyncableTable` bir `id` sütunu ve `primaryKey = {id}` dayatıyor. Bağ
+/// tablosunun kimliği ise zaten `(memoryId, personId)` çifti; ona ayrıca bir
+/// UUID vermek hem gereksiz hem tehlikeli olurdu — aynı çift iki farklı
+/// kimlikle iki kez girebilirdi. Bu yüzden bileşik anahtar KORUNUYOR,
+/// yalnız senkronizasyon sütunları ekleniyor.
+///
+/// NEDEN BAĞLAR DA TOMBSTONE OLMALI (rapor §1.1):
+/// Bağı gerçekten SİLERSEK, ikinci cihaz o satırı hiç görmez ve "bende var,
+/// sende yok" durumunu "sen henüz almamışsın" diye okur — çıkarılan kişiyi
+/// geri ekler. Kullanıcı anıdan kişiyi çıkarır, bir sonraki eşitlemede kişi
+/// geri gelir. Silmeyi bir SATIR olarak saklamak bunun tek çaresi.
+mixin SyncableLink on Table {
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Dolu ise bağ KOPARILMIŞ. Okuyan her sorgu `deletedAt IS NULL` süzmek
+  /// zorunda — atlanırsa silinmiş ilişkiler ekranda görünmeye başlar.
+  DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  IntColumn get version => integer().withDefault(const Constant(1))();
+}

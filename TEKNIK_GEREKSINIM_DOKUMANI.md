@@ -843,7 +843,7 @@ doğrulayıcımıza güvenmek gereksiz bir risk.
 Kendi başına bir modül: diğer modüllerin hepsine dokunur. Protokol ayrıntısı
 `BACKEND_YOL_HARITASI.md` §4'te; burada **istemci tarafı** gereksinimler.
 
-### M13.1 Yeni tablolar (şema v7 — bkz. Ek A)
+### M13.1 Yeni tablolar (şema v8 — bkz. Ek A)
 
 | Tablo | Alanlar |
 |---|---|
@@ -1002,8 +1002,21 @@ Bu maddeler tamamlanmadan mağazaya yükleme yapılamaz:
 | v4 | Günlük yıldızı | ✅ |
 | **v5** | **Ters yön indeksleri**: `memory_people.personId`, `memory_collections.collectionId`, `memory_rituals.ritualId`, `memory_media.mediaId`, `journal_media.mediaId`, `memories.categoryId` | ✅ |
 | **v6** | `people.relation_label` — kullanıcının kendi yazdığı ilişki adı ("Annem") | ✅ |
-| **v7** | `journal_search` FTS tablosu ve trigger'ları | ⏳ 1.1 |
-| **v8** | Join tablolarına `updatedAt/deletedAt/version` · `Users` · `OutboxEntries` · `SyncState` · `SyncConflicts` | ⏳ 1.5 |
+| **v7** | `RitualPeople` bağ tablosu; `rituals.related_person_id` düştü — bir seri birden fazla kişiyle paylaşılıyor | ✅ |
+| **v8** | Bağ tablolarına `updatedAt/deletedAt/version` · `Users` · `OutboxEntries` · `SyncState` · `SyncConflicts` | ✅ |
+| v9 | `journal_search` FTS tablosu ve trigger'ları | ⏳ 1.1 |
+
+> **v7 neden plandakinden farklı çıktı?** Bu satırda `journal_search` yazıyordu.
+> Seriler modülünün formu çoklu kişi seçimi gösterip tekil kaydetmek zorunda
+> kalınca sıra ona geldi; günlük FTS'i bir sürüm ileri kaydı. İçeriği değişmedi.
+
+> **v8'in en riskli adımı** bağ tablolarıydı: `updatedAt` varsayılanı
+> `CURRENT_TIMESTAMP` ve SQLite sabit olmayan varsayılanlı bir sütunu
+> `ALTER TABLE ADD COLUMN` ile kabul etmiyor. Tablolar Drift'in
+> `TableMigration`ıyla yeniden kuruldu; bileşik anahtarlar korundu.
+> `migration_test.dart` var olan bağın hem hayatta kaldığını hem
+> `deletedAt`inin NULL geldiğini doğruluyor — ikincisi atlansaydı mevcut tüm
+> ilişkiler "silinmiş" sayılıp ekrandan topluca kaybolurdu.
 
 > **v6 neden plana girmemişti?** `Person.relationLabel` entity'de ve arayüzde
 > baştan beri vardı, eksik olan yalnız sütundu — yani editörde yazılan "Annem"
@@ -1027,7 +1040,7 @@ Bu maddeler tamamlanmadan mağazaya yükleme yapılamaz:
 | Katman | Kapsam | Araç |
 |---|---|---|
 | Birim | UseCase iş kuralları, çakışma çözümü, entitlement kapıları | `flutter_test`, `mocktail` |
-| Veritabanı | Migration v1→v6, DAO sorguları, FTS | Bellek içi Drift |
+| Veritabanı | Migration v4→v8, DAO sorguları, FTS | Bellek içi Drift |
 | Widget | Ekran durumları, boş/hata/yükleniyor, erişilebilirlik | `flutter_test` |
 | Çeviri | Eksik anahtar, eksik `ValidationCode` çevirisi | `l10n_test.dart` |
 | Sözleşme | OpenAPI değişimi → istemci derleme hatası | CI |

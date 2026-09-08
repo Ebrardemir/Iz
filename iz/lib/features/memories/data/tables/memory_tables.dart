@@ -112,7 +112,7 @@ class Locations extends Table with SyncableTable {
 /// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryPersonRow')
 @TableIndex(name: 'idx_memory_people_person', columns: {#personId})
-class MemoryPeople extends Table {
+class MemoryPeople extends Table with SyncableLink {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
   TextColumn get personId =>
@@ -133,7 +133,7 @@ class MemoryPeople extends Table {
 /// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryCollectionRow')
 @TableIndex(name: 'idx_memory_collections_collection', columns: {#collectionId})
-class MemoryCollections extends Table {
+class MemoryCollections extends Table with SyncableLink {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
   TextColumn get collectionId =>
@@ -155,7 +155,7 @@ class MemoryCollections extends Table {
 /// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryRitualRow')
 @TableIndex(name: 'idx_memory_rituals_ritual', columns: {#ritualId})
-class MemoryRituals extends Table {
+class MemoryRituals extends Table with SyncableLink {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
   TextColumn get ritualId =>
@@ -174,7 +174,7 @@ class MemoryRituals extends Table {
 /// tam da o yönde sorguluyor. 20 anıda fark edilmez, 2.000 anıda ekran donar.
 @DataClassName('MemoryMediaRow')
 @TableIndex(name: 'idx_memory_media_media', columns: {#mediaId})
-class MemoryMedia extends Table {
+class MemoryMedia extends Table with SyncableLink {
   TextColumn get memoryId =>
       text().references(Memories, #id, onDelete: KeyAction.cascade)();
   TextColumn get mediaId =>
