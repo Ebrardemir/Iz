@@ -11,6 +11,7 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
+import 'package:iz/features/categories/categories_providers.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/my_life/presentation/views/my_life_view.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_grid.dart';
@@ -19,6 +20,7 @@ import 'package:iz/features/my_life/presentation/widgets/day_memories_panel.dart
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 
 import '../helpers/collections_fixture.dart';
+import '../helpers/fake_category_repository.dart';
 import '../helpers/fake_memory_repository.dart';
 import '../helpers/real_fonts.dart';
 import '../helpers/rituals_fixture.dart';
@@ -41,6 +43,8 @@ Future<void> pumpMyLife(WidgetTester tester) async {
         // TAKVİM ARTIK DEPODAN OKUYOR: ay bazında anı sorguluyor ve
         // hücrelerin kapaklarını oradan alıyor.
         memoryRepositoryProvider.overrideWithValue(memories),
+        // GÜN KARTINDAKİ KATEGORİ ADI da depodan geliyor.
+        categoryRepositoryProvider.overrideWithValue(FakeCategoryRepository()),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),

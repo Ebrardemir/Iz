@@ -14,40 +14,39 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/journal/domain/entities/journal_entry.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/journal/presentation/views/journal_all_entries_view.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_entry_row.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_filter_chips.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_journal_repository.dart';
 import '../helpers/real_fonts.dart';
 
 /// 26 Temmuz 2026 bir PAZAR — haftanın son günü, sınır testleri için ideal.
 final _today = DateTime(2026, 7, 26, 22);
 
 late ProviderContainer container;
+late FakeJournalRepository journal;
 
-CreatedJournalEntry _entry(
+JournalEntry _entry(
   String id, {
   required DateTime date,
   String title = 'Bir gün',
   bool favorite = false,
-}) => (
-  entry: JournalEntry(
-    id: id,
-    entryDate: date,
-    createdAt: date,
-    text: 'Bugün sakin geçti.',
-    title: title,
-    privacyMode: JournalPrivacyMode.standard,
-    isFavorite: favorite,
-  ),
-  photos: const [],
+}) => JournalEntry(
+  id: id,
+  entryDate: date,
+  createdAt: date,
+  text: 'Bugün sakin geçti.',
+  title: title,
+  privacyMode: JournalPrivacyMode.standard,
+  isFavorite: favorite,
 );
 
 Future<void> pumpAll(
   WidgetTester tester, {
-  List<CreatedJournalEntry> entries = const [],
+  List<JournalEntry> entries = const [],
   Size size = const Size(390, 900),
   double textScale = 1,
 }) async {
@@ -56,16 +55,16 @@ Future<void> pumpAll(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  journal = FakeJournalRepository([...entries]);
+  addTearDown(journal.dispose);
+
   container = ProviderContainer(
-    overrides: [clockProvider.overrideWithValue(FixedClock(_today))],
+    overrides: [
+      clockProvider.overrideWithValue(FixedClock(_today)),
+      journalRepositoryProvider.overrideWithValue(journal),
+    ],
   );
   addTearDown(container.dispose);
-
-  final notifier = container.read(createdJournalEntriesProvider.notifier);
-  // Ters sırayla: depo her yeni kaydı başa koyuyor.
-  for (final entry in entries.reversed) {
-    notifier.add(entry);
-  }
 
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -149,7 +148,7 @@ void main() {
   });
 
   group('süzgeç', () {
-    List<CreatedJournalEntry> spread() => [
+    List<JournalEntry> spread() => [
       // Bu hafta (20-26 Temmuz, pazartesi-pazar).
       _entry('bugun', date: DateTime(2026, 7, 26), title: 'Bugün'),
       _entry('pazartesi', date: DateTime(2026, 7, 20), title: 'Pazartesi'),

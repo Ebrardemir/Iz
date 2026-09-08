@@ -222,6 +222,10 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
   // --- TAKVİM sekmesi -------------------------------------------------------
 
   Widget _calendarBody(BuildContext context) {
+    // Kategori adları: sistem kategorilerininki çeviriden, kullanıcının
+    // açtığınınki doğrudan yazdığı ad (TR-M6-02).
+    final categoryNames = ref.watch(categoryNamesProvider(context.l10n));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -269,10 +273,11 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
                   memory.occurredAt,
                   locale: Localizations.localeOf(context).toLanguageTag(),
                 ),
-                // ⚠️ KATEGORİ ADI BOŞ: `Categories` tablosu okunmuyor, anıda
-                // yalnız `categoryId` var. Kategori hattı yazıldığında tek
-                // satırda dolacak.
-                categoryLabel: '',
+                // Kategorisi olmayan anı boş etiket gösteriyor: kart o
+                // satırı zaten çizmiyor.
+                categoryLabel: memory.categoryId == null
+                    ? ''
+                    : categoryNames[memory.categoryId] ?? '',
               ),
           ],
           // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında taşınmıyor.

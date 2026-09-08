@@ -30,8 +30,10 @@
 /// şey (rapor 7.3); fotoğraf zorunlu olsaydı yazma eşiği yükselirdi.
 ///
 /// ⚠️ KAYIT HATTI YOK. `JournalDao` yazılmadı; kayıt oturum belleğinde duruyor
-/// (`createdJournalEntriesProvider`) ve Günlük sekmesinde görünüyor.
+/// KAYIT GERÇEK: form `JournalRepository`ye yazıyor.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,13 +43,15 @@ import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/l10n/failure_l10n.dart';
 import 'package:iz/core/media/media_picker.dart';
+import 'package:iz/core/result/result.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/journal/domain/entities/journal_entry.dart';
 import 'package:iz/features/journal/domain/journal_prompt.dart';
+import 'package:iz/features/journal/domain/repositories/journal_repository.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/journal/presentation/journal_prompts.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_greeting_card.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_mood_slider.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
@@ -272,31 +276,49 @@ class _JournalEditorViewState extends ConsumerState<JournalEditorView> {
 
     final title = _titleController.text.trim();
 
-    // ⚠️ BURADA KAYIT YOK; oturum belleğine gidiyor. Hat kurulduğunda burası
-    // `ref.read(saveJournalEntryProvider)(...)` olacak, formun geri kalanı
-    // aynı kalacak.
-    ref.read(createdJournalEntriesProvider.notifier).add((
-      entry: JournalEntry(
-        // Kimlik ZAMANDAN üretiliyor çünkü repository yok; gerçek kimliği
-        // veritabanı verecek.
-        id: 'journal-${DateTime.now().microsecondsSinceEpoch}',
-        // GÜN, saat DEĞİL: günlük gün bazlı gruplanıyor (FR-033).
-        entryDate: ref.read(clockProvider).now().dateOnly,
-        text: notes,
-        title: title.isEmpty ? null : title,
-        // FR-032 — hangi davete cevap verildi. Metin değil SIRA kimliği:
-        // çeviri değişse de bağ kopmuyor.
-        promptId: journalPromptId(promptIndex),
-        moodScore: _moodScore,
-        // FR-035 — varsayılan gizlilik: senkronize edilebilir.
-        privacyMode: JournalPrivacyMode.standard,
-      ),
-      photos: [..._photos],
-    ));
+    unawaited(_persist(title: title, notes: notes, promptIndex: promptIndex));
+  }
 
-    context
-      ..pop()
-      ..showSnack(l10n.journalCreated);
+  /// Kaydeder ve ekranı kapatır.
+  ///
+  /// HATADA ekran KAPANMIYOR: form dolu kalıyor ki kullanıcı yazdıklarını
+  /// kaybetmesin. Kişi, koleksiyon ve seri formlarındaki kararın aynısı.
+  Future<void> _persist({
+    required String title,
+    required String notes,
+    required int promptIndex,
+  }) async {
+    final result = await ref
+        .read(journalRepositoryProvider)
+        .save(
+          JournalDraft(
+            // GÜN, saat DEĞİL: günlük gün bazlı gruplanıyor (FR-033).
+            entryDate: ref.read(clockProvider).now().dateOnly,
+            text: notes,
+            // Başlık OPSİYONEL: boş kutu "başlıksız" demek, boş metin değil.
+            title: title.isEmpty ? null : title,
+            // FR-032 — hangi davete cevap verildi. Metin değil SIRA kimliği:
+            // çeviri değişse de bağ kopmuyor.
+            promptId: journalPromptId(promptIndex),
+            moodScore: _moodScore,
+            // FR-035 — varsayılan gizlilik: senkronize edilebilir.
+            privacyMode: JournalPrivacyMode.standard,
+            // Fotoğraflar zaten kalıcı `MediaItem` (medya hattı onları içe
+            // aktarıyor); burada yalnız kimlikleri bağlıyoruz.
+            mediaIds: [for (final photo in _photos) photo.id],
+          ),
+        );
+
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok():
+        context
+          ..pop()
+          ..showSnack(context.l10n.journalCreated);
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 }
 

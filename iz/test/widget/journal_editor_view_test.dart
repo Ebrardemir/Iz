@@ -17,7 +17,7 @@ import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
-import 'package:iz/features/journal/presentation/view_models/created_journal_entries_view_model.dart';
+import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/journal/presentation/views/journal_editor_view.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_greeting_card.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_mood_slider.dart';
@@ -25,12 +25,14 @@ import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
+import '../helpers/fake_journal_repository.dart';
 import '../helpers/fake_media_picker.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 13, 21, 40);
 
 late ProviderContainer container;
+late FakeJournalRepository journal;
 
 Future<void> pumpForm(
   WidgetTester tester, {
@@ -43,9 +45,13 @@ Future<void> pumpForm(
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  journal = FakeJournalRepository();
+  addTearDown(journal.dispose);
+
   container = ProviderContainer(
     overrides: [
       clockProvider.overrideWithValue(FixedClock(_today)),
+      journalRepositoryProvider.overrideWithValue(journal),
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
@@ -192,8 +198,7 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdJournalEntriesProvider).single;
-      expect(created.entry.moodScore, JournalMoodSlider.kMax);
+      expect(journal.saved.single.moodScore, JournalMoodSlider.kMax);
     });
 
     testWidgets('dokunulmazsa kayıt PUANSIZ gidiyor', (tester) async {
@@ -203,8 +208,7 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdJournalEntriesProvider).single;
-      expect(created.entry.moodScore, isNull);
+      expect(journal.saved.single.moodScore, isNull);
     });
   });
 
@@ -243,10 +247,7 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      expect(
-        container.read(createdJournalEntriesProvider).single.photos,
-        isEmpty,
-      );
+      expect(journal.saved.single.mediaIds, isEmpty);
     });
   });
 
@@ -259,7 +260,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Birkaç kelime yazmadan kaydedemeyiz.'), findsOneWidget);
-      expect(container.read(createdJournalEntriesProvider), isEmpty);
+      expect(journal.saved, isEmpty);
       expect(find.byType(JournalEditorView), findsOneWidget);
     });
 
@@ -281,9 +282,9 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdJournalEntriesProvider).single;
-      expect(created.entry.title, isNull);
-      expect(created.entry.text, 'Başlıksız gün.');
+      final created = journal.saved.single;
+      expect(created.title, isNull);
+      expect(created.text, 'Başlıksız gün.');
     });
 
     testWidgets('başlık ve not kayda giriyor, ekran kapanıyor', (tester) async {
@@ -294,9 +295,9 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdJournalEntriesProvider).single;
-      expect(created.entry.title, 'Uzun bir gün');
-      expect(created.entry.text, 'Sabah kahvemi balkonda içtim.');
+      final created = journal.saved.single;
+      expect(created.title, 'Uzun bir gün');
+      expect(created.text, 'Sabah kahvemi balkonda içtim.');
       expect(find.byType(JournalEditorView), findsNothing);
     });
 
@@ -309,11 +310,7 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final date = container
-          .read(createdJournalEntriesProvider)
-          .single
-          .entry
-          .entryDate;
+      final date = journal.saved.single.entryDate;
       expect(date, DateTime(2026, 8, 13));
     });
   });
@@ -339,8 +336,7 @@ void main() {
       await tester.tap(find.text('Kaydı Oluştur'));
       await settle(tester);
 
-      final created = container.read(createdJournalEntriesProvider).single;
-      expect(created.entry.promptId, startsWith('prompt-'));
+      expect(journal.saved.single.promptId, startsWith('prompt-'));
     });
   });
 

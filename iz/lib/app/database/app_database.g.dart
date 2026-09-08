@@ -8337,6 +8337,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final CollectionDao collectionDao = CollectionDao(this as AppDatabase);
   late final MediaDao mediaDao = MediaDao(this as AppDatabase);
   late final RitualDao ritualDao = RitualDao(this as AppDatabase);
+  late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
+  late final JournalDao journalDao = JournalDao(this as AppDatabase);
   Selectable<String> searchMemoryIds({required String query}) {
     return customSelect(
       'SELECT memory_id FROM memory_search WHERE memory_search MATCH ?1 ORDER BY rank',

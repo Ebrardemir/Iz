@@ -6,7 +6,11 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/result/result_x.dart';
+import 'package:iz/features/categories/categories_providers.dart';
+import 'package:iz/features/categories/domain/entities/memory_category.dart';
+import 'package:iz/features/categories/presentation/category_l10n.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
@@ -74,3 +78,24 @@ final dayMemoriesProvider = Provider.family<List<Memory>, DateTime>((ref, day) {
 /// Karşılaştırmayı `DateTime` üzerinde doğrudan yapsaydık aynı güne ait iki
 /// anı farklı saatlerde farklı anahtarlara düşerdi.
 DateTime _dayOf(DateTime date) => DateTime(date.year, date.month, date.day);
+
+/// Kategori kimliği → görünen ad.
+///
+/// TR-M6-02: SİSTEM kategorilerinin adı ÇEVİRİDEN geliyor, veritabanındaki
+/// alan bir anahtar ("categoryTravel"). Kullanıcının açtığı kategori ise
+/// doğrudan yazdığı ad — o çevrilmez, çünkü veri. Ayrımı `displayName`
+/// yapıyor (bkz. `category_l10n.dart`).
+final categoryNamesProvider = Provider.family<Map<String, String>, AppL10n>((
+  ref,
+  l10n,
+) {
+  final categories = ref.watch(categoryListProvider).value ?? const [];
+  return {
+    for (final category in categories) category.id: category.displayName(l10n),
+  };
+});
+
+/// Kategori listesi — tanımlı düzende.
+final categoryListProvider = StreamProvider<List<MemoryCategory>>((ref) {
+  return ref.watch(categoryRepositoryProvider).watchCategories().unwrap();
+});
