@@ -115,9 +115,16 @@ final class MemoryRepositoryImpl implements MemoryRepository {
         currentVersion = existing?.memory.version ?? 0;
       }
 
+      // KONUM: serbest metin bir `Locations` satırına çevriliyor. Ekran
+      // kimlik üretmiyor; o veri katmanının işi.
+      final locationId = await _resolveLocation(draft);
+
       await _dao.upsertMemory(
         memory: MemoryMapper.toCompanion(
-          draft,
+          draft.copyWith(
+            locationId: locationId,
+            clearLocation: locationId == null,
+          ),
           id: id,
           now: now,
           currentVersion: currentVersion,
@@ -199,6 +206,28 @@ final class MemoryRepositoryImpl implements MemoryRepository {
 
   /// Stream'in hata kanalına düşen exception'ları `Err`e çevirir.
   /// Böylece hata sonrası stream KAPANMAZ ve UI yeniden denenebilir kalır.
+  /// Formdaki yer adını bir konum kimliğine çevirir.
+  ///
+  /// AYNI ADA SAHİP SATIR VARSA ONU KULLANIYORUZ: kullanıcı "Göreme,
+  /// Nevşehir"i her yazdığında yeni satır açsaydık "bu yerdeki anılarım"
+  /// sorgusu parçalanırdı.
+  ///
+  /// Etiket verilmemişse (`null`) taslaktaki kimliğe DOKUNMUYORUZ — yalnız
+  /// başlığı düzenleyen bir kayıt konumunu kaybetmemeli. Boş metin ise
+  /// açık bir niyet: "konumu kaldır".
+  Future<String?> _resolveLocation(MemoryDraft draft) async {
+    final label = draft.locationLabel?.trim();
+    if (label == null) return draft.locationId;
+    if (label.isEmpty) return null;
+
+    final existing = await _dao.findLocationByLabel(label);
+    if (existing != null) return existing.id;
+
+    final id = _ids.newId();
+    await _dao.insertLocation(LocationsCompanion.insert(id: id, label: label));
+    return id;
+  }
+
   StreamTransformer<Result<T>, Result<T>> _resultGuard<T>() {
     return StreamTransformer<Result<T>, Result<T>>.fromHandlers(
       handleError: (error, stack, sink) {

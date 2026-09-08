@@ -365,6 +365,21 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   // YAZMA
   // ---------------------------------------------------------------------
 
+  /// Aynı ada sahip konumu bulur — yoksa null.
+  ///
+  /// Etikete göre arıyoruz çünkü kullanıcının elinde koordinat yok, yazdığı
+  /// metin var. Aynı yeri iki kez yazınca iki satır açsaydık "bu şehirdeki
+  /// anılarım" sorgusu ikiye bölünürdü.
+  Future<LocationRow?> findLocationByLabel(String label) {
+    return (select(locations)
+          ..where((t) => t.label.equals(label) & t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<void> insertLocation(LocationsCompanion location) =>
+      into(locations).insert(location);
+
   /// Anıyı ve TÜM ilişkilerini tek transaction'da yazar.
   ///
   /// NFR-020: "Bir Anı kaydı yarım yazılmış durumda bırakılmamalı; ilişkili

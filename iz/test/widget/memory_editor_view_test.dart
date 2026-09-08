@@ -989,20 +989,34 @@ void main() {
       expect(find.byType(MemoryEditorView), findsNothing);
     });
 
-    testWidgets('KONUM kaydedilmiyor — `Locations` satırı yazan yol yok', (
-      tester,
-    ) async {
-      // Tablo VAR ve okunuyor; eksik olan tek şey serbest metni bir konum
-      // satırına çeviren upsert. Kullanıcının gördüğü kayıp bu.
+    testWidgets('KONUM taslağa giriyor', (tester) async {
+      // Bu test bir zamanlar "kaydedilmiyor" diyordu: serbest metni bir
+      // `Locations` satırına çeviren yol yoktu.
+      //
+      // KİMLİK BURADA ÇÖZÜLMÜYOR, kayıt anında depo çözüyor: satırı ekranın
+      // açması, ekranı veri katmanına bulaştırırdı. Taslak yalnız METNİ
+      // taşıyor; kimliğe çevrilmesi `memory_repository_test.dart`ta gerçek
+      // SQLite ile sınanıyor.
       final container = await pumpForm(tester);
 
       await tester.enterText(fieldOf('Başlık'), 'Kapadokya');
       await tester.enterText(fieldOf('Konum'), 'Göreme, Nevşehir');
       await settle(tester);
 
-      // Ekranda duruyor…
       expect(readState(container).locationLabel, 'Göreme, Nevşehir');
-      // …ama taslakta bir konum KİMLİĞİ yok, dolayısıyla kaydedilmiyor.
+      expect(readState(container).draft.locationLabel, 'Göreme, Nevşehir');
+    });
+
+    testWidgets('KONUM temizlenince bağ da kopuyor', (tester) async {
+      // Boş metin açık bir niyet: "konumu kaldır".
+      final container = await pumpForm(tester);
+
+      await tester.enterText(fieldOf('Konum'), 'Göreme');
+      await settle(tester);
+      await tester.enterText(fieldOf('Konum'), '');
+      await settle(tester);
+
+      expect(readState(container).draft.locationLabel, isEmpty);
       expect(readState(container).draft.locationId, isNull);
     });
 

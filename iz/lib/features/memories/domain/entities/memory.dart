@@ -223,6 +223,7 @@ final class MemoryDraft extends Equatable {
     this.ritualId,
     this.ritualYear,
     this.locationId,
+    this.locationLabel,
     this.isFavorite = false,
   });
 
@@ -240,6 +241,17 @@ final class MemoryDraft extends Equatable {
   final String? ritualId;
   final int? ritualYear;
   final String? locationId;
+
+  /// Kullanıcının YAZDIĞI yer adı ("Göreme, Nevşehir").
+  ///
+  /// NEDEN AYRI ALAN, `locationId` YETMİYOR MU?
+  /// Kullanıcı forma serbest metin yazıyor; `Locations` satırı henüz yok.
+  /// Kimliği ekranın üretmesi, ekranı veri katmanına bulaştırırdı. Depo bu
+  /// metni bir konum satırına çeviriyor (varsa var olanı kullanıyor).
+  ///
+  /// Boş metin "konumu kaldır" demek: kullanıcı alanı temizlediğinde bağ da
+  /// kopmalı.
+  final String? locationLabel;
   final bool isFavorite;
 
   bool get isNew => id == null;
@@ -264,6 +276,10 @@ final class MemoryDraft extends Equatable {
     String? ritualId,
     int? ritualYear,
     String? locationId,
+    String? locationLabel,
+    // `locationId: null` "değiştirme" demek olduğu için ayrı bayrak:
+    // konumu KALDIRMAK ile dokunmamak farklı niyetler.
+    bool clearLocation = false,
     bool? isFavorite,
   }) => MemoryDraft(
     id: id ?? this.id,
@@ -277,7 +293,8 @@ final class MemoryDraft extends Equatable {
     coverMediaId: coverMediaId ?? this.coverMediaId,
     ritualId: ritualId ?? this.ritualId,
     ritualYear: ritualYear ?? this.ritualYear,
-    locationId: locationId ?? this.locationId,
+    locationId: clearLocation ? null : (locationId ?? this.locationId),
+    locationLabel: locationLabel ?? this.locationLabel,
     isFavorite: isFavorite ?? this.isFavorite,
   );
 
@@ -295,6 +312,7 @@ final class MemoryDraft extends Equatable {
     ritualId,
     ritualYear,
     locationId,
+    locationLabel,
     isFavorite,
   ];
 }
