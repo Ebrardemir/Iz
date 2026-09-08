@@ -21,18 +21,21 @@ import 'package:iz/features/journal/journal_providers.dart';
 import 'package:iz/features/journal/presentation/views/journal_editor_view.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_greeting_card.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_mood_slider.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
 
 import '../helpers/app_harness.dart';
 import '../helpers/fake_journal_repository.dart';
 import '../helpers/fake_media_picker.dart';
+import '../helpers/fake_media_repository.dart';
 import '../helpers/real_fonts.dart';
 
 final _today = DateTime(2026, 8, 13, 21, 40);
 
 late ProviderContainer container;
 late FakeJournalRepository journal;
+late FakeMediaRepository media;
 
 Future<void> pumpForm(
   WidgetTester tester, {
@@ -47,6 +50,7 @@ Future<void> pumpForm(
 
   journal = FakeJournalRepository();
   addTearDown(journal.dispose);
+  media = FakeMediaRepository();
 
   container = ProviderContainer(
     overrides: [
@@ -55,6 +59,10 @@ Future<void> pumpForm(
       mediaPickerProvider.overrideWithValue(
         FakeMediaPicker(paths: pickerReturns),
       ),
+      // Seçilen kare artık HEMEN içe aktarılıyor (TR-M4-11). Gerçeği hem
+      // Drift'e hem dosya sistemine dokunuyor; ikisi de widget testinde
+      // eklenti ister.
+      mediaRepositoryProvider.overrideWithValue(media),
     ],
   );
   addTearDown(container.dispose);
@@ -252,6 +260,39 @@ void main() {
   });
 
   group('oluşturma', () {
+    testWidgets('fotoğraflı kayıt GERÇEK medya kimliği taşıyor', (
+      tester,
+    ) async {
+      // GERİLEME KORUMASI. Bir süre şeritteki kareler `picked:<yol>` diye
+      // sahte kimlik taşıyordu; kayıt sırasında o kimlik `journal_media`ya
+      // yazılmaya çalışılıyor, yabancı anahtar ihlaliyle TÜM KAYIT düşüyor
+      // ve kullanıcı yazdığı günlüğü kaybederek "verilerine şu anda
+      // ulaşılamıyor" görüyordu.
+      await pumpForm(tester, pickerReturns: ['/tmp/a.jpg']);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(IzPhotoStrip),
+          matching: find.byIcon(AppIcons.add),
+        ),
+      );
+      await settle(tester);
+
+      await writeNotes(tester, 'Fotoğraflı gün.');
+      await tester.tap(find.text('Kaydı Oluştur'));
+      await settle(tester);
+
+      final mediaIds = journal.saved.single.mediaIds!;
+      expect(mediaIds, hasLength(1));
+      expect(
+        mediaIds.single,
+        isNot(startsWith('picked:')),
+        reason: 'kayda geçici kimlik gitmiş; veritabanı bunu reddeder',
+      );
+      // Medya deposunun ürettiği GERÇEK kimlik.
+      expect(mediaIds.single, media.items.single.id);
+    });
+
     testWidgets('not boşsa uyarıyor ve kaydetmiyor', (tester) async {
       // FR-030 — günlüğün olmazsa olmazı yazının kendisi.
       await pumpForm(tester);
