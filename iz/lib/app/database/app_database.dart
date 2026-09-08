@@ -62,6 +62,7 @@ part 'app_database.g.dart';
     MemoryPeople,
     MemoryCollections,
     MemoryRituals,
+    RitualPeople,
     MemoryMedia,
     // Günlük
     JournalEntries,
@@ -85,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
   /// Artırmayı unutursan kullanıcının cihazındaki eski şema olduğu gibi
   /// kalır ve uygulama "no such column" hatasıyla çöker.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -159,6 +160,33 @@ class AppDatabase extends _$AppDatabase {
         // eksiklik değil — o kişiler için ekranda `relationType`ın çevirisi
         // gösterilmeye devam eder (bkz. person_l10n.dart).
         await m.addColumn(people, people.relationLabel);
+      }
+
+      if (from < 7) {
+        // v7 — SERİ ↔ KİŞİ ÇOKLU OLDU.
+        //
+        // `Rituals.relatedPersonId` tekildi ama bir seri birden fazla kişiyle
+        // paylaşılıyor ("Aile Yemeklerimiz"). Form da çoklu seçim gösterip
+        // tekil kaydetmek zorunda kalıyordu.
+        //
+        // SIRA ÖNEMLİ: önce yeni tablo kuruluyor, sonra VAR OLAN VERİ
+        // taşınıyor, en sonda eski sütun düşüyor. Tersi olsaydı kullanıcının
+        // seçtiği kişi kaybolurdu.
+        await m.createTable(ritualPeople);
+        await m.createIndex(idxRitualPeoplePerson);
+
+        // Eski tekil bağı yeni tabloya kopyala. Ham SQL: `relatedPersonId`
+        // artık Dart tarafında YOK (sütun tanımından kalktı), yani Drift'in
+        // tip güvenli sorgusuyla okunamıyor.
+        await customStatement(
+          'INSERT OR IGNORE INTO ritual_people (ritual_id, person_id) '
+          'SELECT id, related_person_id FROM rituals '
+          'WHERE related_person_id IS NOT NULL',
+        );
+
+        // Sütunu düşürmek SQLite'ta tablo yeniden kurmayı gerektiriyor;
+        // Drift bunu `TableMigration` ile yapıyor.
+        await m.alterTable(TableMigration(rituals));
       }
     },
 

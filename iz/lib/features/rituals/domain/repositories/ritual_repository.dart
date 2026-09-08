@@ -29,6 +29,12 @@ abstract interface class RitualRepository {
   /// kurulamaz.
   Stream<Result<Map<String, List<RitualOccurrence>>>> watchOccurrences();
 
+  /// Seri kimliği → bağlı kişi kimlikleri.
+  ///
+  /// Anılardan ayrı bir akış: kişi bağı değişince anı listesini yeniden
+  /// çekmek gereksiz iş olurdu.
+  Stream<Result<Map<String, Set<String>>>> watchPeopleLinks();
+
   /// TR-M6-11'in seri karşılığı: seri silinince ANILAR SİLİNMEZ.
   ///
   /// TR-C-32: fiziksel silme yapılmaz, tombstone yazılır.
@@ -47,7 +53,7 @@ final class RitualDraft {
     required this.title,
     this.id,
     this.recurrenceType = RecurrenceType.yearly,
-    this.relatedPersonId,
+    this.personIds,
     this.anchorMonth,
     this.anchorDay,
     this.iconKey = 'ritual',
@@ -60,8 +66,17 @@ final class RitualDraft {
   final String title;
   final RecurrenceType recurrenceType;
 
-  /// FR-064 — kişiye bağlı seri ("Annemin Doğum Günleri").
-  final String? relatedPersonId;
+  /// FR-064 — seriye bağlı KİŞİLER.
+  ///
+  /// ÇOKLU: bir seri birden fazla kişiyle paylaşılıyor ("Aile
+  /// Yemeklerimiz"). Bir süre tekil bir sütunda tutuluyordu ve form çoklu
+  /// seçim gösterip tekil kaydetmek zorunda kalıyordu; şema v7 ile bağ
+  /// tablosuna geçti.
+  ///
+  /// `null` ile boş küme AYNI ŞEY DEĞİL — [occurrences] ile aynı ayrım:
+  ///   • `null`  → "bağlara dokunma"
+  ///   • `{}`    → "hepsini kaldır"
+  final Set<String>? personIds;
 
   final int? anchorMonth;
   final int? anchorDay;

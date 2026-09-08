@@ -5741,17 +5741,6 @@ class $RitualsTable extends Rituals with TableInfo<$RitualsTable, RitualRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant('yearly'),
   ).withConverter<RecurrenceType>($RitualsTable.$converterrecurrenceType);
-  static const VerificationMeta _relatedPersonIdMeta = const VerificationMeta(
-    'relatedPersonId',
-  );
-  @override
-  late final GeneratedColumn<String> relatedPersonId = GeneratedColumn<String>(
-    'related_person_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _anchorMonthMeta = const VerificationMeta(
     'anchorMonth',
   );
@@ -5796,7 +5785,6 @@ class $RitualsTable extends Rituals with TableInfo<$RitualsTable, RitualRow> {
     ownerId,
     title,
     recurrenceType,
-    relatedPersonId,
     anchorMonth,
     anchorDay,
     iconKey,
@@ -5855,15 +5843,6 @@ class $RitualsTable extends Rituals with TableInfo<$RitualsTable, RitualRow> {
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
-    }
-    if (data.containsKey('related_person_id')) {
-      context.handle(
-        _relatedPersonIdMeta,
-        relatedPersonId.isAcceptableOrUnknown(
-          data['related_person_id']!,
-          _relatedPersonIdMeta,
-        ),
-      );
     }
     if (data.containsKey('anchor_month')) {
       context.handle(
@@ -5929,10 +5908,6 @@ class $RitualsTable extends Rituals with TableInfo<$RitualsTable, RitualRow> {
           data['${effectivePrefix}recurrence_type'],
         )!,
       ),
-      relatedPersonId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}related_person_id'],
-      ),
       anchorMonth: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}anchor_month'],
@@ -5976,9 +5951,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
   final String ownerId;
   final String title;
   final RecurrenceType recurrenceType;
-
-  /// FR-064 — kişiye bağlı ritüel.
-  final String? relatedPersonId;
   final int? anchorMonth;
   final int? anchorDay;
   final String iconKey;
@@ -5991,7 +5963,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     required this.ownerId,
     required this.title,
     required this.recurrenceType,
-    this.relatedPersonId,
     this.anchorMonth,
     this.anchorDay,
     required this.iconKey,
@@ -6012,9 +5983,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
       map['recurrence_type'] = Variable<String>(
         $RitualsTable.$converterrecurrenceType.toSql(recurrenceType),
       );
-    }
-    if (!nullToAbsent || relatedPersonId != null) {
-      map['related_person_id'] = Variable<String>(relatedPersonId);
     }
     if (!nullToAbsent || anchorMonth != null) {
       map['anchor_month'] = Variable<int>(anchorMonth);
@@ -6038,9 +6006,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
       ownerId: Value(ownerId),
       title: Value(title),
       recurrenceType: Value(recurrenceType),
-      relatedPersonId: relatedPersonId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(relatedPersonId),
       anchorMonth: anchorMonth == null && nullToAbsent
           ? const Value.absent()
           : Value(anchorMonth),
@@ -6067,7 +6032,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
       recurrenceType: $RitualsTable.$converterrecurrenceType.fromJson(
         serializer.fromJson<String>(json['recurrenceType']),
       ),
-      relatedPersonId: serializer.fromJson<String?>(json['relatedPersonId']),
       anchorMonth: serializer.fromJson<int?>(json['anchorMonth']),
       anchorDay: serializer.fromJson<int?>(json['anchorDay']),
       iconKey: serializer.fromJson<String>(json['iconKey']),
@@ -6087,7 +6051,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
       'recurrenceType': serializer.toJson<String>(
         $RitualsTable.$converterrecurrenceType.toJson(recurrenceType),
       ),
-      'relatedPersonId': serializer.toJson<String?>(relatedPersonId),
       'anchorMonth': serializer.toJson<int?>(anchorMonth),
       'anchorDay': serializer.toJson<int?>(anchorDay),
       'iconKey': serializer.toJson<String>(iconKey),
@@ -6103,7 +6066,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     String? ownerId,
     String? title,
     RecurrenceType? recurrenceType,
-    Value<String?> relatedPersonId = const Value.absent(),
     Value<int?> anchorMonth = const Value.absent(),
     Value<int?> anchorDay = const Value.absent(),
     String? iconKey,
@@ -6116,9 +6078,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     ownerId: ownerId ?? this.ownerId,
     title: title ?? this.title,
     recurrenceType: recurrenceType ?? this.recurrenceType,
-    relatedPersonId: relatedPersonId.present
-        ? relatedPersonId.value
-        : this.relatedPersonId,
     anchorMonth: anchorMonth.present ? anchorMonth.value : this.anchorMonth,
     anchorDay: anchorDay.present ? anchorDay.value : this.anchorDay,
     iconKey: iconKey ?? this.iconKey,
@@ -6135,9 +6094,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
       recurrenceType: data.recurrenceType.present
           ? data.recurrenceType.value
           : this.recurrenceType,
-      relatedPersonId: data.relatedPersonId.present
-          ? data.relatedPersonId.value
-          : this.relatedPersonId,
       anchorMonth: data.anchorMonth.present
           ? data.anchorMonth.value
           : this.anchorMonth,
@@ -6157,7 +6113,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
           ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('recurrenceType: $recurrenceType, ')
-          ..write('relatedPersonId: $relatedPersonId, ')
           ..write('anchorMonth: $anchorMonth, ')
           ..write('anchorDay: $anchorDay, ')
           ..write('iconKey: $iconKey')
@@ -6175,7 +6130,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
     ownerId,
     title,
     recurrenceType,
-    relatedPersonId,
     anchorMonth,
     anchorDay,
     iconKey,
@@ -6192,7 +6146,6 @@ class RitualRow extends DataClass implements Insertable<RitualRow> {
           other.ownerId == this.ownerId &&
           other.title == this.title &&
           other.recurrenceType == this.recurrenceType &&
-          other.relatedPersonId == this.relatedPersonId &&
           other.anchorMonth == this.anchorMonth &&
           other.anchorDay == this.anchorDay &&
           other.iconKey == this.iconKey);
@@ -6207,7 +6160,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
   final Value<String> ownerId;
   final Value<String> title;
   final Value<RecurrenceType> recurrenceType;
-  final Value<String?> relatedPersonId;
   final Value<int?> anchorMonth;
   final Value<int?> anchorDay;
   final Value<String> iconKey;
@@ -6221,7 +6173,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
     this.ownerId = const Value.absent(),
     this.title = const Value.absent(),
     this.recurrenceType = const Value.absent(),
-    this.relatedPersonId = const Value.absent(),
     this.anchorMonth = const Value.absent(),
     this.anchorDay = const Value.absent(),
     this.iconKey = const Value.absent(),
@@ -6236,7 +6187,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
     this.ownerId = const Value.absent(),
     required String title,
     this.recurrenceType = const Value.absent(),
-    this.relatedPersonId = const Value.absent(),
     this.anchorMonth = const Value.absent(),
     this.anchorDay = const Value.absent(),
     this.iconKey = const Value.absent(),
@@ -6252,7 +6202,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
     Expression<String>? ownerId,
     Expression<String>? title,
     Expression<String>? recurrenceType,
-    Expression<String>? relatedPersonId,
     Expression<int>? anchorMonth,
     Expression<int>? anchorDay,
     Expression<String>? iconKey,
@@ -6267,7 +6216,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
       if (ownerId != null) 'owner_id': ownerId,
       if (title != null) 'title': title,
       if (recurrenceType != null) 'recurrence_type': recurrenceType,
-      if (relatedPersonId != null) 'related_person_id': relatedPersonId,
       if (anchorMonth != null) 'anchor_month': anchorMonth,
       if (anchorDay != null) 'anchor_day': anchorDay,
       if (iconKey != null) 'icon_key': iconKey,
@@ -6284,7 +6232,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
     Value<String>? ownerId,
     Value<String>? title,
     Value<RecurrenceType>? recurrenceType,
-    Value<String?>? relatedPersonId,
     Value<int?>? anchorMonth,
     Value<int?>? anchorDay,
     Value<String>? iconKey,
@@ -6299,7 +6246,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
       ownerId: ownerId ?? this.ownerId,
       title: title ?? this.title,
       recurrenceType: recurrenceType ?? this.recurrenceType,
-      relatedPersonId: relatedPersonId ?? this.relatedPersonId,
       anchorMonth: anchorMonth ?? this.anchorMonth,
       anchorDay: anchorDay ?? this.anchorDay,
       iconKey: iconKey ?? this.iconKey,
@@ -6336,9 +6282,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
         $RitualsTable.$converterrecurrenceType.toSql(recurrenceType.value),
       );
     }
-    if (relatedPersonId.present) {
-      map['related_person_id'] = Variable<String>(relatedPersonId.value);
-    }
     if (anchorMonth.present) {
       map['anchor_month'] = Variable<int>(anchorMonth.value);
     }
@@ -6365,7 +6308,6 @@ class RitualsCompanion extends UpdateCompanion<RitualRow> {
           ..write('ownerId: $ownerId, ')
           ..write('title: $title, ')
           ..write('recurrenceType: $recurrenceType, ')
-          ..write('relatedPersonId: $relatedPersonId, ')
           ..write('anchorMonth: $anchorMonth, ')
           ..write('anchorDay: $anchorDay, ')
           ..write('iconKey: $iconKey, ')
@@ -6922,6 +6864,230 @@ class MemoryMediaCompanion extends UpdateCompanion<MemoryMediaRow> {
           ..write('memoryId: $memoryId, ')
           ..write('mediaId: $mediaId, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RitualPeopleTable extends RitualPeople
+    with TableInfo<$RitualPeopleTable, RitualPersonRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RitualPeopleTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _ritualIdMeta = const VerificationMeta(
+    'ritualId',
+  );
+  @override
+  late final GeneratedColumn<String> ritualId = GeneratedColumn<String>(
+    'ritual_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES rituals (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _personIdMeta = const VerificationMeta(
+    'personId',
+  );
+  @override
+  late final GeneratedColumn<String> personId = GeneratedColumn<String>(
+    'person_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES people (id) ON DELETE CASCADE',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [ritualId, personId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ritual_people';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RitualPersonRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('ritual_id')) {
+      context.handle(
+        _ritualIdMeta,
+        ritualId.isAcceptableOrUnknown(data['ritual_id']!, _ritualIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ritualIdMeta);
+    }
+    if (data.containsKey('person_id')) {
+      context.handle(
+        _personIdMeta,
+        personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {ritualId, personId};
+  @override
+  RitualPersonRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RitualPersonRow(
+      ritualId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ritual_id'],
+      )!,
+      personId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}person_id'],
+      )!,
+    );
+  }
+
+  @override
+  $RitualPeopleTable createAlias(String alias) {
+    return $RitualPeopleTable(attachedDatabase, alias);
+  }
+}
+
+class RitualPersonRow extends DataClass implements Insertable<RitualPersonRow> {
+  final String ritualId;
+  final String personId;
+  const RitualPersonRow({required this.ritualId, required this.personId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['ritual_id'] = Variable<String>(ritualId);
+    map['person_id'] = Variable<String>(personId);
+    return map;
+  }
+
+  RitualPeopleCompanion toCompanion(bool nullToAbsent) {
+    return RitualPeopleCompanion(
+      ritualId: Value(ritualId),
+      personId: Value(personId),
+    );
+  }
+
+  factory RitualPersonRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RitualPersonRow(
+      ritualId: serializer.fromJson<String>(json['ritualId']),
+      personId: serializer.fromJson<String>(json['personId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'ritualId': serializer.toJson<String>(ritualId),
+      'personId': serializer.toJson<String>(personId),
+    };
+  }
+
+  RitualPersonRow copyWith({String? ritualId, String? personId}) =>
+      RitualPersonRow(
+        ritualId: ritualId ?? this.ritualId,
+        personId: personId ?? this.personId,
+      );
+  RitualPersonRow copyWithCompanion(RitualPeopleCompanion data) {
+    return RitualPersonRow(
+      ritualId: data.ritualId.present ? data.ritualId.value : this.ritualId,
+      personId: data.personId.present ? data.personId.value : this.personId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RitualPersonRow(')
+          ..write('ritualId: $ritualId, ')
+          ..write('personId: $personId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(ritualId, personId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RitualPersonRow &&
+          other.ritualId == this.ritualId &&
+          other.personId == this.personId);
+}
+
+class RitualPeopleCompanion extends UpdateCompanion<RitualPersonRow> {
+  final Value<String> ritualId;
+  final Value<String> personId;
+  final Value<int> rowid;
+  const RitualPeopleCompanion({
+    this.ritualId = const Value.absent(),
+    this.personId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RitualPeopleCompanion.insert({
+    required String ritualId,
+    required String personId,
+    this.rowid = const Value.absent(),
+  }) : ritualId = Value(ritualId),
+       personId = Value(personId);
+  static Insertable<RitualPersonRow> custom({
+    Expression<String>? ritualId,
+    Expression<String>? personId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (ritualId != null) 'ritual_id': ritualId,
+      if (personId != null) 'person_id': personId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RitualPeopleCompanion copyWith({
+    Value<String>? ritualId,
+    Value<String>? personId,
+    Value<int>? rowid,
+  }) {
+    return RitualPeopleCompanion(
+      ritualId: ritualId ?? this.ritualId,
+      personId: personId ?? this.personId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (ritualId.present) {
+      map['ritual_id'] = Variable<String>(ritualId.value);
+    }
+    if (personId.present) {
+      map['person_id'] = Variable<String>(personId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RitualPeopleCompanion(')
+          ..write('ritualId: $ritualId, ')
+          ..write('personId: $personId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8155,6 +8321,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_memory_media_media',
     'CREATE INDEX idx_memory_media_media ON memory_media (media_id)',
   );
+  late final $RitualPeopleTable ritualPeople = $RitualPeopleTable(this);
+  late final Index idxRitualPeoplePerson = Index(
+    'idx_ritual_people_person',
+    'CREATE INDEX idx_ritual_people_person ON ritual_people (person_id)',
+  );
   late final $JournalEntriesTable journalEntries = $JournalEntriesTable(this);
   late final $JournalMediaTable journalMedia = $JournalMediaTable(this);
   late final Index idxJournalMediaMedia = Index(
@@ -8218,6 +8389,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxMemoryCollectionsCollection,
     idxMemoryRitualsRitual,
     idxMemoryMediaMedia,
+    ritualPeople,
+    idxRitualPeoplePerson,
     journalEntries,
     journalMedia,
     idxJournalMediaMedia,
@@ -8303,6 +8476,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('memory_media', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'rituals',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('ritual_people', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('ritual_people', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -11205,6 +11392,24 @@ final class $$PeopleTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$RitualPeopleTable, List<RitualPersonRow>>
+  _ritualPeopleRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ritualPeople,
+    aliasName: 'people__id__ritual_people__person_id',
+  );
+
+  $$RitualPeopleTableProcessedTableManager get ritualPeopleRefs {
+    final manager = $$RitualPeopleTableTableManager(
+      $_db,
+      $_db.ritualPeople,
+    ).filter((f) => f.personId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ritualPeopleRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PeopleTableFilterComposer
@@ -11304,6 +11509,31 @@ class $$PeopleTableFilterComposer
           }) => $$MemoryPeopleTableFilterComposer(
             $db: $db,
             $table: $db.memoryPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> ritualPeopleRefs(
+    Expression<bool> Function($$RitualPeopleTableFilterComposer f) f,
+  ) {
+    final $$RitualPeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ritualPeople,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualPeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.ritualPeople,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -11478,6 +11708,31 @@ class $$PeopleTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> ritualPeopleRefs<T extends Object>(
+    Expression<T> Function($$RitualPeopleTableAnnotationComposer a) f,
+  ) {
+    final $$RitualPeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ritualPeople,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualPeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ritualPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$PeopleTableTableManager
@@ -11493,7 +11748,7 @@ class $$PeopleTableTableManager
           $$PeopleTableUpdateCompanionBuilder,
           (PersonRow, $$PeopleTableReferences),
           PersonRow,
-          PrefetchHooks Function({bool memoryPeopleRefs})
+          PrefetchHooks Function({bool memoryPeopleRefs, bool ritualPeopleRefs})
         > {
   $$PeopleTableTableManager(_$AppDatabase db, $PeopleTable table)
     : super(
@@ -11580,35 +11835,63 @@ class $$PeopleTableTableManager
                     (e.readTable(table), $$PeopleTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({memoryPeopleRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (memoryPeopleRefs) db.memoryPeople],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (memoryPeopleRefs)
-                    await $_getPrefetchedData<
-                      PersonRow,
-                      $PeopleTable,
-                      MemoryPersonRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$PeopleTableReferences
-                          ._memoryPeopleRefsTable(db),
-                      managerFromTypedResult: (p0) => $$PeopleTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).memoryPeopleRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.personId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({memoryPeopleRefs = false, ritualPeopleRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (memoryPeopleRefs) db.memoryPeople,
+                    if (ritualPeopleRefs) db.ritualPeople,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (memoryPeopleRefs)
+                        await $_getPrefetchedData<
+                          PersonRow,
+                          $PeopleTable,
+                          MemoryPersonRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeopleTableReferences
+                              ._memoryPeopleRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeopleTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).memoryPeopleRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.personId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ritualPeopleRefs)
+                        await $_getPrefetchedData<
+                          PersonRow,
+                          $PeopleTable,
+                          RitualPersonRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeopleTableReferences
+                              ._ritualPeopleRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeopleTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ritualPeopleRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.personId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -11625,7 +11908,7 @@ typedef $$PeopleTableProcessedTableManager =
       $$PeopleTableUpdateCompanionBuilder,
       (PersonRow, $$PeopleTableReferences),
       PersonRow,
-      PrefetchHooks Function({bool memoryPeopleRefs})
+      PrefetchHooks Function({bool memoryPeopleRefs, bool ritualPeopleRefs})
     >;
 typedef $$MemoryPeopleTableCreateCompanionBuilder =
     MemoryPeopleCompanion Function({
@@ -12840,7 +13123,6 @@ typedef $$RitualsTableCreateCompanionBuilder =
       Value<String> ownerId,
       required String title,
       Value<RecurrenceType> recurrenceType,
-      Value<String?> relatedPersonId,
       Value<int?> anchorMonth,
       Value<int?> anchorDay,
       Value<String> iconKey,
@@ -12856,7 +13138,6 @@ typedef $$RitualsTableUpdateCompanionBuilder =
       Value<String> ownerId,
       Value<String> title,
       Value<RecurrenceType> recurrenceType,
-      Value<String?> relatedPersonId,
       Value<int?> anchorMonth,
       Value<int?> anchorDay,
       Value<String> iconKey,
@@ -12880,6 +13161,24 @@ final class $$RitualsTableReferences
     ).filter((f) => f.ritualId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_memoryRitualsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$RitualPeopleTable, List<RitualPersonRow>>
+  _ritualPeopleRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.ritualPeople,
+    aliasName: 'rituals__id__ritual_people__ritual_id',
+  );
+
+  $$RitualPeopleTableProcessedTableManager get ritualPeopleRefs {
+    final manager = $$RitualPeopleTableTableManager(
+      $_db,
+      $_db.ritualPeople,
+    ).filter((f) => f.ritualId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_ritualPeopleRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -12936,11 +13235,6 @@ class $$RitualsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<String> get relatedPersonId => $composableBuilder(
-    column: $table.relatedPersonId,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<int> get anchorMonth => $composableBuilder(
     column: $table.anchorMonth,
     builder: (column) => ColumnFilters(column),
@@ -12972,6 +13266,31 @@ class $$RitualsTableFilterComposer
           }) => $$MemoryRitualsTableFilterComposer(
             $db: $db,
             $table: $db.memoryRituals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> ritualPeopleRefs(
+    Expression<bool> Function($$RitualPeopleTableFilterComposer f) f,
+  ) {
+    final $$RitualPeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ritualPeople,
+      getReferencedColumn: (t) => t.ritualId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualPeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.ritualPeople,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -13031,11 +13350,6 @@ class $$RitualsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get relatedPersonId => $composableBuilder(
-    column: $table.relatedPersonId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get anchorMonth => $composableBuilder(
     column: $table.anchorMonth,
     builder: (column) => ColumnOrderings(column),
@@ -13088,11 +13402,6 @@ class $$RitualsTableAnnotationComposer
         builder: (column) => column,
       );
 
-  GeneratedColumn<String> get relatedPersonId => $composableBuilder(
-    column: $table.relatedPersonId,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<int> get anchorMonth => $composableBuilder(
     column: $table.anchorMonth,
     builder: (column) => column,
@@ -13128,6 +13437,31 @@ class $$RitualsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> ritualPeopleRefs<T extends Object>(
+    Expression<T> Function($$RitualPeopleTableAnnotationComposer a) f,
+  ) {
+    final $$RitualPeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.ritualPeople,
+      getReferencedColumn: (t) => t.ritualId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualPeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.ritualPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$RitualsTableTableManager
@@ -13143,7 +13477,10 @@ class $$RitualsTableTableManager
           $$RitualsTableUpdateCompanionBuilder,
           (RitualRow, $$RitualsTableReferences),
           RitualRow,
-          PrefetchHooks Function({bool memoryRitualsRefs})
+          PrefetchHooks Function({
+            bool memoryRitualsRefs,
+            bool ritualPeopleRefs,
+          })
         > {
   $$RitualsTableTableManager(_$AppDatabase db, $RitualsTable table)
     : super(
@@ -13166,7 +13503,6 @@ class $$RitualsTableTableManager
                 Value<String> ownerId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<RecurrenceType> recurrenceType = const Value.absent(),
-                Value<String?> relatedPersonId = const Value.absent(),
                 Value<int?> anchorMonth = const Value.absent(),
                 Value<int?> anchorDay = const Value.absent(),
                 Value<String> iconKey = const Value.absent(),
@@ -13180,7 +13516,6 @@ class $$RitualsTableTableManager
                 ownerId: ownerId,
                 title: title,
                 recurrenceType: recurrenceType,
-                relatedPersonId: relatedPersonId,
                 anchorMonth: anchorMonth,
                 anchorDay: anchorDay,
                 iconKey: iconKey,
@@ -13196,7 +13531,6 @@ class $$RitualsTableTableManager
                 Value<String> ownerId = const Value.absent(),
                 required String title,
                 Value<RecurrenceType> recurrenceType = const Value.absent(),
-                Value<String?> relatedPersonId = const Value.absent(),
                 Value<int?> anchorMonth = const Value.absent(),
                 Value<int?> anchorDay = const Value.absent(),
                 Value<String> iconKey = const Value.absent(),
@@ -13210,7 +13544,6 @@ class $$RitualsTableTableManager
                 ownerId: ownerId,
                 title: title,
                 recurrenceType: recurrenceType,
-                relatedPersonId: relatedPersonId,
                 anchorMonth: anchorMonth,
                 anchorDay: anchorDay,
                 iconKey: iconKey,
@@ -13224,37 +13557,63 @@ class $$RitualsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({memoryRitualsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (memoryRitualsRefs) db.memoryRituals,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (memoryRitualsRefs)
-                    await $_getPrefetchedData<
-                      RitualRow,
-                      $RitualsTable,
-                      MemoryRitualRow
-                    >(
-                      currentTable: table,
-                      referencedTable: $$RitualsTableReferences
-                          ._memoryRitualsRefsTable(db),
-                      managerFromTypedResult: (p0) => $$RitualsTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).memoryRitualsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.ritualId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({memoryRitualsRefs = false, ritualPeopleRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (memoryRitualsRefs) db.memoryRituals,
+                    if (ritualPeopleRefs) db.ritualPeople,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (memoryRitualsRefs)
+                        await $_getPrefetchedData<
+                          RitualRow,
+                          $RitualsTable,
+                          MemoryRitualRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$RitualsTableReferences
+                              ._memoryRitualsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$RitualsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).memoryRitualsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ritualId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (ritualPeopleRefs)
+                        await $_getPrefetchedData<
+                          RitualRow,
+                          $RitualsTable,
+                          RitualPersonRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$RitualsTableReferences
+                              ._ritualPeopleRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$RitualsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).ritualPeopleRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ritualId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -13271,7 +13630,7 @@ typedef $$RitualsTableProcessedTableManager =
       $$RitualsTableUpdateCompanionBuilder,
       (RitualRow, $$RitualsTableReferences),
       RitualRow,
-      PrefetchHooks Function({bool memoryRitualsRefs})
+      PrefetchHooks Function({bool memoryRitualsRefs, bool ritualPeopleRefs})
     >;
 typedef $$MemoryRitualsTableCreateCompanionBuilder =
     MemoryRitualsCompanion Function({
@@ -14009,6 +14368,352 @@ typedef $$MemoryMediaTableProcessedTableManager =
       (MemoryMediaRow, $$MemoryMediaTableReferences),
       MemoryMediaRow,
       PrefetchHooks Function({bool memoryId, bool mediaId})
+    >;
+typedef $$RitualPeopleTableCreateCompanionBuilder =
+    RitualPeopleCompanion Function({
+      required String ritualId,
+      required String personId,
+      Value<int> rowid,
+    });
+typedef $$RitualPeopleTableUpdateCompanionBuilder =
+    RitualPeopleCompanion Function({
+      Value<String> ritualId,
+      Value<String> personId,
+      Value<int> rowid,
+    });
+
+final class $$RitualPeopleTableReferences
+    extends BaseReferences<_$AppDatabase, $RitualPeopleTable, RitualPersonRow> {
+  $$RitualPeopleTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $RitualsTable _ritualIdTable(_$AppDatabase db) =>
+      db.rituals.createAlias('ritual_people__ritual_id__rituals__id');
+
+  $$RitualsTableProcessedTableManager get ritualId {
+    final $_column = $_itemColumn<String>('ritual_id')!;
+
+    final manager = $$RitualsTableTableManager(
+      $_db,
+      $_db.rituals,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_ritualIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PeopleTable _personIdTable(_$AppDatabase db) =>
+      db.people.createAlias('ritual_people__person_id__people__id');
+
+  $$PeopleTableProcessedTableManager get personId {
+    final $_column = $_itemColumn<String>('person_id')!;
+
+    final manager = $$PeopleTableTableManager(
+      $_db,
+      $_db.people,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RitualPeopleTableFilterComposer
+    extends Composer<_$AppDatabase, $RitualPeopleTable> {
+  $$RitualPeopleTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RitualsTableFilterComposer get ritualId {
+    final $$RitualsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ritualId,
+      referencedTable: $db.rituals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualsTableFilterComposer(
+            $db: $db,
+            $table: $db.rituals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PeopleTableFilterComposer get personId {
+    final $$PeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RitualPeopleTableOrderingComposer
+    extends Composer<_$AppDatabase, $RitualPeopleTable> {
+  $$RitualPeopleTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RitualsTableOrderingComposer get ritualId {
+    final $$RitualsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ritualId,
+      referencedTable: $db.rituals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualsTableOrderingComposer(
+            $db: $db,
+            $table: $db.rituals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PeopleTableOrderingComposer get personId {
+    final $$PeopleTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableOrderingComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RitualPeopleTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RitualPeopleTable> {
+  $$RitualPeopleTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$RitualsTableAnnotationComposer get ritualId {
+    final $$RitualsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ritualId,
+      referencedTable: $db.rituals,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RitualsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.rituals,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$PeopleTableAnnotationComposer get personId {
+    final $$PeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RitualPeopleTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RitualPeopleTable,
+          RitualPersonRow,
+          $$RitualPeopleTableFilterComposer,
+          $$RitualPeopleTableOrderingComposer,
+          $$RitualPeopleTableAnnotationComposer,
+          $$RitualPeopleTableCreateCompanionBuilder,
+          $$RitualPeopleTableUpdateCompanionBuilder,
+          (RitualPersonRow, $$RitualPeopleTableReferences),
+          RitualPersonRow,
+          PrefetchHooks Function({bool ritualId, bool personId})
+        > {
+  $$RitualPeopleTableTableManager(_$AppDatabase db, $RitualPeopleTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RitualPeopleTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RitualPeopleTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RitualPeopleTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> ritualId = const Value.absent(),
+                Value<String> personId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RitualPeopleCompanion(
+                ritualId: ritualId,
+                personId: personId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String ritualId,
+                required String personId,
+                Value<int> rowid = const Value.absent(),
+              }) => RitualPeopleCompanion.insert(
+                ritualId: ritualId,
+                personId: personId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RitualPeopleTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({ritualId = false, personId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (ritualId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.ritualId,
+                                referencedTable: $$RitualPeopleTableReferences
+                                    ._ritualIdTable(db),
+                                referencedColumn: $$RitualPeopleTableReferences
+                                    ._ritualIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (personId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.personId,
+                                referencedTable: $$RitualPeopleTableReferences
+                                    ._personIdTable(db),
+                                referencedColumn: $$RitualPeopleTableReferences
+                                    ._personIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RitualPeopleTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RitualPeopleTable,
+      RitualPersonRow,
+      $$RitualPeopleTableFilterComposer,
+      $$RitualPeopleTableOrderingComposer,
+      $$RitualPeopleTableAnnotationComposer,
+      $$RitualPeopleTableCreateCompanionBuilder,
+      $$RitualPeopleTableUpdateCompanionBuilder,
+      (RitualPersonRow, $$RitualPeopleTableReferences),
+      RitualPersonRow,
+      PrefetchHooks Function({bool ritualId, bool personId})
     >;
 typedef $$JournalEntriesTableCreateCompanionBuilder =
     JournalEntriesCompanion Function({
@@ -14912,6 +15617,8 @@ class $AppDatabaseManager {
       $$MemoryRitualsTableTableManager(_db, _db.memoryRituals);
   $$MemoryMediaTableTableManager get memoryMedia =>
       $$MemoryMediaTableTableManager(_db, _db.memoryMedia);
+  $$RitualPeopleTableTableManager get ritualPeople =>
+      $$RitualPeopleTableTableManager(_db, _db.ritualPeople);
   $$JournalEntriesTableTableManager get journalEntries =>
       $$JournalEntriesTableTableManager(_db, _db.journalEntries);
   $$JournalMediaTableTableManager get journalMedia =>

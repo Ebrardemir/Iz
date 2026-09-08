@@ -35,16 +35,16 @@ void main() {
     verifier = SchemaVerifier(GeneratedHelper());
   });
 
-  test('canlı şema, v6 anlık görüntüsüyle birebir aynı', () async {
-    final connection = await verifier.startAt(6);
+  test('canlı şema, v7 anlık görüntüsüyle birebir aynı', () async {
+    final connection = await verifier.startAt(7);
     final db = AppDatabase(connection);
 
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
 
     await db.close();
   });
 
-  test('v4 → v6 yükseltmesi sorunsuz tamamlanıyor', () async {
+  test('v4 → v7 yükseltmesi sorunsuz tamamlanıyor', () async {
     // TR-A-01: kullanıcı ARADAKİ sürümleri atlayabilir. Uygulamayı aylardır
     // güncellemeyen biri v4'ten doğrudan v6'ya çıkar; adımların sırayla ve
     // eksiksiz çalıştığını doğrulayan test budur.
@@ -54,7 +54,47 @@ void main() {
     final connection = await verifier.startAt(4);
     final db = AppDatabase(connection);
 
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
+
+    await db.close();
+  });
+
+  test('v6 → v7 seri ↔ kişi bağı TAŞINIYOR, kaybolmuyor', () async {
+    // v7 tekil `related_person_id` sütununu kaldırıp çoklu bir bağ tablosu
+    // kuruyor. Migration'ın işi yalnız tabloyu açmak değil, VAR OLAN BAĞI
+    // yeni tabloya taşımak — taşımasaydı kullanıcının seçtiği kişi sessizce
+    // silinirdi. Bu testin varlık sebebi o.
+    final schema = await verifier.schemaAt(6);
+
+    final eski = schema.newConnection();
+    await eski.executor.ensureOpen(_NoOpUser(6));
+    await eski.executor.runCustom(
+      "INSERT INTO people (id, name) VALUES ('kisi-1', 'Annem')",
+      const [],
+    );
+    await eski.executor.runCustom(
+      'INSERT INTO rituals (id, title, related_person_id) '
+      "VALUES ('seri-1', 'Annemin Doğum Günleri', 'kisi-1')",
+      const [],
+    );
+    // Kişisi olmayan seri de var: taşınacak bağı yok ve migration onu
+    // atlamalı, hata vermemeli.
+    await eski.executor.runCustom(
+      "INSERT INTO rituals (id, title) VALUES ('seri-2', 'Yaz Tatilleri')",
+      const [],
+    );
+    await eski.executor.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(db, 7);
+
+    final seriler = await db.select(db.rituals).get();
+    expect(seriler, hasLength(2));
+
+    final baglar = await db.select(db.ritualPeople).get();
+    expect(baglar, hasLength(1));
+    expect(baglar.single.ritualId, 'seri-1');
+    expect(baglar.single.personId, 'kisi-1');
 
     await db.close();
   });
@@ -69,7 +109,7 @@ void main() {
     // kaydı SQL ile yazıyoruz. Yalnız zorunlu sütunlar veriliyor; geri
     // kalanların SQL varsayılanı var.
     final eski = schema.newConnection();
-    await eski.executor.ensureOpen(_NoOpUser());
+    await eski.executor.ensureOpen(_NoOpUser(5));
     await eski.executor.runCustom(
       "INSERT INTO people (id, name) VALUES ('kisi-1', 'Annem')",
       const [],
@@ -77,7 +117,7 @@ void main() {
     await eski.executor.close();
 
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
 
     final kisiler = await db.select(db.people).get();
     expect(kisiler, hasLength(1));
@@ -93,7 +133,7 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     expect(
       db.schemaVersion,
-      6,
+      7,
       reason:
           'schemaVersion artırıldıysa drift_schemas/ altına yeni bir anlık '
           'görüntü alıp bu testi güncelle (bkz. dosya başındaki komutlar).',
@@ -104,9 +144,16 @@ void main() {
 
 /// `QueryExecutor.ensureOpen` bir `QueryExecutorUser` istiyor ama biz yalnız
 /// ham SQL çalıştıracağız: şema zaten kurulu, migration çalıştırmıyoruz.
+///
+/// SÜRÜM PARAMETRE — sabit DEĞİL. Bu değer veritabanının `user_version`ına
+/// yazılıyor; sabit bıraksaydık (bir süre 5'ti) daha yeni bir şemadan
+/// başlayan test yanlış sürümden göç etmeye kalkar ve zaten var olan
+/// sütunu ikinci kez eklemeye çalışırdı.
 final class _NoOpUser extends QueryExecutorUser {
+  _NoOpUser(this.schemaVersion);
+
   @override
-  int get schemaVersion => 5;
+  final int schemaVersion;
 
   @override
   Future<void> beforeOpen(
