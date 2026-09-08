@@ -50,7 +50,7 @@ void main() {
     repository = FakeMemoryRepository([
       ...CollectionsFixture.memories,
       ...RitualsFixture.memories,
-    ]);
+    ])..personLinks.addAll(CollectionsFixture.personLinks);
     collections = FakeCollectionRepository(CollectionsFixture.collections)
       ..links.addAll(CollectionsFixture.links);
     // Seri sekmesi testleri karta ve yıl şeridine dokunuyor; liste boş

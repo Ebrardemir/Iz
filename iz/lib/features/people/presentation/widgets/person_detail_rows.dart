@@ -11,9 +11,34 @@ import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Koleksiyon satırı: görsel + ad + anı sayısı + ok.
+/// Kişi detayındaki bir koleksiyon satırı.
+///
+/// Bu tip bir süre `person_detail_preview_data.dart` içinde yaşıyordu; o dosya
+/// tasarım önizlemesiydi ve veri hattı kurulunca düştü. Tip, onu çizen
+/// widget'ın yanında olmalı — `CollectionCardData` da öyle duruyor.
+typedef PersonCollection = ({
+  /// "Hayatım" ekranındaki koleksiyonla AYNI kimlik — süzme buna dayanıyor.
+  String id,
+
+  /// Koleksiyonun kapağı. `MediaThumbnail` kapağı olmayanı ve dosyası
+  /// kaybolanı kendi içinde çiziyor (NFR-021 / TR-M4-13).
+  MediaItem? cover,
+  String title,
+
+  /// O KİŞİYLE PAYLAŞILAN anı sayısı — koleksiyonun toplamı değil.
+  int memoryCount,
+});
+
+/// Kişi detayındaki bir seri satırı.
+///
+/// [iconKey] taşınıyor, `IconData` DEĞİL: ikon seti değişse bile kullanıcının
+/// verisi bozulmamalı (aynı kural seri ve kategori tablolarında da var).
+typedef PersonRitual = ({String iconKey, String title, int years});
+
 class PersonCollectionRow extends StatelessWidget {
   const PersonCollectionRow({
     required this.collection,
@@ -51,28 +76,13 @@ class PersonCollectionRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.all(AppRadius.sm),
-                child: Image.asset(
-                  collection.coverAsset,
-                  width: kCoverWidth,
-                  height: kCoverHeight,
-                  fit: BoxFit.cover,
-                  // Görsel paketten geliyor ama yine de çökmeye izin
-                  // vermiyoruz (NFR-021).
-                  errorBuilder: (context, error, stack) => ColoredBox(
-                    color: colors.surfaceContainerHighest,
-                    child: SizedBox(
-                      width: kCoverWidth,
-                      height: kCoverHeight,
-                      child: Icon(
-                        AppIcons.mediaMissing,
-                        size: AppIconSize.md,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ),
+              // Kapağı olmayanı ve dosyası kaybolanı `MediaThumbnail` kendi
+              // içinde çiziyor (NFR-021 / TR-M4-13).
+              MediaThumbnail(
+                media: collection.cover,
+                width: kCoverWidth,
+                height: kCoverHeight,
+                borderRadius: AppRadius.sm,
               ),
               const SizedBox(width: AppSpacing.md),
 

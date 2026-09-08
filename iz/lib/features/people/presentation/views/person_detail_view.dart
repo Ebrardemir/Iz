@@ -32,6 +32,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iz/app/composition/person_detail_data.dart';
 import 'package:iz/app/router/app_add_menu.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
@@ -43,7 +44,6 @@ import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
 import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/people/people_providers.dart';
 import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
-import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_header.dart';
 import 'package:iz/features/people/presentation/widgets/person_detail_rows.dart';
 import 'package:iz/shared/widgets/app_empty_state.dart';
@@ -98,8 +98,12 @@ class _PersonDetailViewState extends ConsumerState<PersonDetailView> {
       );
     }
 
-    final collections = PersonDetailPreviewData.collectionsOf(person.id);
-    final rituals = PersonDetailPreviewData.ritualsOf(person.id);
+    // TÜRETİLMİŞ: kişinin koleksiyonları anılarından, serileri bağ
+    // tablosundan geliyor (bkz. `app/composition/person_detail_data.dart`).
+    final collections =
+        ref.watch(personCollectionsProvider(person.id)).value ?? const [];
+    final rituals =
+        ref.watch(personRitualsProvider(person.id)).value ?? const [];
 
     return Scaffold(
       appBar: AppBar(

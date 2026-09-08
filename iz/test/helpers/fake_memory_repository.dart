@@ -33,6 +33,12 @@ class FakeMemoryRepository implements MemoryRepository {
   /// Tek kayıtlı testler için kısayol: `repository.detail = …`.
   set detail(MemoryDetail value) => details[value.id] = value;
 
+  /// Kişi kimliği → o kişiye etiketli anı kimlikleri.
+  ///
+  /// Gerçeğinde bağ `MemoryPeople` tablosunda; sahtede tek yönlü bir harita
+  /// yetiyor çünkü sorgular hep "bu kişinin anıları" yönünde.
+  final Map<String, Set<String>> personLinks = {};
+
   /// Liste değişimlerini abonelere bildirmek için.
   final _controller = StreamController<void>.broadcast();
 
@@ -47,8 +53,23 @@ class FakeMemoryRepository implements MemoryRepository {
       result = result.where((m) => m.isFavorite).toList();
     }
     if (filter.personIds.isNotEmpty) {
-      // Sahte kayıtlarda kişi ilişkisi tutmuyoruz; filtre uygulanınca boş döner.
-      result = const [];
+      // KİŞİ İLİŞKİSİ [personLinks] üzerinden taklit ediliyor.
+      //
+      // Bir süre burası koşulsuz BOŞ LİSTE dönüyordu ("sahte kayıtlarda kişi
+      // ilişkisi tutmuyoruz"). O davranış, kişinin anılarından TÜRETİLEN her
+      // şeyi (kişi detayındaki koleksiyonlar) test edilemez hâle getiriyordu:
+      // türetme doğru çalışsa da liste hep boş çıkardı.
+      //
+      // Harita boşsa eski davranış sürüyor — kişi ilişkisiyle ilgilenmeyen
+      // testler etkilenmiyor.
+      if (personLinks.isEmpty) {
+        result = const [];
+      } else {
+        final ids = {
+          for (final personId in filter.personIds) ...?personLinks[personId],
+        };
+        result = result.where((m) => ids.contains(m.id)).toList();
+      }
     }
     if (filter.hasTextQuery) {
       final q = filter.query!.toLowerCase();

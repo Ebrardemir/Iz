@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:iz/app/composition/collections_with_memories.dart';
+import 'package:iz/app/composition/person_detail_data.dart';
 import 'package:iz/app/composition/rituals_with_memories.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/app/router/app_shell.dart';
@@ -45,9 +46,9 @@ import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 import 'package:iz/features/onboarding/presentation/views/onboarding_view.dart';
 import 'package:iz/features/people/presentation/view_models/people_list_view_model.dart';
 import 'package:iz/features/people/presentation/views/people_view.dart';
-import 'package:iz/features/people/presentation/views/person_detail_preview_data.dart';
 import 'package:iz/features/people/presentation/views/person_detail_view.dart';
 import 'package:iz/features/people/presentation/views/person_editor_view.dart';
+import 'package:iz/features/people/presentation/widgets/person_detail_rows.dart';
 import 'package:iz/features/rituals/presentation/ritual_l10n.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_detail_view.dart';
 import 'package:iz/features/rituals/presentation/views/ritual_editor_view.dart';
@@ -81,8 +82,13 @@ import 'package:iz/shared/widgets/iz_memory_picker_view.dart';
 
   return (
     label: person.name,
+    // KİMLİKLER TÜRETİLİYOR: kişinin koleksiyonları anılarından çıkıyor
+    // (bkz. `app/composition/person_detail_data.dart`). Süzgeç de kişi
+    // detayındaki listeyle aynı kaynaktan besleniyor, ikisi ayrışmıyor.
     ids: {
-      for (final collection in PersonDetailPreviewData.collectionsOf(personId))
+      for (final collection
+          in ref.watch(personCollectionsProvider(personId)).value ??
+              const <PersonCollection>[])
         collection.id,
     },
   );

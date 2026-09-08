@@ -68,6 +68,16 @@ abstract final class CollectionsFixture {
     for (final entry in withMemories()) entry.collection,
   ];
 
+  /// Kişi kimliği → o kişiye etiketli anı kimlikleri.
+  ///
+  /// "Annem" Kapadokya'daki iki anıda var, Üniversite'dekilerde yok — kişi
+  /// detayındaki koleksiyon listesi ve "kişiye süzülmüş" görünüm bu ayrıma
+  /// dayanıyor. Herkesi her anıya bağlasaydık süzme testleri hiçbir şey
+  /// kanıtlamazdı.
+  static Map<String, Set<String>> get personLinks => {
+    'person-annem': {'mem-balon', 'mem-vadi'},
+  };
+
   /// Sahte anı deposunun tohumu.
   static List<Memory> get memories => [
     for (final entry in withMemories()) ...entry.memories,
