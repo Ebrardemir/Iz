@@ -147,7 +147,7 @@ final class MemoryTrashActions {
       _ref.read(memoryRepositoryProvider).restoreFromTrash(memoryId);
 }
 
-/// TEK bir koleksiyonun anıları — kullanıcının dizdiği sırada.
+/// TEK bir koleksiyonun anılarını okur — kullanıcının dizdiği sırada.
 ///
 /// NEDEN BURADA, KOLEKSİYON FORMUNUN İÇİNDE DEĞİL?
 /// Form `collections/presentation` altında ve bir feature başka feature'ın
@@ -158,30 +158,51 @@ final class MemoryTrashActions {
 /// [collectionsWithMemoriesProvider]'dan AYRI: o, LİSTE ekranı için tüm
 /// koleksiyonları birden veriyor. Form tek koleksiyon açıyor ve hepsini
 /// yüklemesi için bir sebep yok (NFR-003).
-final collectionMemoriesProvider = FutureProvider.family<List<Memory>, String>((
-  ref,
-  collectionId,
-) async {
-  // DEPODAN DOĞRUDAN okuyoruz, `collectionMemoryLinksProvider` üzerinden
-  // DEĞİL: `StreamProvider.future` ilk değeri beklerken çözülmüyor ve form
-  // açılışta kilitleniyordu. İki akışı da aynı yoldan almak zaten daha
-  // simetrik.
-  final links = await ref
-      .watch(collectionRepositoryProvider)
-      .watchMemoryLinks()
-      .unwrap()
-      .first;
-  final ids = links[collectionId] ?? const <String>[];
-  if (ids.isEmpty) return const [];
+///
+/// ⚠️ NEDEN `FutureProvider.family` DEĞİL?
+/// Öyleydi ve ÖNBELLEĞE TAKILDI: `FutureProvider` ilk sonucunu saklıyor,
+/// yani form ikinci kez açıldığında ilk açılıştaki listeyi görüyordu.
+/// Kullanıcı koleksiyondan iki anı çıkarıp kaydediyor, listede doğru sonucu
+/// görüyor, ama formu tekrar açtığında çıkardığı anılar hâlâ seçili
+/// geliyordu — ve kaydederse geri gelirlerdi.
+///
+/// Form ANLIK BİR GÖRÜNTÜ istiyor, canlı bir akış değil: kullanıcının
+/// düzenlediği liste yerel bir kopya olmalı, altından değişmemeli. Bu yüzden
+/// yanıtı önbelleğe alan bir provider değil, her çağrıldığında yeniden okuyan
+/// bir METOT veriyoruz. [memoryTrashProvider] ile aynı desen.
+final collectionMemoriesProvider = Provider<CollectionMemoriesLoader>(
+  CollectionMemoriesLoader._new,
+);
 
-  final memories = await ref
-      .watch(memoryRepositoryProvider)
-      .watchMemories(MemoryFilter(collectionIds: {collectionId}))
-      .unwrap()
-      .first;
+final class CollectionMemoriesLoader {
+  const CollectionMemoriesLoader._(this._ref);
 
-  // SIRA BAĞDAN geliyor, sorgudan değil: sorgu tarihe göre dönüyor ama
-  // kullanıcının formda kurduğu anlatı `sortOrder`da yaşıyor.
-  final byId = {for (final memory in memories) memory.id: memory};
-  return [for (final id in ids) ?byId[id]];
-});
+  factory CollectionMemoriesLoader._new(Ref ref) = CollectionMemoriesLoader._;
+
+  final Ref _ref;
+
+  Future<List<Memory>> load(String collectionId) async {
+    // DEPODAN DOĞRUDAN okuyoruz, `collectionMemoryLinksProvider` üzerinden
+    // DEĞİL: `StreamProvider.future` ilk değeri beklerken çözülmüyor ve form
+    // açılışta kilitleniyordu. İki akışı da aynı yoldan almak zaten daha
+    // simetrik.
+    final links = await _ref
+        .read(collectionRepositoryProvider)
+        .watchMemoryLinks()
+        .unwrap()
+        .first;
+    final ids = links[collectionId] ?? const <String>[];
+    if (ids.isEmpty) return const [];
+
+    final memories = await _ref
+        .read(memoryRepositoryProvider)
+        .watchMemories(MemoryFilter(collectionIds: {collectionId}))
+        .unwrap()
+        .first;
+
+    // SIRA BAĞDAN geliyor, sorgudan değil: sorgu tarihe göre dönüyor ama
+    // kullanıcının formda kurduğu anlatı `sortOrder`da yaşıyor.
+    final byId = {for (final memory in memories) memory.id: memory};
+    return [for (final id in ids) ?byId[id]];
+  }
+}

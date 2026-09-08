@@ -187,9 +187,7 @@ class _CollectionEditorViewState extends ConsumerState<CollectionEditorView> {
   /// KOŞULU (bkz. [_persist]).
   Future<void> _loadMemories(String collectionId) async {
     try {
-      _memories = await ref.read(
-        collectionMemoriesProvider(collectionId).future,
-      );
+      _memories = await ref.read(collectionMemoriesProvider).load(collectionId);
       _memoriesLoaded = true;
     } on Object {
       // Yüklenemedi: `_memoriesLoaded` false kalıyor ve kaydetme bağlara
