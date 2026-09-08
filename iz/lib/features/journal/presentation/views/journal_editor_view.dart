@@ -55,6 +55,7 @@ import 'package:iz/features/journal/presentation/journal_prompts.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_greeting_card.dart';
 import 'package:iz/features/journal/presentation/widgets/journal_mood_slider.dart';
 import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/features/media/media_providers.dart';
 import 'package:iz/shared/widgets/iz_bottom_nav.dart';
 import 'package:iz/shared/widgets/iz_labeled_field.dart';
 import 'package:iz/shared/widgets/iz_photo_strip.dart';
@@ -85,8 +86,17 @@ class _JournalEditorViewState extends ConsumerState<JournalEditorView> {
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
 
-  /// ⚠️ GEÇİCİ [MediaItem]'lar: medya hattı kurulmadı, elimizde dosya yolu var.
+  /// Şeritteki fotoğraflar — hepsi KALICI [MediaItem], geçici değil.
+  ///
+  /// Seçilir seçilmez içe aktarılıyorlar (bkz. [_pickPhotos]); şeritte
+  /// görünen her karenin veritabanında bir `MediaItems` satırı var.
   final List<MediaItem> _photos = [];
+
+  /// AYNI DOSYAYI İKİ KEZ İÇE AKTARMIYORUZ. Kullanıcı seçiciyi tekrar açıp
+  /// aynı fotoğrafı seçerse şeritte iki kopya belirirdi ve ikisi de ayrı
+  /// birer satır olurdu — hem şerit yanlış görünür hem sandbox aynı dosyayı
+  /// iki kez taşırdı. (Anı formundaki kararın aynısı.)
+  final Set<String> _importedPaths = {};
 
   int? _moodScore;
 
@@ -229,37 +239,62 @@ class _JournalEditorViewState extends ConsumerState<JournalEditorView> {
   }
 
   /// Galeriden fotoğraf — kalan kota kadar.
+  ///
+  /// SEÇİLEN KARE HEMEN İÇE AKTARILIYOR (TR-M4-11): sandbox'a kopyalanıp
+  /// `MediaItems` satırı yazılıyor ve şeride GERÇEK kimlik giriyor.
+  ///
+  /// Bir süre yalnız dosya yolunu `picked:` önekli sahte bir kimlikle
+  /// şeritte gösteriyorduk. Kayıt sırasında o kimlik `journal_media`ya
+  /// yazılmaya çalışılıyor ve yabancı anahtar ihlaliyle TÜM KAYIT
+  /// düşüyordu — kullanıcı "verilerine şu anda ulaşılamıyor" görüyor,
+  /// yazdığı günlük kaydedilmiyordu. Anı formu aynı sorunu aynı yolla
+  /// çözmüştü (`memory_editor_view_model.addPickedPhotos`).
   Future<void> _pickPhotos() async {
     final remaining = JournalEditorView.kPhotoLimit - _photos.length;
     if (remaining <= 0) return;
 
-    final result = await ref
+    final secim = await ref
         .read(mediaPickerProvider)
         .pickImages(limit: remaining);
 
     // Seçici uygulamanın DIŞINDA çalışıyor; dönüşte ekran hâlâ ayakta mı?
     if (!mounted) return;
 
-    result.fold(
-      onOk: (images) {
-        if (images.isEmpty) return; // vazgeçti — bir hata değil, bir karar
+    switch (secim) {
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+      case Ok(:final value):
+        if (value.isEmpty) return; // vazgeçti — bir hata değil, bir karar
+        await _importPhotos([for (final image in value) image.path]);
+    }
+  }
+
+  /// Seçilen dosyaları kalıcı medyaya çevirir.
+  ///
+  /// HATA DURUMUNDA ŞERİDE HİÇBİR ŞEY EKLENMİYOR. Yarısı eklenmiş bir şerit,
+  /// kullanıcıya "eklendi" deyip kaydetmemek olurdu.
+  Future<void> _importPhotos(List<String> paths) async {
+    final fresh = [
+      for (final path in paths)
+        if (!_importedPaths.contains(path)) path,
+    ];
+    if (fresh.isEmpty) return;
+
+    final result = await ref.read(mediaRepositoryProvider).importPicked(fresh);
+    if (!mounted) return;
+
+    switch (result) {
+      case Ok(:final value):
         setState(() {
-          _photos.addAll([
-            for (final image in images)
-              MediaItem(
-                // `picked:` öneki kodun kendisine "bu henüz kalıcı değil"
-                // dedirtiyor (anı ve kişi formlarında da aynı).
-                id: 'picked:${image.path}',
-                type: MediaType.photo,
-                originalStatus: MediaOriginalStatus.available,
-                localPreviewPath: image.path,
-              ),
-          ]);
+          _importedPaths.addAll(fresh);
+          for (final media in value) {
+            if (_photos.any((m) => m.id == media.id)) continue;
+            _photos.add(media);
+          }
         });
-      },
-      onErr: (failure) =>
-          context.showSnack(failure.localizedMessage(context.l10n)),
-    );
+      case Err(:final failure):
+        context.showSnack(failure.localizedMessage(context.l10n));
+    }
   }
 
   /// Doğrular, kaydeder, kapatır.
@@ -303,8 +338,8 @@ class _JournalEditorViewState extends ConsumerState<JournalEditorView> {
             moodScore: _moodScore,
             // FR-035 — varsayılan gizlilik: senkronize edilebilir.
             privacyMode: JournalPrivacyMode.standard,
-            // Fotoğraflar zaten kalıcı `MediaItem` (medya hattı onları içe
-            // aktarıyor); burada yalnız kimlikleri bağlıyoruz.
+            // Fotoğraflar seçilirken zaten içe aktarıldı; burada yalnız
+            // kimlikleri bağlıyoruz.
             mediaIds: [for (final photo in _photos) photo.id],
           ),
         );

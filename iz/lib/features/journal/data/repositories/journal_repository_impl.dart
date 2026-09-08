@@ -72,6 +72,7 @@ final class JournalRepositoryImpl implements JournalRepository {
     await _dao.upsertEntry(
       JournalMapper.toCompanion(draft, id: id),
       now: _clock.now(),
+      outboxId: _ids.newId(),
       mediaIds: draft.mediaIds,
     );
     return id;
@@ -80,13 +81,18 @@ final class JournalRepositoryImpl implements JournalRepository {
   @override
   Future<Result<Unit>> setFavorite(String id, {required bool isFavorite}) =>
       guard(() async {
-        await _dao.setFavorite(id, isFavorite: isFavorite, now: _clock.now());
+        await _dao.setFavorite(
+          id,
+          isFavorite: isFavorite,
+          now: _clock.now(),
+          outboxId: _ids.newId(),
+        );
         return Unit.value;
       }, onError: _dbFailure);
 
   @override
   Future<Result<Unit>> softDelete(String id) => guard(() async {
-    await _dao.softDelete(id, now: _clock.now());
+    await _dao.softDelete(id, now: _clock.now(), outboxId: _ids.newId());
     return Unit.value;
   }, onError: _dbFailure);
 

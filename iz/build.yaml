@@ -12,6 +12,16 @@ targets:
           # Üretilen companion/insert sınıflarında isimli parametre kullan.
           named_parameters: true
 
+          # `toJson()` anahtarları SQL SÜTUN ADI olsun (`occurred_year`),
+          # Dart alan adı değil (`occurredYear`).
+          #
+          # NEDEN: bu JSON outbox gövdesine giriyor ve sunucuyla aramızdaki
+          # sözleşme o. Dart alan adına bağlasaydık, bir alanı yeniden
+          # adlandırmak sessizce kablo biçimini değiştirirdi — üstelik
+          # kullanıcının cihazında bekleyen eski kuyruk satırları eski adı
+          # taşımaya devam ederdi.
+          use_sql_column_name_as_json_key: true
+
           # NOT: Burada `generate_connect_constructor: true` vardı.
           # Kaldırıldı — drift 2.5'ten beri gereksiz (build_runner her
           # derlemede bunu uyarı olarak söylüyordu) ve ürettiği

@@ -29,7 +29,7 @@ class Rituals extends Table with SyncableTable, OwnedTable {
 /// ters yönde soruyor.
 @DataClassName('RitualPersonRow')
 @TableIndex(name: 'idx_ritual_people_person', columns: {#personId})
-class RitualPeople extends Table {
+class RitualPeople extends Table with SyncableLink {
   TextColumn get ritualId =>
       text().references(Rituals, #id, onDelete: KeyAction.cascade)();
   TextColumn get personId =>

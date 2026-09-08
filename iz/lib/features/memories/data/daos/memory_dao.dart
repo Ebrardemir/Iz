@@ -17,6 +17,9 @@ import 'package:iz/features/memories/data/tables/memory_tables.dart';
 import 'package:iz/features/memories/domain/entities/memory_filter.dart';
 import 'package:iz/features/people/data/tables/person_tables.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
+import 'package:iz/features/sync/data/daos/outbox_dao.dart';
+import 'package:iz/features/sync/data/outbox_payload.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'memory_dao.g.dart';
 
@@ -62,6 +65,12 @@ class MemoryDetailRow {
   final LocationRow? location;
 }
 
+/// Anının outbox'taki karşılığı — sunucu bu adla tanıyor.
+///
+/// Sabit ve DEĞİŞMEZ: kullanıcının cihazında bekleyen eski kuyruk satırları
+/// bu adı taşıyor.
+const kMemoryEntityType = 'memory';
+
 @DriftAccessor(
   tables: [
     Memories,
@@ -106,16 +115,25 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     String? ftsQuery,
   }) {
     // Correlated subquery'ler: her anı için ilişki sayısı.
+    // `deletedAt IS NULL` HER BAĞ SORGUSUNDA ZORUNLU (TR-C-32, şema v8).
+    // Bağlar artık silinmiyor, tombstone'lanıyor; süzgeci atlayan bir sorgu
+    // koparılmış ilişkiyi ekranda göstermeye devam eder.
     final mediaCountExp = subqueryExpression<int>(
       selectOnly(memoryMedia)
         ..addColumns([memoryMedia.mediaId.count()])
-        ..where(memoryMedia.memoryId.equalsExp(memories.id)),
+        ..where(
+          memoryMedia.memoryId.equalsExp(memories.id) &
+              memoryMedia.deletedAt.isNull(),
+        ),
     );
 
     final personCountExp = subqueryExpression<int>(
       selectOnly(memoryPeople)
         ..addColumns([memoryPeople.personId.count()])
-        ..where(memoryPeople.memoryId.equalsExp(memories.id)),
+        ..where(
+          memoryPeople.memoryId.equalsExp(memories.id) &
+              memoryPeople.deletedAt.isNull(),
+        ),
     );
 
     final query = select(memories).join([
@@ -174,6 +192,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
             ..addColumns([memoryPeople.personId])
             ..where(
               memoryPeople.memoryId.equalsExp(memories.id) &
+                  memoryPeople.deletedAt.isNull() &
                   memoryPeople.personId.isIn(filter.personIds.toList()),
             ),
         ),
@@ -186,6 +205,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
             ..addColumns([memoryCollections.collectionId])
             ..where(
               memoryCollections.memoryId.equalsExp(memories.id) &
+                  memoryCollections.deletedAt.isNull() &
                   memoryCollections.collectionId.isIn(
                     filter.collectionIds.toList(),
                   ),
@@ -200,6 +220,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
             ..addColumns([memoryRituals.ritualId])
             ..where(
               memoryRituals.memoryId.equalsExp(memories.id) &
+                  memoryRituals.deletedAt.isNull() &
                   memoryRituals.ritualId.equals(filter.ritualId!),
             ),
         ),
@@ -291,16 +312,23 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
         select(memoryMedia).join([
             innerJoin(mediaItems, mediaItems.id.equalsExp(memoryMedia.mediaId)),
           ])
-          ..where(memoryMedia.memoryId.equals(memoryId))
+          ..where(
+            memoryMedia.memoryId.equals(memoryId) &
+                memoryMedia.deletedAt.isNull(),
+          )
           ..orderBy([OrderingTerm.asc(memoryMedia.sortOrder)]);
 
     return q.map((row) => row.readTable(mediaItems)).get();
   }
 
   Future<List<PersonRow>> _peopleOf(String memoryId) {
-    final q = select(memoryPeople).join([
-      innerJoin(people, people.id.equalsExp(memoryPeople.personId)),
-    ])..where(memoryPeople.memoryId.equals(memoryId));
+    final q =
+        select(memoryPeople).join([
+          innerJoin(people, people.id.equalsExp(memoryPeople.personId)),
+        ])..where(
+          memoryPeople.memoryId.equals(memoryId) &
+              memoryPeople.deletedAt.isNull(),
+        );
 
     return q.map((row) => row.readTable(people)).get();
   }
@@ -312,15 +340,22 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
         collections.id.equalsExp(memoryCollections.collectionId),
       ),
     ])..orderBy([OrderingTerm.asc(memoryCollections.sortOrder)]);
-    q.where(memoryCollections.memoryId.equals(memoryId));
+    q.where(
+      memoryCollections.memoryId.equals(memoryId) &
+          memoryCollections.deletedAt.isNull(),
+    );
 
     return q.map((row) => row.readTable(collections)).get();
   }
 
   Future<({RitualRow row, int year})?> _ritualOf(String memoryId) async {
-    final q = select(memoryRituals).join([
-      innerJoin(rituals, rituals.id.equalsExp(memoryRituals.ritualId)),
-    ])..where(memoryRituals.memoryId.equals(memoryId));
+    final q =
+        select(memoryRituals).join([
+          innerJoin(rituals, rituals.id.equalsExp(memoryRituals.ritualId)),
+        ])..where(
+          memoryRituals.memoryId.equals(memoryId) &
+              memoryRituals.deletedAt.isNull(),
+        );
 
     final row = await q.getSingleOrNull();
     if (row == null) return null;
@@ -392,110 +427,368 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     required List<String> personIds,
     required List<String> collectionIds,
     required List<String> mediaIds,
+    // TR-C-41 — saat dışarıdan. Bağların `updatedAt`i anının kendisiyle
+    // AYNI ana damgalanmalı; DAO kendi saatini okusaydı transaction içinde
+    // milisaniyeler ayrışırdı.
+    required DateTime now,
+    // Kuyruk satırının kimliği. ÇAĞIRAN ÜRETİYOR çünkü `IdGenerator` bir
+    // bağımlılık ve DAO'nun bağımlılığı yalnız veritabanı olmalı.
+    required String outboxId,
     String? ritualId,
     int? ritualYear,
   }) {
     return transaction(() async {
       final id = memory.id.value;
+      final onceki = await (select(
+        memories,
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(memories).insertOnConflictUpdate(memory);
 
-      // İlişkileri "sil ve yeniden yaz" stratejisi: diff hesaplamaktan
-      // çok daha basit ve bu ölçekte (bir anıda onlarca ilişki) yeterince hızlı.
-      await (delete(memoryPeople)..where((t) => t.memoryId.equals(id))).go();
-      await (delete(
-        memoryCollections,
-      )..where((t) => t.memoryId.equals(id))).go();
-      await (delete(memoryRituals)..where((t) => t.memoryId.equals(id))).go();
-      await (delete(memoryMedia)..where((t) => t.memoryId.equals(id))).go();
+      await _syncPeople(id, personIds, now);
+      await _syncCollections(id, collectionIds, now);
+      await _syncMedia(id, mediaIds, now);
+      await _syncRitual(id, ritualId, ritualYear, now);
 
-      await batch((b) {
-        b.insertAll(memoryPeople, [
-          for (final personId in personIds)
-            MemoryPeopleCompanion.insert(memoryId: id, personId: personId),
-        ]);
-
-        b.insertAll(memoryCollections, [
-          for (final (index, collectionId) in collectionIds.indexed)
-            MemoryCollectionsCompanion.insert(
-              memoryId: id,
-              collectionId: collectionId,
-              sortOrder: Value(index),
-            ),
-        ]);
-
-        b.insertAll(memoryMedia, [
-          for (final (index, mediaId) in mediaIds.indexed)
-            MemoryMediaCompanion.insert(
-              memoryId: id,
-              mediaId: mediaId,
-              sortOrder: Value(index),
-            ),
-        ]);
-
-        if (ritualId != null) {
-          b.insert(
-            memoryRituals,
-            MemoryRitualsCompanion.insert(
-              memoryId: id,
-              ritualId: ritualId,
-              occurrenceYear: ritualYear ?? DateTime.now().year,
-            ),
-          );
-        }
-      });
+      await _enqueue(
+        id,
+        // Kayıt önceden yoksa bu bir OLUŞTURMA. Sunucu ikisini ayırt
+        // etmeli: var olmayan bir kaydı güncellemeye çalışmak hata.
+        op: onceki == null ? OutboxOperation.create : OutboxOperation.update,
+        baseVersion: onceki?.version ?? 0,
+        outboxId: outboxId,
+        now: now,
+      );
     });
   }
 
+  /// Değişikliği outbox'a düşürür — AYNI TRANSACTION İÇİNDEN.
+  ///
+  /// Ayrı transaction olsaydı ikisinin arasında çöken bir uygulama
+  /// değişikliği kalıcı olarak kaybederdi: veri yerelde değişmiş ama
+  /// sunucuya gideceği hiçbir yere yazılmamış olurdu (TR-M13-01).
+  ///
+  /// Gövde SATIRLARDAN üretiliyor ve BAĞLARI da taşıyor — tombstone'lananlar
+  /// dâhil. Gerekçesi `outbox_payload.dart` başındaki notta.
+  Future<void> _enqueue(
+    String memoryId, {
+    required OutboxOperation op,
+    required int baseVersion,
+    required String outboxId,
+    required DateTime now,
+  }) async {
+    final row = await (select(
+      memories,
+    )..where((t) => t.id.equals(memoryId))).getSingleOrNull();
+    if (row == null) return;
+
+    // BAĞLAR SÜZÜLMEDEN alınıyor: tombstone'lananlar da gövdeye giriyor.
+    // Yalnız canlıları gönderseydik sunucu "eksik olan henüz gelmemiş" ile
+    // "eksik olan silinmiş"i ayırt edemezdi (rapor §1.1).
+    final kisiler = await (select(
+      memoryPeople,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final koleksiyonlar = await (select(
+      memoryCollections,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final seriler = await (select(
+      memoryRituals,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+    final medyalar = await (select(
+      memoryMedia,
+    )..where((t) => t.memoryId.equals(memoryId))).get();
+
+    final payload = encodeOutboxPayload(
+      entity: outboxRowJson(row),
+      links: {
+        'memory_people': [for (final link in kisiler) outboxRowJson(link)],
+        'memory_collections': [
+          for (final link in koleksiyonlar) outboxRowJson(link),
+        ],
+        'memory_rituals': [for (final link in seriler) outboxRowJson(link)],
+        'memory_media': [for (final link in medyalar) outboxRowJson(link)],
+      },
+    );
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kMemoryEntityType,
+      entityId: memoryId,
+      op: op,
+      payloadJson: payload,
+      baseVersion: baseVersion,
+      now: now,
+    );
+  }
+
+  // --- Bağ eşitleme ---------------------------------------------------
+  //
+  // ESKİDEN "SİL VE YENİDEN YAZ" İDİ. v8'den beri yasak: bağı gerçekten
+  // silersek ikinci cihaz o satırı hiç görmez, "bende var sende yok"
+  // durumunu "sen henüz almamışsın" diye okur ve çıkarılan kişiyi geri
+  // ekler (rapor §1.1). Silme artık bir SATIR.
+  //
+  // Her bağ için üç durum var:
+  //   • kümede var, satır yok        → yeni bağ
+  //   • kümede var, satır tombstone  → DİRİLTİLİYOR (`deletedAt` null'a döner)
+  //   • kümede yok, satır canlı      → tombstone
+  //
+  // Önce mevcut satırlar OKUNUYOR: `version`ı bir artırmak için eski
+  // değeri bilmek gerekiyor (TR-C-31) ve Drift'in `update().write()`i
+  // sütunun kendisine dayalı ifade kabul etmiyor. Bir anıda onlarca bağ
+  // olduğu için maliyeti önemsiz.
+  //
+  // Aşağıdaki dört fonksiyon aynı işi yapıyor; ayrı yazılmalarının sebebi
+  // bağ tablolarının farklı ikinci anahtar ve ek sütunlar taşıması
+  // (`sortOrder`, `occurrenceYear`).
+
+  Future<void> _syncPeople(
+    String id,
+    List<String> personIds,
+    DateTime now,
+  ) async {
+    final current = await (select(
+      memoryPeople,
+    )..where((t) => t.memoryId.equals(id))).get();
+    final byPerson = {for (final row in current) row.personId: row};
+
+    for (final row in current) {
+      if (row.deletedAt == null && !personIds.contains(row.personId)) {
+        await (update(memoryPeople)..where(
+              (t) => t.memoryId.equals(id) & t.personId.equals(row.personId),
+            ))
+            .write(
+              MemoryPeopleCompanion(
+                deletedAt: Value(now),
+                updatedAt: Value(now),
+                version: Value(row.version + 1),
+              ),
+            );
+      }
+    }
+
+    for (final personId in personIds) {
+      final existing = byPerson[personId];
+      if (existing != null && existing.deletedAt == null) continue;
+
+      await into(memoryPeople).insertOnConflictUpdate(
+        MemoryPeopleCompanion.insert(
+          memoryId: id,
+          personId: personId,
+          updatedAt: Value(now),
+          // Diriltme: `deletedAt` açıkça null'a çekiliyor.
+          deletedAt: const Value(null),
+          version: Value((existing?.version ?? 0) + 1),
+        ),
+      );
+    }
+  }
+
+  Future<void> _syncCollections(
+    String id,
+    List<String> collectionIds,
+    DateTime now,
+  ) async {
+    final current = await (select(
+      memoryCollections,
+    )..where((t) => t.memoryId.equals(id))).get();
+    final byCollection = {for (final row in current) row.collectionId: row};
+
+    for (final row in current) {
+      if (row.deletedAt == null && !collectionIds.contains(row.collectionId)) {
+        await (update(memoryCollections)..where(
+              (t) =>
+                  t.memoryId.equals(id) &
+                  t.collectionId.equals(row.collectionId),
+            ))
+            .write(
+              MemoryCollectionsCompanion(
+                deletedAt: Value(now),
+                updatedAt: Value(now),
+                version: Value(row.version + 1),
+              ),
+            );
+      }
+    }
+
+    for (final (index, collectionId) in collectionIds.indexed) {
+      final existing = byCollection[collectionId];
+      await into(memoryCollections).insertOnConflictUpdate(
+        MemoryCollectionsCompanion.insert(
+          memoryId: id,
+          collectionId: collectionId,
+          // Sıra HER ZAMAN yazılıyor: canlı bir bağın yeri değişmiş olabilir.
+          sortOrder: Value(index),
+          updatedAt: Value(now),
+          deletedAt: const Value(null),
+          version: Value((existing?.version ?? 0) + 1),
+        ),
+      );
+    }
+  }
+
+  Future<void> _syncMedia(
+    String id,
+    List<String> mediaIds,
+    DateTime now,
+  ) async {
+    final current = await (select(
+      memoryMedia,
+    )..where((t) => t.memoryId.equals(id))).get();
+    final byMedia = {for (final row in current) row.mediaId: row};
+
+    for (final row in current) {
+      if (row.deletedAt == null && !mediaIds.contains(row.mediaId)) {
+        await (update(memoryMedia)..where(
+              (t) => t.memoryId.equals(id) & t.mediaId.equals(row.mediaId),
+            ))
+            .write(
+              MemoryMediaCompanion(
+                deletedAt: Value(now),
+                updatedAt: Value(now),
+                version: Value(row.version + 1),
+              ),
+            );
+      }
+    }
+
+    for (final (index, mediaId) in mediaIds.indexed) {
+      final existing = byMedia[mediaId];
+      await into(memoryMedia).insertOnConflictUpdate(
+        MemoryMediaCompanion.insert(
+          memoryId: id,
+          mediaId: mediaId,
+          sortOrder: Value(index),
+          updatedAt: Value(now),
+          deletedAt: const Value(null),
+          version: Value((existing?.version ?? 0) + 1),
+        ),
+      );
+    }
+  }
+
+  /// Anı en fazla BİR seriye bağlı (`ritualId` tekil).
+  Future<void> _syncRitual(
+    String id,
+    String? ritualId,
+    int? ritualYear,
+    DateTime now,
+  ) async {
+    final current = await (select(
+      memoryRituals,
+    )..where((t) => t.memoryId.equals(id))).get();
+
+    for (final row in current) {
+      if (row.deletedAt == null && row.ritualId != ritualId) {
+        await (update(memoryRituals)..where(
+              (t) => t.memoryId.equals(id) & t.ritualId.equals(row.ritualId),
+            ))
+            .write(
+              MemoryRitualsCompanion(
+                deletedAt: Value(now),
+                updatedAt: Value(now),
+                version: Value(row.version + 1),
+              ),
+            );
+      }
+    }
+
+    if (ritualId == null) return;
+
+    final existing = current.where((r) => r.ritualId == ritualId).firstOrNull;
+    await into(memoryRituals).insertOnConflictUpdate(
+      MemoryRitualsCompanion.insert(
+        memoryId: id,
+        ritualId: ritualId,
+        occurrenceYear: ritualYear ?? now.year,
+        updatedAt: Value(now),
+        deletedAt: const Value(null),
+        version: Value((existing?.version ?? 0) + 1),
+      ),
+    );
+  }
+
   /// FR-019 — favori işaretini değiştirir.
-  Future<void> setFavorite(String id, {required bool isFavorite}) => _patch(
+  Future<void> setFavorite(
+    String id, {
+    required bool isFavorite,
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       isFavorite: Value(isFavorite),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// FR-014 — arşivle.
-  Future<void> setArchived(String id, {required bool isArchived}) => _patch(
+  Future<void> setArchived(
+    String id, {
+    required bool isArchived,
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       isArchived: Value(isArchived),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// FR-015 — geri alınabilir silme ("çöp kutusu").
   /// Kayıt gitmez, `deletedAt` dolar. Rapor 12.2'deki tombstone yaklaşımı.
-  Future<void> softDelete(String id) => _patch(
+  Future<void> softDelete(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
-      deletedAt: Value(DateTime.now()),
-      updatedAt: Value(DateTime.now()),
+      deletedAt: Value(now),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
+    // Sunucuya "sil" diye gitmezse ikinci cihaz silmeyi hiç öğrenmez.
+    op: OutboxOperation.delete,
   );
 
-  Future<void> restore(String id) => _patch(
+  Future<void> restore(
+    String id, {
+    required DateTime now,
+    required String outboxId,
+  }) => _patch(
     id,
     (row) => MemoriesCompanion(
       // Value(null) = "bu sütunu NULL yap".
       // Value.absent() ise "bu sütuna dokunma" demektir — ikisini
       // karıştırmak Drift'te en sık yapılan hatadır.
       deletedAt: const Value(null),
-      updatedAt: Value(DateTime.now()),
+      updatedAt: Value(now),
       version: Value(row.version + 1),
     ),
+    now: now,
+    outboxId: outboxId,
   );
 
   /// Çöp kutusunda [retention] süresini aşmış kayıtları kalıcı siler.
   /// Uygulama açılışında çalıştırılır.
+  ///
+  /// [now] DIŞARIDAN (TR-C-41): "30 gün doldu mu" kararı testte sabit bir
+  /// ana göre verilebilsin.
   Future<int> purgeExpiredTrash({
+    required DateTime now,
     Duration retention = const Duration(days: 30),
   }) {
-    final cutoff = DateTime.now().subtract(retention);
+    final cutoff = now.subtract(retention);
     return (delete(memories)..where(
           (t) =>
               t.deletedAt.isNotNull() & t.deletedAt.isSmallerThanValue(cutoff),
@@ -526,8 +819,11 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   /// Transaction içinde olduğu için araya başka yazma giremez.
   Future<void> _patch(
     String id,
-    MemoriesCompanion Function(MemoryRow current) build,
-  ) {
+    MemoriesCompanion Function(MemoryRow current) build, {
+    required DateTime now,
+    required String outboxId,
+    OutboxOperation op = OutboxOperation.update,
+  }) {
     return transaction(() async {
       final current = await (select(
         memories,
@@ -538,6 +834,14 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
       await (update(
         memories,
       )..where((t) => t.id.equals(id))).write(build(current));
+
+      await _enqueue(
+        id,
+        op: op,
+        baseVersion: current.version,
+        outboxId: outboxId,
+        now: now,
+      );
     });
   }
 }

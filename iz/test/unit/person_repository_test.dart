@@ -191,10 +191,19 @@ void main() {
   group('canlı akış', () {
     test('yeni kişi eklenince liste KENDİLİĞİNDEN güncelleniyor', () async {
       // Ekranlar elle yenileme yapmıyor (TR-M2-05 ile aynı ilke).
-      final akis = repository.watchPeople();
+
+      // İLK ANLIK GÖRÜNTÜ ÖNCE ALINIYOR. `emitsInOrder([0, 1])` yazmıyoruz
+      // çünkü o, akışın ilk sorgusunun yazmadan ÖNCE bitmesine güveniyor —
+      // ve bu bir ürün sözü değil, zamanlama tesadüfü. Yazma tek
+      // transaction'da bittiği için Drift ikisini tek bildirimde
+      // birleştirebiliyor ve başlangıç değeri hiç görünmüyordu.
+      expect((await repository.watchPeople().first).valueOrNull, isEmpty);
+
       final beklenen = expectLater(
-        akis.map((r) => (r as Ok<List<Person>>).value.length),
-        emitsInOrder([0, 1]),
+        repository.watchPeople().map(
+          (r) => (r as Ok<List<Person>>).value.length,
+        ),
+        emitsThrough(1),
       );
 
       await ekle(name: 'Ayşe');

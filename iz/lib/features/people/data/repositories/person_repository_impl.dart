@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
 import 'package:iz/features/people/data/daos/person_dao.dart';
 import 'package:iz/features/people/data/mappers/person_mapper.dart';
@@ -26,11 +27,14 @@ final class PersonRepositoryImpl implements PersonRepository {
   PersonRepositoryImpl({
     required PersonDao dao,
     required IdGenerator idGenerator,
+    required Clock clock,
   }) : _dao = dao,
-       _ids = idGenerator;
+       _ids = idGenerator,
+       _clock = clock;
 
   final PersonDao _dao;
   final IdGenerator _ids;
+  final Clock _clock;
 
   static final _log = appLogger('people.repository');
 
@@ -66,7 +70,11 @@ final class PersonRepositoryImpl implements PersonRepository {
       // (TR-C-40): cihazlar arası çakışmaz ve zaman sıralı olduğu için
       // birincil anahtar indeksi parçalanmaz.
       final id = draft.id ?? _ids.newId();
-      await _dao.upsertPerson(PersonMapper.toCompanion(draft, id: id));
+      await _dao.upsertPerson(
+        PersonMapper.toCompanion(draft, id: id),
+        now: _clock.now(),
+        outboxId: _ids.newId(),
+      );
       return id;
     },
     onError: (error, stack) => DatabaseFailure(cause: error, stackTrace: stack),
@@ -75,7 +83,7 @@ final class PersonRepositoryImpl implements PersonRepository {
   @override
   Future<Result<Unit>> softDelete(String id) => guard(
     () async {
-      await _dao.softDelete(id);
+      await _dao.softDelete(id, now: _clock.now(), outboxId: _ids.newId());
       return Unit.value;
     },
     onError: (error, stack) => DatabaseFailure(cause: error, stackTrace: stack),
@@ -85,7 +93,12 @@ final class PersonRepositoryImpl implements PersonRepository {
   Future<Result<Unit>> setFavorite(String id, {required bool isFavorite}) =>
       guard(
         () async {
-          await _dao.setFavorite(id, isFavorite: isFavorite);
+          await _dao.setFavorite(
+            id,
+            isFavorite: isFavorite,
+            now: _clock.now(),
+            outboxId: _ids.newId(),
+          );
           return Unit.value;
         },
         onError: (error, stack) =>

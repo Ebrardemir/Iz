@@ -40,7 +40,7 @@ class JournalEntries extends Table with SyncableTable, OwnedTable {
 /// TERS YÖN İNDEKSİ — bkz. memory_tables.dart'taki aynı gerekçe.
 @DataClassName('JournalMediaRow')
 @TableIndex(name: 'idx_journal_media_media', columns: {#mediaId})
-class JournalMedia extends Table {
+class JournalMedia extends Table with SyncableLink {
   TextColumn get journalEntryId =>
       text().references(JournalEntries, #id, onDelete: KeyAction.cascade)();
   TextColumn get mediaId =>

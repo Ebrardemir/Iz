@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // (`flutter analyze` bunu YAKALAMAZ: analysis_options.yaml `*.g.dart`
 //  dosyalarını hariç tutar. Hata ancak `flutter test`/`flutter run`
 //  sırasında görünür.)
+import 'package:iz/features/auth/data/tables/user_tables.dart';
 import 'package:iz/features/categories/data/daos/category_dao.dart';
 import 'package:iz/features/categories/data/tables/category_tables.dart';
 import 'package:iz/features/categories/domain/entities/memory_category.dart';
@@ -46,6 +47,8 @@ import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/rituals/data/daos/ritual_dao.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/sync/data/tables/sync_tables.dart';
+import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
 part 'app_database.g.dart';
 
@@ -69,6 +72,12 @@ part 'app_database.g.dart';
     // Günlük
     JournalEntries,
     JournalMedia,
+    // Hesap
+    Users,
+    // Senkronizasyon defterleri — yerel, asla senkronize edilmez
+    OutboxEntries,
+    SyncState,
+    SyncConflicts,
   ],
   daos: [
     MemoryDao,
@@ -96,7 +105,7 @@ class AppDatabase extends _$AppDatabase {
   /// Artırmayı unutursan kullanıcının cihazındaki eski şema olduğu gibi
   /// kalır ve uygulama "no such column" hatasıyla çöker.
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -104,6 +113,8 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
       // FR-070 — varsayılan kategorileri tohumla.
       await _seedDefaultCategories();
+      // TR-M1-01 — `ownerId` varsayılanının işaret ettiği satır.
+      await _seedLocalUser();
     },
 
     onUpgrade: (m, from, to) async {
@@ -198,6 +209,121 @@ class AppDatabase extends _$AppDatabase {
         // Drift bunu `TableMigration` ile yapıyor.
         await m.alterTable(TableMigration(rituals));
       }
+
+      if (from < 8) {
+        // v8 — SENKRONİZASYON HAZIRLIĞI. Görünür hiçbir özellik üretmiyor;
+        // Faz 3'ün ön koşulu (yol haritası Faz 2).
+        //
+        // (a) BAĞ TABLOLARI ARTIK TOMBSTONE TAŞIYOR.
+        //
+        // Bağı gerçekten silersek ikinci cihaz o satırı hiç görmez ve
+        // "bende var, sende yok" durumunu "sen henüz almamışsın" diye
+        // okur — çıkarılan kişiyi geri ekler (rapor §1.1). Silmeyi bir
+        // SATIR olarak saklamak bunun tek çaresi.
+        //
+        // Üç sütunun da varsayılanı var, yani var olan bağlar olduğu gibi
+        // kalıyor: `deletedAt` null (bağ duruyor), `version` 1.
+        // TABLO YENİDEN KURULARAK, `ALTER TABLE ADD COLUMN` ile DEĞİL.
+        //
+        // `updatedAt`in varsayılanı `CURRENT_TIMESTAMP` ve SQLite sabit
+        // olmayan varsayılanı olan bir sütunu ALTER ile eklemeyi reddediyor
+        // ("Cannot add a column with non-constant default"). Drift'in
+        // `TableMigration`ı tabloyu bugünkü tanımıyla yeniden kurup veriyi
+        // kopyalıyor; bileşik anahtar ve yabancı anahtarlar korunuyor.
+        //
+        // VAR OLAN SATIRLARA NE YAZILIYOR: `updatedAt`e migration ANI.
+        // Doğru olan bu — bağın gerçekte ne zaman kurulduğunu bilmiyoruz ve
+        // uydurmak yerine "bu kaydı en son burada gördük" demek, ilk
+        // eşitlemede sunucunun kararını bozmuyor.
+        // Her tablo TEK TEK: `newColumns` o tablonun kendi sütunlarını
+        // istiyor ve ortak bir yardımcıya sığmıyor.
+        await m.alterTable(
+          TableMigration(
+            memoryPeople,
+            newColumns: [
+              memoryPeople.updatedAt,
+              memoryPeople.deletedAt,
+              memoryPeople.version,
+            ],
+          ),
+        );
+        await m.alterTable(
+          TableMigration(
+            memoryCollections,
+            newColumns: [
+              memoryCollections.updatedAt,
+              memoryCollections.deletedAt,
+              memoryCollections.version,
+            ],
+          ),
+        );
+        await m.alterTable(
+          TableMigration(
+            memoryRituals,
+            newColumns: [
+              memoryRituals.updatedAt,
+              memoryRituals.deletedAt,
+              memoryRituals.version,
+            ],
+          ),
+        );
+        await m.alterTable(
+          TableMigration(
+            memoryMedia,
+            newColumns: [
+              memoryMedia.updatedAt,
+              memoryMedia.deletedAt,
+              memoryMedia.version,
+            ],
+          ),
+        );
+        await m.alterTable(
+          TableMigration(
+            journalMedia,
+            newColumns: [
+              journalMedia.updatedAt,
+              journalMedia.deletedAt,
+              journalMedia.version,
+            ],
+          ),
+        );
+
+        // ⚠️ `ritual_people` YALNIZ v7'DEN GELİYORSA dokunuluyor.
+        //
+        // `createTable` her zaman tablonun BUGÜNKÜ tanımını kuruyor. Yani
+        // v6'dan yükselen bir cihazda yukarıdaki v7 adımı tabloyu zaten
+        // yeni sütunlarıyla açtı; yeniden kurmak gereksiz iş olurdu.
+        //
+        // Bu tuzak `createTable` içeren HER migration'da tekrar edecek.
+        if (from >= 7) {
+          await m.alterTable(
+            TableMigration(
+              ritualPeople,
+              newColumns: [
+                ritualPeople.updatedAt,
+                ritualPeople.deletedAt,
+                ritualPeople.version,
+              ],
+            ),
+          );
+        }
+
+        // (b) HESAP TABLOSU.
+        //
+        // Giriş hâlâ yerel ama tabloyu şimdi kuruyoruz: `ownerId`
+        // varsayılanı olan `'local'`ın işaret edeceği satır bugünden var
+        // olsun (TR-M1-01). Hesap açıldığı gün yapılacak iş bir satırı
+        // güncellemek olacak, binlerce `ownerId`yi taşımak değil.
+        await m.createTable(users);
+        await _seedLocalUser();
+
+        // (c) SENKRONİZASYON DEFTERLERİ. Kuruluyor, henüz kimse okumuyor.
+        await m.createTable(outboxEntries);
+        await m.createIndex(idxOutboxCreated);
+        await m.createTable(syncState);
+        await m.createTable(syncConflicts);
+        await m.createIndex(idxSyncConflictsUnresolved);
+      }
     },
 
     beforeOpen: (details) async {
@@ -215,6 +341,17 @@ class AppDatabase extends _$AppDatabase {
       }
     },
   );
+
+  /// Hesabı olmayan kullanıcının satırı.
+  ///
+  /// `OwnedTable.ownerId`nin varsayılanı `'local'`; bu satır olmasaydı
+  /// yabancı anahtar hiçbir şeye işaret etmezdi.
+  Future<void> _seedLocalUser() async {
+    await into(users).insert(
+      UsersCompanion.insert(id: Users.localId),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
 
   Future<void> _seedDefaultCategories() async {
     await batch((b) {
