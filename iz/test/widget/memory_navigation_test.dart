@@ -50,7 +50,13 @@ void main() {
     repository = FakeMemoryRepository([
       // ANA SAYFA anıları EN BAŞTA: liste en yeniden eskiye sıralı geliyor
       // ve ana sayfa ilk üçünü gösteriyor.
+      // ANA SAYFA + TAKVİM + KOLEKSİYON + SERİ anıları bir arada.
+      //
+      // Liste uzun ve bu bilinçli: gezinme testleri uygulamanın TAMAMINI
+      // dolaşıyor, her ekranın kendi verisi olmalı. Uzunluğun bedeli, anı
+      // seçicideki satırlara dokunmadan önce `ensureVisible` çağırmak.
       ...CollectionsFixture.homeMemories,
+      ...CollectionsFixture.calendarMemories,
       ...CollectionsFixture.memories,
       ...RitualsFixture.memories,
     ])..personLinks.addAll(CollectionsFixture.personLinks);
@@ -87,6 +93,21 @@ void main() {
     await tester.tap(find.text('Hayatım'));
     await settle(tester);
     await tester.tap(find.text(tabLabel));
+    await settle(tester);
+  }
+
+  /// Anı seçicide bir satırı görünür yapar.
+  ///
+  /// `ensureVisible` YETMİYOR: `ListView` görünmeyen çocukları hiç kurmuyor,
+  /// yani widget ağacında yoklar ve `ensureVisible` "No element" ile
+  /// düşüyor. `scrollUntilVisible` listeyi gerçek kullanıcı gibi kaydırıp
+  /// satırı kurduruyor.
+  Future<void> scrollToMemory(WidgetTester tester, String title) async {
+    await tester.scrollUntilVisible(
+      find.text(title),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
     await settle(tester);
   }
 
@@ -140,15 +161,15 @@ void main() {
   group('hayatım — takvim', () {
     testWidgets('gün panelindeki kart detayı açıyor', (tester) async {
       await openMyLifeTab(tester, 'TAKVİM');
-      // Önizlemede 6, 18 ve 29. günlerde anı var.
+      // Fikstürde 6, 18 ve 29. günlerde anı var.
       await tester.tap(find.text('18'));
       await settle(tester);
 
       expect(find.byType(DayMemoryCard), findsWidgets);
-      await tester.tap(find.text('İlk İzmir Tatilimiz'));
+      await tester.tap(find.text('Sahilde Sabah'));
       await settle(tester);
 
-      expectDetailOpen('İlk İzmir Tatilimiz');
+      expectDetailOpen('Sahilde Sabah');
     });
 
     testWidgets('detaydaki tarih SEÇİLİ GÜNÜN tarihi', (tester) async {
@@ -192,6 +213,19 @@ void main() {
     ) async {
       // Kullanıcı "Kapadokya 2026" içinden geldi; detayda o koleksiyonu
       // görmezse nereden geldiğini kaybediyor.
+      //
+      // SAHTE DEPO İLİŞKİLERİ TÜRETMİYOR (bkz. `fake_memory_repository.dart`):
+      // `Memory` listesinden çıkarılan detay hep ilişkisiz gelir. Anı
+      // detayının koleksiyon satırı tam da o ilişkiyi gösteriyor, bu yüzden
+      // hazır kaydı buraya koyuyoruz.
+      final kapadokya = CollectionsFixture.withMemories().first;
+      repository.detail = MemoryDetail(
+        memory: kapadokya.memories[1],
+        people: const [],
+        collections: [kapadokya.collection],
+        media: const [],
+      );
+
       await openFirstCollection(tester);
 
       await tester.tap(find.text('Güvercinlik Vadisi'));
@@ -611,6 +645,7 @@ void main() {
       expect(find.text('Anı Seç'), findsOneWidget);
       expect(find.text('Bitti'), findsOneWidget);
       // Anılar kutu kutu listeleniyor.
+      await scrollToMemory(tester, 'Kahve Molası');
       expect(find.text('Kahve Molası'), findsOneWidget);
     });
 
@@ -618,6 +653,7 @@ void main() {
       await openRitualForm(tester);
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await tester.tap(find.text('Mezuniyet'));
       await settle(tester);
@@ -635,7 +671,9 @@ void main() {
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
       // 2026 ve 2021: aralığın iki ucu (`CollectionsFixture.memories`).
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
+      await scrollToMemory(tester, 'Kampüste ilk gün');
       await tester.tap(find.text('Kampüste ilk gün'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
@@ -649,6 +687,7 @@ void main() {
       await openRitualForm(tester);
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
@@ -662,6 +701,7 @@ void main() {
       await openRitualForm(tester);
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.byIcon(AppIcons.clear).first);
@@ -676,6 +716,7 @@ void main() {
       await openRitualForm(tester);
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
@@ -697,6 +738,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'Pazar Kahvaltısı');
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
@@ -777,6 +819,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'Pazar Kahvaltısı');
       await tester.tap(find.text('Bu Yıla Anı Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));
@@ -835,10 +878,7 @@ void main() {
       await openCollectionForm(tester);
       await tester.tap(find.text('İlk Anıları Ekle'));
       await settle(tester);
-      // Anı seçici artık GERÇEK depodan besleniyor: aşağıdaki başlıklar
-      // `CollectionsFixture.memories` içinde. Eskiden önizleme verisiydi ve
-      // kimlikleri veritabanında olmadığı için kaydetmek kısıt hatası
-      // veriyordu.
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await tester.tap(find.text('Mezuniyet'));
       await settle(tester);
@@ -856,6 +896,7 @@ void main() {
       await tester.enterText(find.byType(TextField).first, 'Ege Turumuz');
       await tester.tap(find.text('İlk Anıları Ekle'));
       await settle(tester);
+      await scrollToMemory(tester, 'Kahve Molası');
       await tester.tap(find.text('Kahve Molası'));
       await settle(tester);
       await tester.tap(find.text('Bitti'));

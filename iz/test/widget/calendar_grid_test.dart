@@ -9,9 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/my_life/presentation/my_life_layout.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_grid.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_week_header.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 import '../helpers/real_fonts.dart';
 
@@ -22,7 +24,7 @@ Future<List<DateTime>> pumpGrid(
   WidgetTester tester, {
   DateTime? month,
   DateTime? today,
-  Map<DateTime, String> covers = const {},
+  Map<DateTime, MediaItem> covers = const {},
   Size size = const Size(390, 900),
   bool dark = false,
   bool withHeader = false,
@@ -147,13 +149,10 @@ void main() {
   });
 
   testWidgets('anısı olan günde kapak görünür', (tester) async {
-    await pumpGrid(
-      tester,
-      covers: {DateTime(2026, 8, 6): 'assets/images/home/memory_coffee.jpg'},
-    );
+    await pumpGrid(tester, covers: {DateTime(2026, 8, 6): _media});
 
-    expect(find.byType(Image), findsOneWidget);
-    final cover = tester.getRect(find.byType(Image));
+    expect(find.byType(MediaThumbnail), findsOneWidget);
+    final cover = tester.getRect(find.byType(MediaThumbnail));
     // FIGMA: 24 × 20.
     expect(cover.width, CalendarGrid.kCoverWidth);
     expect(cover.height, CalendarGrid.kCoverHeight);
@@ -161,10 +160,7 @@ void main() {
 
   testWidgets('bugün + anı bir arada TAŞMAZ', (tester) async {
     // REGRESYON: daire 32 iken 32 + 20 = 52 > 48 ve hücre taşıyordu.
-    await pumpGrid(
-      tester,
-      covers: {_today: 'assets/images/home/memory_coffee.jpg'},
-    );
+    await pumpGrid(tester, covers: {_today: _media});
 
     expect(tester.takeException(), isNull);
   });
@@ -221,3 +217,14 @@ void main() {
     expect(find.text('12'), findsOneWidget);
   });
 }
+
+/// Takvim hücresindeki kapak.
+///
+/// Dosya yolu testte önemli değil: `MediaThumbnail` kayıp dosyayı kendi
+/// içinde ele alıyor ve testler yalnız ÖLÇÜYE bakıyor.
+const _media = MediaItem(
+  id: 'medya-1',
+  type: MediaType.photo,
+  originalStatus: MediaOriginalStatus.available,
+  localPreviewPath: '/sahte/medya/kapak.jpg',
+);

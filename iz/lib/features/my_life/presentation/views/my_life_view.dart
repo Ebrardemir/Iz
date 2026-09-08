@@ -12,13 +12,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iz/app/composition/calendar_data.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
+import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
-import 'package:iz/features/my_life/presentation/views/my_life_preview_data.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_grid.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_week_header.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
@@ -243,7 +244,7 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           month: _visibleMonth,
           today: _today,
           selectedDay: _selectedDay,
-          covers: MyLifePreviewData.coversFor(_visibleMonth),
+          covers: ref.watch(monthCoversProvider(_visibleMonth)),
           onDaySelected: (day) => setState(() => _selectedDay = day),
         ),
 
@@ -256,16 +257,26 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
         // arasında boş bir şerit kalıyor.
         DayMemoriesPanel(
           day: _selectedDay,
-          memories: MyLifePreviewData.memoriesFor(
-            _selectedDay,
-            // Tarih etiketi ekranın DİLİNDE olmalı; `Intl.defaultLocale`
-            // genel değişkenine güvenmiyoruz (bkz. month_navigator.dart).
-            locale: Localizations.localeOf(context).toLanguageTag(),
-          ),
-          onOpenMemory: (memory) => _openMemory(
-            memory.id,
-            MyLifePreviewData.dayMemoryDetail(memory, _selectedDay),
-          ),
+          memories: [
+            for (final memory in ref.watch(dayMemoriesProvider(_selectedDay)))
+              (
+                id: memory.id,
+                cover: memory.coverMedia,
+                title: memory.displayTitle(context.l10n.memoryNew),
+                // Tarih etiketi ekranın DİLİNDE olmalı; `Intl.defaultLocale`
+                // genel değişkenine güvenmiyoruz (bkz. month_navigator.dart).
+                dateLabel: AppDateFormats.long(
+                  memory.occurredAt,
+                  locale: Localizations.localeOf(context).toLanguageTag(),
+                ),
+                // ⚠️ KATEGORİ ADI BOŞ: `Categories` tablosu okunmuyor, anıda
+                // yalnız `categoryId` var. Kategori hattı yazıldığında tek
+                // satırda dolacak.
+                categoryLabel: '',
+              ),
+          ],
+          // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında taşınmıyor.
+          onOpenMemory: (memory) => _openMemory(memory.id, null),
           onAddMemory: () => context.pushNamed(AppRoute.memoryNew.name),
         ),
       ],
@@ -288,10 +299,9 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
 
         CollectionsSection(
           collections: _visibleCollections(context),
-          onOpenMemory: (memory) => _openMemory(
-            memory.id,
-            MyLifePreviewData.collectionMemoryDetail(memory.id),
-          ),
+          // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında
+          // taşınmıyor.
+          onOpenMemory: (memory) => _openMemory(memory.id, null),
           onMemoryActions: _showMemoryActions,
         ),
       ],
@@ -387,10 +397,7 @@ class _MyLifeViewState extends ConsumerState<MyLifeView> {
           icon: AppIcons.goTo,
           label: l10n.memoryOpenDetail,
           isDestructive: false,
-          onPressed: () => _openMemory(
-            memory.id,
-            MyLifePreviewData.collectionMemoryDetail(memory.id),
-          ),
+          onPressed: () => _openMemory(memory.id, null),
         ),
         // Yıkıcı eylem SONDA: kullanıcının parmağı listede aşağı inerken
         // yanlışlıkla ona denk gelmesin.

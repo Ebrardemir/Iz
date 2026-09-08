@@ -11,6 +11,7 @@ import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_theme.dart';
 import 'package:iz/core/utils/clock.dart';
+import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
 import 'package:iz/features/my_life/presentation/views/my_life_view.dart';
 import 'package:iz/features/my_life/presentation/widgets/calendar_grid.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
@@ -18,6 +19,7 @@ import 'package:iz/features/my_life/presentation/widgets/day_memories_panel.dart
 import 'package:iz/features/my_life/presentation/widgets/series_card.dart';
 
 import '../helpers/collections_fixture.dart';
+import '../helpers/fake_memory_repository.dart';
 import '../helpers/real_fonts.dart';
 import '../helpers/rituals_fixture.dart';
 
@@ -29,9 +31,17 @@ Future<void> pumpMyLife(WidgetTester tester) async {
     ..devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
+  final memories = FakeMemoryRepository(CollectionsFixture.calendarMemories);
+  addTearDown(memories.dispose);
+
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [clockProvider.overrideWithValue(FixedClock(_today))],
+      overrides: [
+        clockProvider.overrideWithValue(FixedClock(_today)),
+        // TAKVİM ARTIK DEPODAN OKUYOR: ay bazında anı sorguluyor ve
+        // hücrelerin kapaklarını oradan alıyor.
+        memoryRepositoryProvider.overrideWithValue(memories),
+      ],
       child: MaterialApp(
         theme: AppTheme.light(),
         locale: const Locale('tr'),

@@ -17,6 +17,7 @@ import 'package:iz/app/app.dart';
 import 'package:iz/core/media/media_picker.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/app_preferences.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_repository.dart';
 import 'package:iz/features/auth/domain/entities/auth_credentials.dart';
 import 'package:iz/features/auth/domain/repositories/auth_repository.dart';
@@ -63,6 +64,12 @@ class InstantAuthRepository implements AuthRepository {
   @override
   Future<Result<AuthSession?>> currentSession() async => const Ok(null);
 }
+
+/// Testlerin "şu an"ı.
+///
+/// Takvim testleri belirli bir günü seçiyor; sabit bir tarih olmadan ayın
+/// kaçıncı gününe dokunulacağı bilinemez.
+final kTestNow = DateTime(2026, 9, 7, 12);
 
 /// `pumpAndSettle` YERİNE bunu kullan.
 ///
@@ -135,6 +142,10 @@ Future<void> pumpApp(
     ProviderScope(
       overrides: [
         appPreferencesProvider.overrideWithValue(AppPreferences(prefs)),
+        // SABİT SAAT: takvim "bugün"ü işaretliyor ve gösterdiği ayı ondan
+        // seçiyor. Gerçek saatle koşan bir test ay değişince kendiliğinden
+        // kırılırdı (TR-C-41).
+        clockProvider.overrideWithValue(FixedClock(kTestNow)),
         // Repository'yi override ettiğimiz için appDatabaseProvider hiç
         // okunmaz — gerçek veritabanı bu teste hiç karışmaz.
         memoryRepositoryProvider.overrideWithValue(repository),

@@ -38,7 +38,6 @@ import 'package:iz/features/memories/presentation/views/memory_detail_view.dart'
 import 'package:iz/features/memories/presentation/views/memory_editor_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_list_view.dart';
 import 'package:iz/features/memories/presentation/views/memory_new_photos_view.dart';
-import 'package:iz/features/my_life/presentation/views/my_life_preview_data.dart';
 import 'package:iz/features/my_life/presentation/views/my_life_view.dart';
 import 'package:iz/features/my_life/presentation/widgets/collection_card.dart';
 import 'package:iz/features/my_life/presentation/widgets/my_life_tab_bar.dart';
@@ -178,11 +177,11 @@ RitualDetailData? _ritualDetail(
 ///
 /// Sırayla seri şeridi, koleksiyon ve ana sayfa kayıtlarına bakıyor. Hiçbiri
 /// tutmazsa null: detay ekranı o zaman repository'ye düşüyor.
-MemoryDetail? _previewMemoryDetail(String memoryId) =>
-    // Seri şeridi ve ANA SAYFA buradan çıktı: ikisi de veritabanından
-    // geliyor ve detay ekranı anıyı kimlikten kendisi yüklüyor. Geriye
-    // yalnız "Hayatım"ın takvimi kaldı.
-    MyLifePreviewData.collectionMemoryDetail(memoryId);
+// `_previewMemoryDetail` KALDIRILDI: bir zamanlar tasarım önizlemesindeki
+// anıların kaydını `extra` ile taşıyordu, çünkü o kimliklerin veritabanında
+// karşılığı yoktu ve düz bir geçiş kullanıcıyı "Bulunamadı" ekranına
+// düşürürdü. Artık her ekran gerçek anıları gösteriyor; detay ekranı da
+// anıyı kimlikten kendisi yüklüyor.
 
 /// Veritabanındaki koleksiyonları "Hayatım" kartlarına çevirir.
 ///
@@ -573,13 +572,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ref.watch(ritualsWithMemoriesProvider).value ?? const [],
                 context.l10n,
               ),
-              // Anıya gitmeyi EKRAN değil burası biliyor: önizleme anılarının
-              // veritabanında karşılığı yok, kaydı yanımızda götürüyoruz.
+              // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında
+              // taşınmıyor.
               onOpenMemory: (memoryId) => unawaited(
                 context.pushNamed(
                   AppRoute.memoryDetail.name,
                   pathParameters: {'id': memoryId},
-                  extra: _previewMemoryDetail(memoryId),
                 ),
               ),
             ),

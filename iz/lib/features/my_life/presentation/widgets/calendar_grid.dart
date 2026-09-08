@@ -22,10 +22,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
-import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
 import 'package:iz/features/my_life/presentation/calendar_month.dart';
 import 'package:iz/features/my_life/presentation/my_life_layout.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 class CalendarGrid extends StatelessWidget {
   const CalendarGrid({
@@ -47,7 +48,7 @@ class CalendarGrid extends StatelessWidget {
   final DateTime? selectedDay;
 
   /// Anısı olan günlerin kapak görselleri: gün → asset yolu.
-  final Map<DateTime, String> covers;
+  final Map<DateTime, MediaItem> covers;
 
   final ValueChanged<DateTime> onDaySelected;
 
@@ -109,7 +110,7 @@ class CalendarGrid extends StatelessWidget {
     );
   }
 
-  String? _coverFor(DateTime day) {
+  MediaItem? _coverFor(DateTime day) {
     for (final entry in covers.entries) {
       if (CalendarMonth.isSameDay(entry.key, day)) return entry.value;
     }
@@ -132,7 +133,7 @@ class _DayCell extends StatelessWidget {
   final DateTime month;
   final DateTime today;
   final DateTime selected;
-  final String? cover;
+  final MediaItem? cover;
   final ValueChanged<DateTime> onPressed;
 
   @override
@@ -183,7 +184,7 @@ class _DayCell extends StatelessWidget {
                   ),
                 ),
               ),
-              if (cover != null) _DayCover(asset: cover!),
+              if (cover != null) _DayCover(media: cover!),
             ],
           ),
         ),
@@ -194,31 +195,19 @@ class _DayCell extends StatelessWidget {
 
 /// Günün altındaki küçük kapak — o gün bir anı var demek.
 class _DayCover extends StatelessWidget {
-  const _DayCover({required this.asset});
+  const _DayCover({required this.media});
 
-  final String asset;
+  final MediaItem? media;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.all(Radius.circular(5)),
-      child: Image.asset(
-        asset,
-        width: CalendarGrid.kCoverWidth,
-        height: CalendarGrid.kCoverHeight,
-        // Figma: `scale: crop` — oranı bozmadan kutuyu doldur.
-        fit: BoxFit.cover,
-        // Kapak bulunamazsa hücre çökmesin.
-        errorBuilder: (context, error, stack) => SizedBox(
-          width: CalendarGrid.kCoverWidth,
-          height: CalendarGrid.kCoverHeight,
-          child: Icon(
-            AppIcons.photo,
-            size: AppIconSize.sm,
-            color: context.colors.onSurfaceVariant,
-          ),
-        ),
-      ),
+    // Kapağı olmayanı ve dosyası kaybolanı `MediaThumbnail` kendi içinde
+    // çiziyor (NFR-021 / TR-M4-13).
+    return MediaThumbnail(
+      media: media,
+      width: CalendarGrid.kCoverWidth,
+      height: CalendarGrid.kCoverHeight,
+      borderRadius: const Radius.circular(5),
     );
   }
 }

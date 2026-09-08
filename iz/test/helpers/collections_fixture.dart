@@ -101,6 +101,17 @@ abstract final class CollectionsFixture {
     personCount: 0,
   );
 
+  /// TAKVİM testlerinin anıları — görünen ayın (Eylül 2026) içinde.
+  ///
+  /// Günler 6, 18 ve 29: testler bu günlere dokunuyor. 18 özellikle seçildi
+  /// çünkü tarih metni "18 Eylül 2026" ve "6" yılın içinde de geçiyor —
+  /// 6 ile arayan bir test kendi kendini kandırırdı.
+  static List<Memory> get calendarMemories => [
+    _plain('mem-cal-6', 'Sabah yürüyüşü', DateTime(2026, 9, 6)),
+    _plain('mem-cal-18', 'Sahilde Sabah', DateTime(2026, 9, 18)),
+    _plain('mem-cal-29', 'Ay sonu notu', DateTime(2026, 9, 29)),
+  ];
+
   /// Sahte anı deposunun tohumu.
   static List<Memory> get memories => [
     for (final entry in withMemories()) ...entry.memories,
