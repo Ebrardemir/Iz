@@ -6,6 +6,7 @@
 library;
 
 import 'package:intl/intl.dart';
+import 'package:iz/core/l10n/generated/app_localizations.dart';
 
 extension DateTimeX on DateTime {
   /// Saat bileşenini atar — gün bazlı karşılaştırmalar için.
@@ -111,6 +112,43 @@ abstract final class AppDateFormats {
   }
 
   /// 14:30
+
+  /// "Bugün" / "Dün" / "3 gün önce" / "1 hafta önce" / tam tarih.
+  ///
+  /// NEDEN BURADA?
+  /// Bu metin bir SUNUM kararı ve bir süre hiçbir yerde hesaplanmıyordu:
+  /// ana sayfanın önizleme verisinde sabit yazılıydı ("3 gün önce"). Gerçek
+  /// veriye geçerken tek bir yerde olması gerekiyordu, yoksa her ekran kendi
+  /// eşiklerini uydururdu.
+  ///
+  /// EŞİKLER: bugün → dün → 7 günden azsa gün → 30 günden azsa hafta →
+  /// ötesi tam tarih. Aydan sonra "5 hafta önce" demek okuyana bir şey
+  /// söylemiyor; "12 Mayıs 2025" söylüyor.
+  ///
+  /// [now] ENJEKTE EDİLİYOR (TR-C-41): `DateTime.now()` çağırsaydık test
+  /// yazılamazdı.
+  static String relative(
+    DateTime date,
+    AppL10n l10n, {
+    required DateTime now,
+    String? locale,
+  }) {
+    // Gün farkını SAAT DEĞİL TAKVİM günü üzerinden hesaplıyoruz: dün
+    // 23:00'te bırakılan bir iz bugün 01:00'de "0 gün önce" olmamalı.
+    final today = DateTime(now.year, now.month, now.day);
+    final that = DateTime(date.year, date.month, date.day);
+    final days = today.difference(that).inDays;
+
+    // GELECEK TARİH: anı ileri bir güne yazılmışsa göreli metin anlamsız.
+    if (days < 0) return long(date, locale: locale);
+
+    if (days == 0) return l10n.dateRelativeToday;
+    if (days == 1) return l10n.dateRelativeYesterday;
+    if (days < 7) return l10n.dateRelativeDays(days);
+    if (days < 30) return l10n.dateRelativeWeeks(days ~/ 7);
+    return long(date, locale: locale);
+  }
+
   static String time(DateTime date, {String? locale}) =>
       DateFormat.Hm(locale).format(date);
 

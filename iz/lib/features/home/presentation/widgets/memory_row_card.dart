@@ -21,6 +21,8 @@ import 'package:flutter/material.dart';
 import 'package:iz/core/extensions/context_x.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
+import 'package:iz/features/media/domain/entities/media_item.dart';
+import 'package:iz/shared/widgets/media_thumbnail.dart';
 
 /// Listede gösterilecek anı. [dateLabel] hazır METİN olarak geliyor:
 /// "3 gün önce" hesabı bir sunum kararıdır ve ViewModel'e aittir.
@@ -30,7 +32,10 @@ import 'package:iz/core/theme/app_spacing.dart';
 /// nereye gidileceğine ekran karar veriyor.
 typedef MemoryRowData = ({
   String id,
-  String imageAsset,
+
+  /// Anının kapağı. `MediaThumbnail` kapağı olmayanı ve dosyası kaybolanı
+  /// kendi içinde çiziyor (NFR-021 / TR-M4-13).
+  MediaItem? cover,
   String title,
   String dateLabel,
 });
@@ -55,7 +60,6 @@ class MemoryRowCard extends StatelessWidget {
 
   /// Figma: küçük resim 64 × 64, köşe yarıçapı 12.
   static const double kThumbSize = 64;
-  static const Radius _kThumbRadius = AppRadius.md;
 
   /// Figma: kart padding (2, 8, 2, 8).
   static const double _kPaddingHorizontal = AppSpacing.sm;
@@ -79,7 +83,7 @@ class MemoryRowCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _Thumbnail(asset: memory.imageAsset),
+              _Thumbnail(media: memory.cover),
               const SizedBox(width: _kThumbGap),
 
               // Alt çizgi BU kutunun altında — kartın değil.
@@ -153,45 +157,21 @@ class MemoryRowCard extends StatelessWidget {
 /// gelecek ve `Image.asset` yerine ağ/dosya kaynağı kullanılacak —
 /// değişecek tek yer bu widget.
 class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({required this.asset});
+  const _Thumbnail({required this.media});
 
-  final String asset;
-
-  /// Figma: 0px 4px 12px -1px #0000000A. Çok hafif; resmi zeminden
-  /// ayırmaya yetiyor, gölge gibi görünmüyor.
-  static const List<BoxShadow> _shadow = [
-    BoxShadow(
-      color: Color(0x0A000000),
-      offset: Offset(0, 4),
-      blurRadius: 12,
-      spreadRadius: -1,
-    ),
-  ];
+  final MediaItem? media;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.all(MemoryRowCard._kThumbRadius),
-        boxShadow: _shadow,
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.all(MemoryRowCard._kThumbRadius),
-        child: Image.asset(
-          asset,
-          width: MemoryRowCard.kThumbSize,
-          height: MemoryRowCard.kThumbSize,
-          fit: BoxFit.cover,
-          // Kapak bulunamazsa satır çökmesin, boş bir alan kalsın.
-          errorBuilder: (context, error, stack) => ColoredBox(
-            color: context.colors.surfaceContainerHigh,
-            child: const SizedBox.square(
-              dimension: MemoryRowCard.kThumbSize,
-              child: Icon(AppIcons.photo, size: AppIconSize.md),
-            ),
-          ),
-        ),
-      ),
+    // ÖLÇÜ KARTIN SABİTİNDEN: burada ikinci bir sayı tutsaydık ikisi gün
+    // gelip ayrışırdı (testler de kartınkine bakıyor).
+    //
+    // Kapağı olmayanı ve dosyası kaybolanı `MediaThumbnail` kendi içinde
+    // çiziyor (NFR-021 / TR-M4-13).
+    return MediaThumbnail(
+      media: media,
+      size: MemoryRowCard.kThumbSize,
+      borderRadius: AppRadius.md,
     );
   }
 }

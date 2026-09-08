@@ -48,6 +48,9 @@ void main() {
     // Koleksiyon kartları anılarını `MemoryRepository`den alıyor; sahte anı
     // deposu koleksiyon fikstürünün anılarını da taşımalı.
     repository = FakeMemoryRepository([
+      // ANA SAYFA anıları EN BAŞTA: liste en yeniden eskiye sıralı geliyor
+      // ve ana sayfa ilk üçünü gösteriyor.
+      ...CollectionsFixture.homeMemories,
       ...CollectionsFixture.memories,
       ...RitualsFixture.memories,
     ])..personLinks.addAll(CollectionsFixture.personLinks);
@@ -100,7 +103,9 @@ void main() {
       await tester.tap(find.text('Anıyı Gör'));
       await settle(tester);
 
-      expectDetailOpen('İlk İzmir Tatilimiz');
+      // Kapak EN YENİ anı: "bugün" adı geçse de tam bugüne ait bir kayıt
+      // aramak çoğu günde kapağı boş bırakırdı.
+      expectDetailOpen('Venedik Balayımız');
     });
 
     testWidgets('son anılar satırı DOĞRU anıyı açıyor', (tester) async {
@@ -109,16 +114,14 @@ void main() {
       // dokunuyoruz.
       await pump(tester);
 
-      await tester.tap(find.text('Venedik Balayımız'));
+      // SON satıra dokunuyoruz: en yeni anı hem kapakta hem listenin
+      // başında görünüyor ve `find.text` ikisini birden bulurdu. Sondaki
+      // satır ayrıca "sabit kimlikle gitme" hatasını da yakalıyor.
+      await tester.tap(find.text('Sahilde bisiklet'));
       await settle(tester);
 
-      expectDetailOpen('Venedik Balayımız');
-      // Önizleme kaydı yanında geldi: detay dolu açılıyor, "Bulunamadı"
-      // ekranı değil.
-      expect(
-        find.text('San Marco meydanında yağmura yakalandık.'),
-        findsOneWidget,
-      );
+      // Detay ekranı anıyı KİMLİKTEN yüklüyor; kayıt yanında taşınmıyor.
+      expectDetailOpen('Sahilde bisiklet');
     });
 
     testWidgets('kapak ve liste AYNI anıya gidiyor', (tester) async {
@@ -126,11 +129,11 @@ void main() {
       // gitmeleri kullanıcıya iki ayrı anı varmış gibi görünürdü.
       await pump(tester);
 
+      // Kapak EN YENİ anıyı gösteriyor; listenin ilk satırı da o.
       await tester.tap(find.text('Anıyı Gör'));
       await settle(tester);
-      final fromHero = find.text('Kordon, İzmir').evaluate().length;
 
-      expect(fromHero, 1, reason: 'kapaktan gelen kayıt İzmir anısı olmalı');
+      expectDetailOpen('Venedik Balayımız');
     });
   });
 

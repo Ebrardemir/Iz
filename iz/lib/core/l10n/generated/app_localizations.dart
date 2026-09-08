@@ -1105,6 +1105,30 @@ abstract class AppL10n {
   /// **'{years, plural, =0{Bugün} =1{Geçen yıl bugün} other{{years} yıl önce bugün}}'**
   String memoryYearsAgo(int years);
 
+  /// Göreli tarih — anı bugün
+  ///
+  /// In tr, this message translates to:
+  /// **'Bugün'**
+  String get dateRelativeToday;
+
+  /// Göreli tarih — anı dün
+  ///
+  /// In tr, this message translates to:
+  /// **'Dün'**
+  String get dateRelativeYesterday;
+
+  /// Göreli tarih — bir haftadan yakın
+  ///
+  /// In tr, this message translates to:
+  /// **'{days, plural, other{{days} gün önce}}'**
+  String dateRelativeDays(int days);
+
+  /// Göreli tarih — bir aydan yakın
+  ///
+  /// In tr, this message translates to:
+  /// **'{weeks, plural, =1{1 hafta önce} other{{weeks} hafta önce}}'**
+  String dateRelativeWeeks(int weeks);
+
   /// Anı editörü — başlık alanının etiketi
   ///
   /// In tr, this message translates to:

@@ -19,16 +19,17 @@
 /// listesi gelecek.
 library;
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:iz/app/composition/home_data.dart';
 import 'package:iz/app/router/app_routes.dart';
 import 'package:iz/core/extensions/context_x.dart';
+import 'package:iz/core/extensions/date_x.dart';
 import 'package:iz/core/theme/app_colors.dart';
 import 'package:iz/core/theme/app_icons.dart';
 import 'package:iz/core/theme/app_spacing.dart';
-import 'package:iz/features/home/presentation/views/home_preview_data.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/home/presentation/widgets/home_hero_overlay.dart';
 import 'package:iz/features/home/presentation/widgets/home_recent_section.dart';
 import 'package:iz/features/home/presentation/widgets/home_stats_grid.dart';
@@ -40,30 +41,17 @@ import 'package:iz/shared/widgets/curved_top_panel.dart';
 /// beyaz metinlerin her fotoğrafta okunmasını garantiliyor.
 const Color _kHeroScrim = Color(0x59000000);
 
-/// TASARIM ÖNİZLEME ANAHTARI.
-///
-/// Ekran veriye bağlı olmadığı için "kullanıcının anısı var mı" sorusunun
-/// cevabını burada elle veriyoruz. `false` yaparsan ekranın boş hâli
-/// görünür: fotoğrafın üzerinde "İlk İzini Bırak", altta "Burada henüz bir
-/// iz yok" bloğu.
-///
-/// Veri bağlandığında bu sabit silinecek; yerine ViewModel'in ürettiği
-/// state gelecek. İkisi de TASARLANDI ve test edildi, hangisinin
-/// gösterileceği yalnızca veriye bakacak.
-const bool _kPreviewHasMemories = true;
+class HomeView extends ConsumerWidget {
+  const HomeView({required this.stats, super.key});
 
-class HomeView extends StatelessWidget {
-  const HomeView({this.hasMemories = _kPreviewHasMemories, super.key});
-
-  /// Kullanıcının anısı var mı?
+  /// Dört sayaç — HAZIR geliyor.
   ///
-  /// ⚠️ GEÇİCİ. Ekran veriye bağlı olmadığı için bu bilgiyi dışarıdan
-  /// alıyoruz; varsayılanı [_kPreviewHasMemories]. Testler iki hâli de
-  /// açıkça kurabilsin diye parametre — yoksa dosya sabitini değiştirmeden
-  /// boş hâli sınamak imkânsız olurdu.
-  ///
-  /// Veri bağlandığında bu alan silinecek, yerine ViewModel gelecek.
-  final bool hasMemories;
+  /// NEDEN EKRAN KENDİSİ KURMUYOR?
+  /// Sayaçlar dokununca "Hayatım"ın SEKMELERİNE götürüyor (`MyLifeTab`) ve o
+  /// tip başka feature'ın `presentation`ında. Bir feature başka feature'ın
+  /// presentation'ını import edemez (ARCHITECTURE.md §2 / TR-C-03); listeyi
+  /// composition root kuruyor.
+  final List<HomeStat> stats;
 
   /// Görselin ekran yüksekliğine oranı. Kavisli panel bunun üzerine biner.
   ///
@@ -92,20 +80,6 @@ class HomeView extends StatelessWidget {
   /// DEĞİŞTİRMEK değil SEKME DEĞİŞTİRMEK. `push` etseydik Hayatım ana
   /// sayfanın üstüne biner, alt çubuk hâlâ "Ana Sayfa"yı vurgular ve geri
   /// tuşu kullanıcıyı beklenmedik bir yere düşürürdü. Günlük ve Kişiler ise
-  /// tam ekran sayfalar; onlar üste açılıyor ve geri tuşuyla kapanıyor.
-  static void _openSection(
-    BuildContext context,
-    AppRoute route, {
-    Map<String, String> query = const {},
-  }) {
-    if (AppRoute.tabs.contains(route)) {
-      context.goNamed(route.name, queryParameters: query);
-      return;
-    }
-    // `pushNamed` bir `Future` döner (sayfa kapanınca sonucu); burada
-    // beklenecek bir sonuç yok.
-    unawaited(context.pushNamed(route.name, queryParameters: query));
-  }
 
   /// Anı detayına gider.
   ///
@@ -121,11 +95,21 @@ class HomeView extends StatelessWidget {
   static void _openMemory(BuildContext context, String id) => context.pushNamed(
     AppRoute.memoryDetail.name,
     pathParameters: {'id': id},
-    extra: HomePreviewData.detailFor(id),
+    // KAYIT TAŞIMIYORUZ: anı gerçek ve detay ekranı onu kimlikten
+    // kendisi yüklüyor.
+    extra: null,
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // GERÇEK VERİ. Ekran bir süre `hasMemories` diye bir bayrakla
+    // çalışıyordu; boş ve dolu hâller tasarlanmıştı ama hangisinin
+    // gösterileceğini elle söylüyorduk.
+    //
+    // AYRI BİR "boş mu?" BAYRAĞI YOK: hero `memory == null` ile, liste de
+    // boş listeyle kendi boş hâline düşüyor. Tek kaynak veri.
+    final recent = ref.watch(homeRecentMemoriesProvider).value ?? const [];
+    final hero = ref.watch(homeHeroMemoryProvider).value;
     return Scaffold(
       backgroundColor: context.colors.surface,
       body: LayoutBuilder(
@@ -161,9 +145,22 @@ class HomeView extends StatelessWidget {
                         // fotoğrafı bozmadan zemini öngörülebilir yapıyor.
                         const ColoredBox(color: _kHeroScrim),
                         HomeHeroOverlay(
-                          memory: hasMemories ? HomePreviewData.today : null,
-                          onViewMemory: () =>
-                              _openMemory(context, HomePreviewData.today.id),
+                          memory: hero == null
+                              ? null
+                              : (
+                                  id: hero.id,
+                                  title: hero.displayTitle(
+                                    context.l10n.memoryNew,
+                                  ),
+                                  dateLabel: AppDateFormats.relative(
+                                    hero.occurredAt,
+                                    context.l10n,
+                                    now: ref.read(clockProvider).now(),
+                                  ),
+                                ),
+                          onViewMemory: () => hero == null
+                              ? null
+                              : _openMemory(context, hero.id),
                           // Zil ŞİMDİDEN tıklanabilir: bildirim ekranı henüz
                           // tasarlanmadığı için hazır "yakında" metnini
                           // gösteriyor. Tıklanmayan buton bozuk gelir; ekran
@@ -203,28 +200,28 @@ class HomeView extends StatelessWidget {
                                 // Referansta ızgara fotoğrafın hemen altında
                                 // başlıyor; araya boşluk KOYMUYORUZ. Nefesi
                                 // hücrelerin kendi üst dolgusu (12) veriyor.
-                                HomeStatsGrid(
-                                  stats: HomePreviewData.stats(
-                                    context,
-                                    // Sayaçlar birer ÖZET: dokununca
-                                    // özetledikleri bölüme götürüyorlar.
-                                    onOpen: (route, {query = const {}}) =>
-                                        _openSection(
-                                          context,
-                                          route,
-                                          query: query,
-                                        ),
-                                  ),
-                                ),
+                                HomeStatsGrid(stats: stats),
 
                                 // Figma: ızgaranın altı 506, başlık satırı
                                 // 512 → 6. Başlığın kendi 10'luk dolgusu
                                 // görünen nefesi zaten veriyor.
                                 const SizedBox(height: AppSpacing.sm),
                                 HomeRecentSection(
-                                  memories: hasMemories
-                                      ? HomePreviewData.memories
-                                      : const [],
+                                  memories: [
+                                    for (final memory in recent)
+                                      (
+                                        id: memory.id,
+                                        cover: memory.coverMedia,
+                                        title: memory.displayTitle(
+                                          context.l10n.memoryNew,
+                                        ),
+                                        dateLabel: AppDateFormats.relative(
+                                          memory.occurredAt,
+                                          context.l10n,
+                                          now: ref.read(clockProvider).now(),
+                                        ),
+                                      ),
+                                  ],
                                   onSeeAll: () =>
                                       context.pushNamed(AppRoute.memories.name),
                                   onOpenMemory: (memory) =>

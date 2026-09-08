@@ -630,6 +630,33 @@ class AppL10nTr extends AppL10n {
   }
 
   @override
+  String get dateRelativeToday => 'Bugün';
+
+  @override
+  String get dateRelativeYesterday => 'Dün';
+
+  @override
+  String dateRelativeDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days gün önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateRelativeWeeks(int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: '$weeks hafta önce',
+      one: '1 hafta önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get memoryFieldTitle => 'Başlık';
 
   @override

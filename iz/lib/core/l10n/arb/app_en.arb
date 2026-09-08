@@ -299,6 +299,32 @@
       }
     }
   },
+  "dateRelativeToday": "Today",
+  "@dateRelativeToday": {
+    "description": "Relative date - memory is from today"
+  },
+  "dateRelativeYesterday": "Yesterday",
+  "@dateRelativeYesterday": {
+    "description": "Relative date - memory is from yesterday"
+  },
+  "dateRelativeDays": "{days, plural, other{{days} days ago}}",
+  "@dateRelativeDays": {
+    "description": "Relative date - less than a week",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "dateRelativeWeeks": "{weeks, plural, =1{1 week ago} other{{weeks} weeks ago}}",
+  "@dateRelativeWeeks": {
+    "description": "Relative date - less than a month",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
   "memoryFieldTitle": "Title",
   "memoryFieldTitleHint": "What was this moment?",
   "memoryFieldNote": "Note",

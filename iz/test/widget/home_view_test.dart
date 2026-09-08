@@ -8,16 +8,21 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:iz/app/composition/home_data.dart';
 import 'package:iz/core/l10n/generated/app_localizations.dart';
 import 'package:iz/core/theme/app_theme.dart';
+import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/home/presentation/views/home_view.dart';
 import 'package:iz/features/home/presentation/widgets/glass_pill_button.dart';
 import 'package:iz/features/home/presentation/widgets/home_hero_overlay.dart';
 import 'package:iz/features/home/presentation/widgets/home_top_bar.dart';
 import 'package:iz/features/home/presentation/widgets/memory_row_card.dart';
+import 'package:iz/features/memories/data/repositories/memory_repository_impl.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/shared/widgets/curved_top_panel.dart';
 import 'package:iz/shared/widgets/iz_wordmark.dart';
 
+import '../helpers/fake_memory_repository.dart';
 import '../helpers/real_fonts.dart';
 
 /// Verilen ekran ölçüsünde ana sayfayı kurar.
@@ -29,6 +34,21 @@ Future<void> pumpHome(
   // Testlerin çoğu BOŞ hâli sınıyor; dolu hâl açıkça isteniyor.
   bool hasMemories = false,
 }) async {
+  // GERÇEK DEPO (sahtesi): ekran artık `hasMemories` bayrağıyla değil,
+  // veride anı olup olmadığıyla karar veriyor.
+  final repository = FakeMemoryRepository(
+    hasMemories
+        ? [
+            // ÜÇ ANI: referans tasarımda son anılar bölümü üç satır
+            // gösteriyor ve testler o sayıya bakıyor.
+            _memory('mem-1', 'Kahve Molası', DateTime(2026, 9, 4)),
+            _memory('mem-2', 'İlk İzmir Tatilimiz', DateTime(2026, 8, 31)),
+            _memory('mem-3', 'Venedik Balayımız', DateTime(2026, 8, 20)),
+          ]
+        : const [],
+  );
+  addTearDown(repository.dispose);
+
   tester.view
     ..physicalSize = size
     ..devicePixelRatio = 1.0
@@ -38,12 +58,27 @@ Future<void> pumpHome(
 
   await tester.pumpWidget(
     ProviderScope(
+      overrides: [
+        memoryRepositoryProvider.overrideWithValue(repository),
+        clockProvider.overrideWithValue(FixedClock(DateTime(2026, 9, 7))),
+      ],
       child: MaterialApp(
         theme: dark ? AppTheme.dark() : AppTheme.light(),
         locale: const Locale('tr'),
         localizationsDelegates: AppL10n.localizationsDelegates,
         supportedLocales: AppL10n.supportedLocales,
-        home: HomeView(hasMemories: hasMemories),
+        home: Builder(
+          builder: (context) => HomeView(
+            // Sayaçları composition root kuruyor (bkz. `home_data.dart`);
+            // testte sabit bir liste yeterli.
+            stats: homeStats(AppL10n.of(context), (
+              journal: 0,
+              people: 0,
+              series: 0,
+              collections: 0,
+            ), onOpen: (route, {query = const {}}) {}),
+          ),
+        ),
       ),
     ),
   );
@@ -655,3 +690,13 @@ void main() {
 }
 
 void _noop() {}
+
+/// Ana sayfada gösterilecek sahte anı.
+Memory _memory(String id, String title, DateTime occurredAt) => Memory(
+  id: id,
+  occurredAt: occurredAt,
+  title: title,
+  isFavorite: false,
+  mediaCount: 1,
+  personCount: 0,
+);

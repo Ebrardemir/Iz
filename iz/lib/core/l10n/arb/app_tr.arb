@@ -390,6 +390,32 @@
       }
     }
   },
+  "dateRelativeToday": "Bugün",
+  "@dateRelativeToday": {
+    "description": "Göreli tarih — anı bugün"
+  },
+  "dateRelativeYesterday": "Dün",
+  "@dateRelativeYesterday": {
+    "description": "Göreli tarih — anı dün"
+  },
+  "dateRelativeDays": "{days, plural, other{{days} gün önce}}",
+  "@dateRelativeDays": {
+    "description": "Göreli tarih — bir haftadan yakın",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "dateRelativeWeeks": "{weeks, plural, =1{1 hafta önce} other{{weeks} hafta önce}}",
+  "@dateRelativeWeeks": {
+    "description": "Göreli tarih — bir aydan yakın",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
   "memoryFieldTitle": "Başlık",
   "@memoryFieldTitle": {
     "description": "Anı editörü — başlık alanının etiketi"
