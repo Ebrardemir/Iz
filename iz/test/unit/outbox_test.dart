@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/collections/domain/repositories/collection_repository.dart';
+import 'package:iz/features/journal/domain/entities/journal_entry.dart';
 import 'package:iz/features/journal/domain/repositories/journal_repository.dart';
 import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/memories/domain/repositories/memory_repository.dart';
@@ -170,6 +171,95 @@ void main() {
       // okuyan taraf bunu buradan anlar.
       await yeniAni();
       expect(govde((await kuyruk()).single)['v'], 1);
+    });
+  });
+
+  group('gizlilik — TR-M3-02 / FR-035', () {
+    // YAYIN DURDURUCU (TRD → Ek B, TR-B-01): "`deviceOnly` kayıt outbox'a
+    // girmiyor". Bu testler kırmızıysa sürüm çıkmaz.
+
+    Future<String> gunlukYaz({
+      required JournalPrivacyMode mod,
+      String? id,
+      String text = 'Kimseye söylemedim.',
+    }) async {
+      final r = await journal.save(
+        JournalDraft(
+          id: id,
+          entryDate: DateTime(2026, 3, 12),
+          text: text,
+          privacyMode: mod,
+        ),
+      );
+      return r.valueOrNull!;
+    }
+
+    test('baştan deviceOnly olan kayıt kuyruğa HİÇ girmiyor', () async {
+      await gunlukYaz(mod: JournalPrivacyMode.deviceOnly);
+      expect(await kuyruk(), isEmpty);
+    });
+
+    test('deviceOnly kayıt DÜZENLENİNCE de kuyruğa girmiyor', () async {
+      final id = await gunlukYaz(mod: JournalPrivacyMode.deviceOnly);
+      await gunlukYaz(
+        id: id,
+        mod: JournalPrivacyMode.deviceOnly,
+        text: 'Yeniden yazdım.',
+      );
+      expect(await kuyruk(), isEmpty);
+    });
+
+    test('deviceOnly kayıt SİLİNİNCE de kuyruğa girmiyor', () async {
+      final id = await gunlukYaz(mod: JournalPrivacyMode.deviceOnly);
+      await journal.softDelete(id);
+      expect(await kuyruk(), isEmpty);
+    });
+
+    test('deviceOnly kayıt YILDIZLANINCA da kuyruğa girmiyor', () async {
+      final id = await gunlukYaz(mod: JournalPrivacyMode.deviceOnly);
+      await journal.setFavorite(id, isFavorite: true);
+      expect(await kuyruk(), isEmpty);
+    });
+
+    test('standard → deviceOnly çevrilince SİLME düşüyor', () async {
+      // Kayıt daha önce senkronize edilebilirdi, yani sunucuda bir kopyası
+      // olabilir. Hiçbir şey yazmasaydık o kopya orada kalır ve kullanıcı
+      // "bu cihazda kalsın" dediği hâlde veri buluttan silinmezdi.
+      final id = await gunlukYaz(mod: JournalPrivacyMode.standard);
+      await gunlukYaz(id: id, mod: JournalPrivacyMode.deviceOnly);
+
+      final satirlar = await kuyruk();
+      expect(satirlar, hasLength(2));
+      expect(satirlar.last.op, OutboxOperation.delete);
+    });
+
+    test('o SİLME isteği METNİ TAŞIMIYOR', () async {
+      // Tam gövdeyi koysaydık, "bu cihazda kalsın" denen metni silme
+      // isteğinin İÇİNDE buluta göndermiş olurduk.
+      final id = await gunlukYaz(mod: JournalPrivacyMode.standard);
+      await gunlukYaz(
+        id: id,
+        mod: JournalPrivacyMode.deviceOnly,
+        text: 'ÇOK GİZLİ',
+      );
+
+      final silme = (await kuyruk()).last;
+      expect(silme.payloadJson, isNot(contains('GİZLİ')));
+
+      final entity = govde(silme)['entity']! as Map<String, Object?>;
+      expect(entity.keys, ['id']);
+      expect(entity['id'], id);
+    });
+
+    test('deviceOnly → standard çevrilince NORMAL yoldan gidiyor', () async {
+      // Kullanıcı fikrini değiştirdi; artık senkronize edilebilir.
+      final id = await gunlukYaz(mod: JournalPrivacyMode.deviceOnly);
+      await gunlukYaz(id: id, mod: JournalPrivacyMode.standard);
+
+      final satirlar = await kuyruk();
+      expect(satirlar, hasLength(1));
+      expect(satirlar.single.op, OutboxOperation.update);
+      expect(govde(satirlar.single), contains('entity'));
     });
   });
 

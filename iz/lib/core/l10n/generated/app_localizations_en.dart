@@ -172,7 +172,13 @@ class AppL10nEn extends AppL10n {
   String get collectionExpand => 'Expand collection';
 
   @override
+  String get collectionMoreActions => 'Collection actions';
+
+  @override
   String get collectionNewTitle => 'New Collection';
+
+  @override
+  String get collectionEditTitle => 'Edit Collection';
 
   @override
   String get collectionFieldName => 'Collection Name';
@@ -220,12 +226,21 @@ class AppL10nEn extends AppL10n {
   String get collectionCreateAction => 'Create Collection';
 
   @override
+  String get collectionSaveAction => 'Save Changes';
+
+  @override
+  String get collectionEdit => 'Edit';
+
+  @override
   String get collectionNameRequired =>
       'We need a name before we can create it.';
 
   @override
   String get collectionCreated =>
       'Your collection is ready, waiting in My Life.';
+
+  @override
+  String get collectionUpdated => 'Your collection has been updated.';
 
   @override
   String get collectionCollapse => 'Collapse collection';

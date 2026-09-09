@@ -69,6 +69,9 @@ Future<void> _sizeTo(WidgetTester tester, [Size size = const Size(390, 900)]) {
   return Future<void>.value();
 }
 
+void _noopAnchor(Rect _) {}
+void _noopCollectionActions(CollectionCardData _, Rect _) {}
+
 void main() {
   setUpAll(loadRealFonts);
 
@@ -90,6 +93,7 @@ void main() {
             onToggle: onToggle ?? () {},
             onOpenMemory: opened.add,
             onMemoryActions: onActions ?? (_, _) {},
+            onCollectionActions: _noopAnchor,
           ),
         ),
       );
@@ -161,6 +165,7 @@ void main() {
                 onToggle: _noop,
                 onOpenMemory: _noopMemory,
                 onMemoryActions: _noopActions,
+                onCollectionActions: _noopAnchor,
               ),
             ),
           ),
@@ -204,7 +209,7 @@ void main() {
         onActions: (memory, _) => actions.add(memory),
       );
 
-      await tester.tap(find.byIcon(AppIcons.more).first);
+      await tester.tap(find.byTooltip('Anı işlemleri').first);
       await tester.pump();
 
       expect(actions.single.id, 'm1');
@@ -217,7 +222,7 @@ void main() {
 
       final button = find
           .ancestor(
-            of: find.byIcon(AppIcons.more).first,
+            of: find.byTooltip('Anı işlemleri').first,
             matching: find.byType(IconButton),
           )
           .first;
@@ -236,6 +241,7 @@ void main() {
             onToggle: _noop,
             onOpenMemory: _noopMemory,
             onMemoryActions: _noopActions,
+            onCollectionActions: _noopAnchor,
           ),
           dark: true,
         ),
@@ -258,6 +264,7 @@ void main() {
             collections: collections,
             onOpenMemory: (_) {},
             onMemoryActions: (_, _) {},
+            onCollectionActions: _noopCollectionActions,
           ),
         ),
       );
@@ -332,6 +339,7 @@ void main() {
             onToggle: () {},
             onOpenMemory: _noopMemory,
             onMemoryActions: _noopActions,
+            onCollectionActions: _noopAnchor,
           ),
         ),
       );
@@ -361,6 +369,7 @@ void main() {
             onToggle: () {},
             onOpenMemory: _noopMemory,
             onMemoryActions: _noopActions,
+            onCollectionActions: _noopAnchor,
           ),
         ),
       );

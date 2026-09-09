@@ -57,7 +57,12 @@
   "collectionsEmptyTitle": "No collections yet",
   "collectionsEmptyMessage": "Gather the memories of a trip, a season or a person into a single collection.",
   "collectionExpand": "Expand collection",
+  "collectionMoreActions": "Collection actions",
   "collectionNewTitle": "New Collection",
+  "collectionEditTitle": "Edit Collection",
+  "@collectionEditTitle": {
+    "description": "Title of the collection form in EDIT mode."
+  },
   "collectionFieldName": "Collection Name",
   "collectionFieldNameHint": "Enter a collection name",
   "collectionFieldDescription": "Description",
@@ -79,8 +84,20 @@
     }
   },
   "collectionCreateAction": "Create Collection",
+  "collectionSaveAction": "Save Changes",
+  "@collectionSaveAction": {
+    "description": "Action button of the collection form in EDIT mode."
+  },
+  "collectionEdit": "Edit",
+  "@collectionEdit": {
+    "description": "Edit action in the collection card menu."
+  },
   "collectionNameRequired": "We need a name before we can create it.",
   "collectionCreated": "Your collection is ready, waiting in My Life.",
+  "collectionUpdated": "Your collection has been updated.",
+  "@collectionUpdated": {
+    "description": "Shown when an edit is saved."
+  },
   "collectionCollapse": "Collapse collection",
   "collectionMemoryCount": "{count, plural, =0{No memories} =1{1 memory} other{{count} memories}}",
   "@collectionMemoryCount": {

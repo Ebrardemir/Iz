@@ -84,7 +84,12 @@
   },
   "collectionsEmptyMessage": "Bir seyahati, bir dönemi ya da bir kişiyi anlatan anıları tek bir koleksiyonda topla.",
   "collectionExpand": "Koleksiyonu aç",
+  "collectionMoreActions": "Koleksiyon işlemleri",
   "collectionNewTitle": "Yeni Koleksiyon",
+  "collectionEditTitle": "Koleksiyonu Düzenle",
+  "@collectionEditTitle": {
+    "description": "Koleksiyon formunun DÜZENLEME kipindeki başlığı."
+  },
   "@collectionNewTitle": {
     "description": "Koleksiyon oluşturma ekranının başlığı."
   },
@@ -110,11 +115,23 @@
     }
   },
   "collectionCreateAction": "Koleksiyonu Oluştur",
+  "collectionSaveAction": "Değişiklikleri Kaydet",
+  "@collectionSaveAction": {
+    "description": "Koleksiyon formunun DÜZENLEME kipindeki eylem düğmesi."
+  },
+  "collectionEdit": "Düzenle",
+  "@collectionEdit": {
+    "description": "Koleksiyon kartı menüsünde düzenleme eylemi."
+  },
   "collectionNameRequired": "Bir isim yazmadan oluşturamayız.",
   "@collectionNameRequired": {
     "description": "FR-074 — koleksiyon adı zorunlu."
   },
   "collectionCreated": "Koleksiyonun oluştu, Hayatım’da seni bekliyor.",
+  "collectionUpdated": "Koleksiyonun güncellendi.",
+  "@collectionUpdated": {
+    "description": "Düzenleme kaydedildiğinde çıkan bildirim."
+  },
   "@collectionExpand": {
     "description": "Kapalı koleksiyon kartının ekran okuyucu etiketi"
   },

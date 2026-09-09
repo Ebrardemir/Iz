@@ -553,6 +553,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CollectionEditorView(),
       ),
       GoRoute(
+        // AYNI EKRAN, DÜZENLEME KİPİ. Kimlik yoldan geliyor: derin bağlantı
+        // ve geri tuşu kendiliğinden çalışsın (anı ve kişi formlarında da
+        // aynı).
+        path: AppRoute.collectionEdit.path,
+        name: AppRoute.collectionEdit.name,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            CollectionEditorView(collectionId: state.pathParameters['id']),
+      ),
+      GoRoute(
         path: AppRoute.ritualNew.path,
         name: AppRoute.ritualNew.name,
         parentNavigatorKey: _rootNavigatorKey,

@@ -8,6 +8,7 @@ library;
 import 'package:drift/drift.dart';
 import 'package:iz/app/database/app_database.dart';
 import 'package:iz/features/journal/data/tables/journal_tables.dart';
+import 'package:iz/features/journal/domain/entities/journal_entry.dart';
 import 'package:iz/features/sync/data/daos/outbox_dao.dart';
 import 'package:iz/features/sync/data/outbox_payload.dart';
 import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
@@ -94,6 +95,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
         baseVersion: current?.version ?? 0,
         outboxId: outboxId,
         now: now,
+        oncekiGizlilik: current?.privacyMode,
       );
     });
   }
@@ -102,21 +104,51 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   ///
   /// Gerekçesi `memory_dao.dart`taki aynı adlı fonksiyonun notunda.
   ///
-  /// ⚠️ GİZLİLİK BORCU: FR-035'teki `deviceOnly` kayıtlar buraya HİÇ
-  /// GİRMEMELİ (TR-M3-02). O süzgeç Faz 3'te, motor yazılırken kurulacak.
-  /// Bugün kuyruğu okuyan kimse yok — yani kayıt cihazdan çıkmıyor — ama
-  /// motor açılmadan ÖNCE bu satır bir koşul kazanmak zorunda.
+  /// GİZLİLİK — TR-M3-02 / FR-035. `deviceOnly` işaretli kayıt kuyruğa
+  /// GİRMEZ. Üç durum var ve üçü de ayrı davranıyor:
+  ///
+  ///   • Baştan `deviceOnly` → hiçbir şey yazılmıyor. Kayıt hiç çıkmadı.
+  ///   • `deviceOnly` iken düzenlendi → yine hiçbir şey. Aynı sebep.
+  ///   • Senkronize edilebilirken `deviceOnly`ye ÇEVRİLDİ → kuyruğa bir
+  ///     SİLME düşüyor. Kullanıcı "bu cihazda kalsın" dediğinde sunucudaki
+  ///     eski kopyanın da gitmesi gerekiyor; hiçbir şey yazmasaydık o kopya
+  ///     orada kalır ve kullanıcı sildiğini sanırdı.
+  ///
+  /// [oncekiGizlilik] `null` ise kayıt YENİ.
   Future<void> _enqueue(
     String entryId, {
     required OutboxOperation op,
     required int baseVersion,
     required String outboxId,
     required DateTime now,
+    required JournalPrivacyMode? oncekiGizlilik,
   }) async {
     final row = await (select(
       journalEntries,
     )..where((t) => t.id.equals(entryId))).getSingleOrNull();
     if (row == null) return;
+
+    if (row.privacyMode == JournalPrivacyMode.deviceOnly) {
+      final oncedenCikmisOlabilir =
+          oncekiGizlilik != null &&
+          oncekiGizlilik != JournalPrivacyMode.deviceOnly;
+
+      if (!oncedenCikmisOlabilir) return;
+
+      // GÖVDE YALNIZ KİMLİK TAŞIYOR. Tam gövdeyi koysaydık, "bu cihazda
+      // kalsın" denen metni SİLME isteğinin içinde buluta göndermiş
+      // olurduk — korumaya çalıştığımız şeyi sızdırarak.
+      await OutboxDao(attachedDatabase).enqueue(
+        id: outboxId,
+        entityType: kJournalEntityType,
+        entityId: entryId,
+        op: OutboxOperation.delete,
+        payloadJson: encodeOutboxPayload(entity: {'id': entryId}),
+        baseVersion: baseVersion,
+        now: now,
+      );
+      return;
+    }
 
     final medyalar = await (select(
       journalMedia,
@@ -241,6 +273,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
         baseVersion: current.version,
         outboxId: outboxId,
         now: now,
+        oncekiGizlilik: current.privacyMode,
       );
     });
   }

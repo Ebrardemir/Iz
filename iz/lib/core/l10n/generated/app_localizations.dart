@@ -421,11 +421,23 @@ abstract class AppL10n {
   /// **'Koleksiyonu aç'**
   String get collectionExpand;
 
+  /// No description provided for @collectionMoreActions.
+  ///
+  /// In tr, this message translates to:
+  /// **'Koleksiyon işlemleri'**
+  String get collectionMoreActions;
+
   /// Koleksiyon oluşturma ekranının başlığı.
   ///
   /// In tr, this message translates to:
   /// **'Yeni Koleksiyon'**
   String get collectionNewTitle;
+
+  /// Koleksiyon formunun DÜZENLEME kipindeki başlığı.
+  ///
+  /// In tr, this message translates to:
+  /// **'Koleksiyonu Düzenle'**
+  String get collectionEditTitle;
 
   /// No description provided for @collectionFieldName.
   ///
@@ -511,6 +523,18 @@ abstract class AppL10n {
   /// **'Koleksiyonu Oluştur'**
   String get collectionCreateAction;
 
+  /// Koleksiyon formunun DÜZENLEME kipindeki eylem düğmesi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Değişiklikleri Kaydet'**
+  String get collectionSaveAction;
+
+  /// Koleksiyon kartı menüsünde düzenleme eylemi.
+  ///
+  /// In tr, this message translates to:
+  /// **'Düzenle'**
+  String get collectionEdit;
+
   /// FR-074 — koleksiyon adı zorunlu.
   ///
   /// In tr, this message translates to:
@@ -522,6 +546,12 @@ abstract class AppL10n {
   /// In tr, this message translates to:
   /// **'Koleksiyonun oluştu, Hayatım’da seni bekliyor.'**
   String get collectionCreated;
+
+  /// Düzenleme kaydedildiğinde çıkan bildirim.
+  ///
+  /// In tr, this message translates to:
+  /// **'Koleksiyonun güncellendi.'**
+  String get collectionUpdated;
 
   /// No description provided for @collectionCollapse.
   ///
