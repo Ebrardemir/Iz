@@ -11,13 +11,22 @@
 # (bkz. ADR-B11).
 
 # --- 1) Derleme -----------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# SDK SÜRÜMÜ ÇİVİLİ ve api/global.json ile AYNI olmak zorunda.
+# Serbest bıraksaydık (sdk:9.0) imaj bir gün yeni bir SDK'ya kayar ve
+# üretime giden derleme, CI'ın doğruladığından farklı bir derleyiciyle
+# yapılırdı. Aynı ayrışma bir kez CI'da "call is ambiguous" olarak patladı.
+#
+# Çalışma zamanı imajı (aşağıda) BİLEREK serbest: oradaki yamalar güvenlik
+# düzeltmesi taşıyor ve derleme çıktısını değiştirmiyor.
+FROM mcr.microsoft.com/dotnet/sdk:9.0.305 AS build
 WORKDIR /kaynak
 
 # Önce yalnız proje dosyaları: bağımlılıklar değişmedikçe restore katmanı
 # önbellekten gelir. Kaynak kodu baştan kopyalasaydık her değişiklikte
 # yeniden restore ederdik.
-COPY Directory.Build.props Iz.sln ./
+# global.json restore'dan ÖNCE kopyalanıyor: SDK seçimi ilk komuttan
+# itibaren geçerli olsun.
+COPY Directory.Build.props Iz.sln global.json ./
 COPY src/Iz.Domain/Iz.Domain.csproj                 src/Iz.Domain/
 COPY src/Iz.Application/Iz.Application.csproj       src/Iz.Application/
 COPY src/Iz.Infrastructure/Iz.Infrastructure.csproj src/Iz.Infrastructure/

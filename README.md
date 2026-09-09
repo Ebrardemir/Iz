@@ -43,6 +43,18 @@ cd api && docker compose up --build
 curl http://localhost:8080/health
 ```
 
+**.NET SDK sürümü `api/global.json` ile 9.0.305'e sabit** — CI ve Dockerfile
+da aynı sürümü kullanıyor. Üçü ayrıştığında "yerelde yeşil" hiçbir şey ifade
+etmiyor: bir çağrı yerelde sorunsuz derlendi, CI'da `call is ambiguous` ile
+düştü, çünkü daha yeni SDK'nın System.Text.Json'ı fazladan bir aşırı yükleme
+taşıyordu. Sürümü yükseltmek artık üç dosyayı birden değiştirmeyi gerektiren
+bilinçli bir karar.
+
+> Makinende 9.0.305 yoksa `dotnet` açıkça söyler ve derlemez —
+> [indirme sayfası](https://dotnet.microsoft.com/download/dotnet/9.0).
+> Çalışma zamanı imajı (`aspnet:9.0`) bilerek serbest: oradaki yamalar
+> güvenlik düzeltmesi taşıyor ve derleme çıktısını değiştirmiyor.
+
 Flutter sürümü `iz/.fvmrc` ile **3.47.1**'e sabit. CI aynı sürümü kullanıyor;
 değiştirirsen ikisini birden güncelle.
 

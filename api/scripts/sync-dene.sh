@@ -231,7 +231,16 @@ cagir POST /v1/sync/push "$(tekrarIstegi)" "$ANAHTAR" | guzel
 bolum "16) AYNI anahtarla yeniden deneme  ->  applied (conflict DEĞİL), seq AYNI"
 cagir POST /v1/sync/push "$(tekrarIstegi)" "$ANAHTAR" | guzel
 
-bolum "17) Anahtarsız push  ->  400 idempotency_key_required"
+bolum "17) Durum: cursor=0  ->  her şey bekliyor (veri İNMEDEN)"
+# Yedekleme Sağlığı ekranının sorduğu soru: "sunucuda benim için ne var?"
+# Pull da cevaplardı ama bir SAYFA veri indirerek; bu uç tek sayaç sorgusu.
+cagir GET "/v1/sync/state?cursor=0" | guzel
+
+bolum "18) Durum: güncel cursor  ->  bekleyen sıfır"
+cagir GET "/v1/sync/state?cursor=$(cagir GET '/v1/sync/state?cursor=0' \
+  | tr ',' '\n' | sed -n 's/.*"serverCursor": *\([0-9]*\).*/\1/p' | head -1)" | guzel
+
+bolum "19) Anahtarsız push  ->  400 idempotency_key_required"
 curl -s -X POST "$API/v1/sync/push" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   --data-binary @- <<< "{\"deviceId\":\"$CIHAZ\",\"changes\":[]}" | guzel

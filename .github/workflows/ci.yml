@@ -20,7 +20,6 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.47.1'
-  DOTNET_VERSION: '9.0.x'
 
 jobs:
   # ---------------------------------------------------------------------
@@ -238,8 +237,23 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
+        # SÜRÜM api/global.json'DAN OKUNUYOR, buraya yazılmıyor.
+        #
+        # Önceden burada '9.0.x' vardı, yani CI her koşuda EN YENİ 9.0
+        # SDK'sını kuruyordu ve geliştirici makinesindekiyle ayrışabiliyordu.
+        # Bu teorik bir risk değil: bir çağrı yerelde sorunsuz derlendi,
+        # CI'da "call is ambiguous" ile düştü — çünkü yeni SDK'nın
+        # System.Text.Json'ı fazladan bir aşırı yükleme taşıyordu.
+        # "Yerelde yeşil" o gün hiçbir şey ifade etmiyordu.
+        #
+        # Depo aynı kuralı Flutter'a (.fvmrc) ve dotnet-ef'e
+        # (.config/dotnet-tools.json) zaten uyguluyor; SDK serbest kalan tek
+        # toolchain'di.
+        #
+        # SÜRÜMÜ YÜKSELTMEK ARTIK BİR KARAR: global.json değişir, değişiklik
+        # PR'da görünür ve CI aynı sürümle derler.
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          global-json-file: api/global.json
 
       - name: Bağımlılıklar
         run: dotnet restore

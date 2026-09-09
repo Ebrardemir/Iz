@@ -70,6 +70,22 @@ public interface ISyncStore
     Task<long> CurrentCursorAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Günlüğün özeti: baş, <paramref name="cursor"/>'dan sonra bekleyen
+    /// sayısı ve son değişiklik zamanı.
+    /// </summary>
+    /// <remarks>
+    /// ÜÇ DEĞER TEK SORGUDA. Ayrı ayrı sorsaydık aralarında bir yazma
+    /// olabilir ve yanıt kendi içinde tutarsız çıkardı: baş ilerlemiş ama
+    /// sayaç eski, ya da tersi. Yedekleme Sağlığı ekranı o tutarsızlığı
+    /// "2 değişiklik bekliyor" derken cursor'ın zaten geçmiş olması gibi
+    /// anlaşılmaz bir hâlde gösterirdi.
+    /// </remarks>
+    Task<SyncStateResult> StateAsync(
+        Guid userId,
+        long cursor,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// <paramref name="cursor"/>'dan sonraki günlük satırları, <c>seq</c>
     /// sırasıyla.
     /// </summary>
