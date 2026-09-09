@@ -33,6 +33,25 @@ public interface ISyncStore
         SyncEntityKey key,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Aynı türden çok sayıda kaydı TEK sorguda getirir.
+    /// Anahtar: <see cref="SyncEntityKey.Value"/>.
+    /// </summary>
+    /// <remarks>
+    /// NEDEN AYRI BİR METOT VAR — <see cref="FindAsync"/> döngüde çağrılamaz mı?
+    /// Çağrılır, ve pull'da 200'lük bir sayfa 200 gidiş-dönüş eder. Yeni bir
+    /// cihazın bootstrap'ı (yol haritası §4.3) binlerce kaydı sayfa sayfa
+    /// indiriyor; orada bu fark saniyeler değil dakikalar demek.
+    ///
+    /// Push tek tek arıyor ve doğrusu o: orada kayıtlar sırayla işleniyor ve
+    /// her biri bir öncekinin sonucuna bakabiliyor (aynı batch'te iki kez
+    /// gelen kayıt). Pull'da böyle bir bağımlılık yok — hepsi birden okunabilir.
+    /// </remarks>
+    Task<IReadOnlyDictionary<string, ISyncable>> FindManyAsync(
+        SyncEntityMapper mapper,
+        IReadOnlyCollection<SyncEntityKey> keys,
+        CancellationToken cancellationToken);
+
     void Add(ISyncable entity);
 
     /// <summary>
@@ -51,16 +70,26 @@ public interface ISyncStore
     Task<long> CurrentCursorAsync(Guid userId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// <paramref name="cursor"/>'dan sonraki günlük satırları.
+    /// <paramref name="cursor"/>'dan sonraki günlük satırları, <c>seq</c>
+    /// sırasıyla.
     /// </summary>
+    /// <param name="limit">
+    /// <c>null</c> ise SINIRSIZ.
+    /// </param>
     /// <remarks>
-    /// Push bunu KAYDETTİKTEN SONRA çağırıyor: yazdığı satırların hangi
-    /// <c>seq</c>'i aldığını başka türlü bilemez — sırayı veritabanı
-    /// üretiyor (<c>bigserial</c>). Aynı sorgu Faz 3'ün ikinci adımında
-    /// <c>/v1/sync/pull</c>'un da tek sorgusu olacak.
+    /// İKİ ÇAĞIRANI VAR ve sınır ihtiyaçları zıt:
+    ///
+    /// • Pull sayfalıyor — sınır onun sözleşmesinin parçası.
+    /// • Push, KAYDETTİKTEN SONRA yazdığı satırların hangi <c>seq</c>'i
+    ///   aldığını öğrenmek için çağırıyor (sırayı veritabanı üretiyor) ve
+    ///   SINIR KOYAMAZ: 200 değişiklik, bağlarıyla birlikte 1.000'den fazla
+    ///   günlük satırı üretebilir. Sınırlasaydık sayfanın dışında kalan
+    ///   satırların <c>seq</c>'i yanıtta boş dönerdi — istemci onları
+    ///   "yazılmadı" sanmazdı ama kuyruktan da düşüremezdi.
     /// </remarks>
     Task<IReadOnlyList<ChangeLogEntry>> ChangesAfterAsync(
         Guid userId,
         long cursor,
+        int? limit,
         CancellationToken cancellationToken);
 }

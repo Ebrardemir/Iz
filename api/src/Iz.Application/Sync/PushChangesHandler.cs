@@ -408,7 +408,7 @@ public sealed class PushChangesHandler(
             return;
         }
 
-        var written = await store.ChangesAfterAsync(userId, cursorBefore, cancellationToken);
+        var written = await store.ChangesAfterAsync(userId, cursorBefore, limit: null, cancellationToken);
         if (written.Count == 0)
         {
             return;
