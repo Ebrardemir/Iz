@@ -1,5 +1,14 @@
 using Iz.Application.Abstractions;
+using Iz.Domain.Categories;
+using Iz.Domain.Collections;
 using Iz.Domain.Devices;
+using Iz.Domain.Journal;
+using Iz.Domain.Locations;
+using Iz.Domain.Media;
+using Iz.Domain.Memories;
+using Iz.Domain.People;
+using Iz.Domain.Rituals;
+using Iz.Domain.Sync;
 using Iz.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,6 +24,42 @@ public sealed class IzDbContext(DbContextOptions<IzDbContext> options, ICurrentU
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Device> Devices => Set<Device>();
+
+    /// <summary>
+    /// Senkronizasyonun kalbi. Satırları ELLE EKLENMİYOR —
+    /// <c>ChangeLogInterceptor</c> her <c>SaveChanges</c>'te kendisi
+    /// üretiyor (yol haritası §3.1).
+    /// </summary>
+    public DbSet<ChangeLogEntry> ChangeLog => Set<ChangeLogEntry>();
+
+    // ---- Senkronize edilen içerik -------------------------------------
+    public DbSet<Memory> Memories => Set<Memory>();
+
+    public DbSet<MemoryPerson> MemoryPeople => Set<MemoryPerson>();
+
+    public DbSet<MemoryCollection> MemoryCollections => Set<MemoryCollection>();
+
+    public DbSet<MemoryRitual> MemoryRituals => Set<MemoryRitual>();
+
+    public DbSet<MemoryMedia> MemoryMedia => Set<MemoryMedia>();
+
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+
+    public DbSet<JournalMedia> JournalMedia => Set<JournalMedia>();
+
+    public DbSet<Person> People => Set<Person>();
+
+    public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Collection> Collections => Set<Collection>();
+
+    public DbSet<Ritual> Rituals => Set<Ritual>();
+
+    public DbSet<RitualPerson> RitualPeople => Set<RitualPerson>();
+
+    public DbSet<Location> Locations => Set<Location>();
+
+    public DbSet<MediaItem> MediaItems => Set<MediaItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +77,44 @@ public sealed class IzDbContext(DbContextOptions<IzDbContext> options, ICurrentU
         // vermek doğru varsayılandır.
         modelBuilder.Entity<Device>()
             .HasQueryFilter(d => currentUser.UserId != null && d.UserId == currentUser.UserId);
+
+        // Senkronize edilen her tablo aynı hattı alıyor. Süzgeç SAHİPLİĞE
+        // bakıyor, tombstone'a DEĞİL: silinmiş satırı gizleseydik pull
+        // silmeyi hiç göremez, ikinci cihazda kayıt sonsuza kadar yaşardı
+        // (bkz. ISyncable.DeletedAt).
+        //
+        // ⚠️ YENİ BİR SENKRONİZE TABLO EKLERKEN buraya da bir satır gerekiyor.
+        // Unutmak IDOR demek — bu yüzden `SyncQueryFilterTests` her
+        // `ISyncable` tipinin süzgeci olduğunu denetliyor ve eksikse testler
+        // kırmızıya döner.
+        modelBuilder.Entity<Memory>()
+            .HasQueryFilter(m => currentUser.UserId != null && m.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<MemoryPerson>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<MemoryCollection>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<MemoryRitual>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<MemoryMedia>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<JournalEntry>()
+            .HasQueryFilter(e => currentUser.UserId != null && e.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<JournalMedia>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<Person>()
+            .HasQueryFilter(p => currentUser.UserId != null && p.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<Category>()
+            .HasQueryFilter(c => currentUser.UserId != null && c.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<Collection>()
+            .HasQueryFilter(c => currentUser.UserId != null && c.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<Ritual>()
+            .HasQueryFilter(r => currentUser.UserId != null && r.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<RitualPerson>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<Location>()
+            .HasQueryFilter(l => currentUser.UserId != null && l.OwnerId == currentUser.UserId);
+        modelBuilder.Entity<MediaItem>()
+            .HasQueryFilter(m => currentUser.UserId != null && m.OwnerId == currentUser.UserId);
 
         base.OnModelCreating(modelBuilder);
     }
