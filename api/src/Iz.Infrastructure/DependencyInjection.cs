@@ -88,6 +88,7 @@ public static class DependencyInjection
         services.AddScoped<RegisterDeviceHandler>();
         services.AddScoped<PushChangesHandler>();
         services.AddScoped<PullChangesHandler>();
+        services.AddScoped<GetSyncStateHandler>();
 
         return services;
     }

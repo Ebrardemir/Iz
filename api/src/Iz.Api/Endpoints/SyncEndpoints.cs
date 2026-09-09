@@ -206,9 +206,48 @@ public static class SyncEndpoints
             .WithSummary("Cursor'dan sonraki değişiklikleri sayfa sayfa döndürür.")
             .WithTags("Sync");
 
+        app.MapGet("/v1/sync/state", async (
+                long? cursor,
+                CurrentUserContext currentUser,
+                GetSyncStateHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleAsync(
+                    currentUser.Require().Id,
+                    cursor ?? 0,
+                    cancellationToken);
+
+                return Results.Ok(new SyncStateResponse(
+                    result.ServerCursor,
+                    result.PendingCount,
+                    result.LastChangeAt));
+            })
+            .RequireAuthorization()
+            .WithName("SyncState")
+            .WithSummary("Sunucuda bekleyen değişiklik var mı — veri indirmeden.")
+            .WithTags("Sync");
+
         return app;
     }
 }
+
+/// <param name="PendingCount">
+/// Verilen <c>cursor</c>'dan sonra İNDİRİLMEYİ bekleyen değişiklik sayısı.
+/// </param>
+/// <param name="LastChangeAt">
+/// Hesabın verisinin sunucuda en son ne zaman değiştiği.
+/// </param>
+/// <remarks>
+/// ⚠️ <c>LastChangeAt</c>, "bu cihaz en son ne zaman eşitledi" DEĞİL.
+/// Gerekçesi <see cref="SyncStateResult"/> notunda: o bilgi cihazın kendi
+/// bilgisi (TR-M11-13, yerel <c>SyncState</c>) ve sunucununkiyle
+/// karıştırılırsa kullanıcı, cihazı günlerdir çevrimdışıyken bile taze bir
+/// tarih görür.
+/// </remarks>
+public sealed record SyncStateResponse(
+    long ServerCursor,
+    int PendingCount,
+    DateTimeOffset? LastChangeAt);
 
 /// <param name="NextCursor">
 /// Bir sonraki pull'da gönderilecek değer.

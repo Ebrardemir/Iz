@@ -436,7 +436,8 @@ DELETE /v1/me/delete-request          geri alma
 
 POST   /v1/sync/push
 GET    /v1/sync/pull?cursor=&limit=
-GET    /v1/sync/state                 lastSyncAt, serverCursor (yedekleme sağlığı ekranı)
+GET    /v1/sync/state?cursor=         serverCursor, pendingCount, lastChangeAt
+                                      (yedekleme sağlığı ekranı — veri İNDİRMEDEN)
 
 GET    /v1/entitlements               plan, expiry, features[] — planın TEK kaynağı
 POST   /v1/entitlements/refresh       satın alma sonrası planı hemen tazele
@@ -608,8 +609,10 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 - ✅ **adım 5** *(9 Eylül 2026)* — push'u **yarış ve tekrar altında güvenli** yapmak:
       kullanıcı başına advisory kilit + `Idempotency-Key` (Redis, 24 saat).
       **11 yeni entegrasyon testi, toplam 98.**
-- ⏳ `/v1/sync/state` — `lastSyncAt` + `serverCursor`. Yedekleme Sağlığı ekranını (FR-614)
-      besliyor; `ISyncStore.CurrentCursorAsync` zaten hazır.
+- ✅ **adım 6** *(9 Eylül 2026)* — `/v1/sync/state`: `serverCursor`, `pendingCount`,
+      `lastChangeAt`. Yedekleme Sağlığı ekranını (FR-164, TR-M11-13) besliyor.
+      **8 yeni entegrasyon testi, toplam 106.** Bununla Faz 3'ün SUNUCU tarafı tamam;
+      kalan iş istemcideki `SyncEngine`.
 - ⏳ Entitlement kontrolü push'ta (free plan limitleri sunucuda da doğrulanır — istemciye
       güvenilmez). Kapının takılacağı nokta `PushChangesHandler` içinde işaretli;
       `entitlement_required` sabiti bugünden duruyor ki istemci paywall'ı beklemesin.

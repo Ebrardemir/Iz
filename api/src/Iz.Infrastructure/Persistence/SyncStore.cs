@@ -183,6 +183,38 @@ internal sealed class SyncStore(IzDbContext context) : ISyncStore
     public bool IsModified(ISyncable entity) =>
         context.Entry(entity).State == EntityState.Modified;
 
+    /// <remarks>
+    /// <c>GroupBy(_ => 1)</c> hilesi: EF'e "tek bir grup üzerinde üç toplama
+    /// hesapla" dedirtiyor ve tek bir SELECT üretiyor. Üç ayrı sorgu
+    /// atsaydık aralarına bir yazma girip yanıtı kendi içinde tutarsız
+    /// yapabilirdi.
+    ///
+    /// Kullanıcının hiç değişikliği yoksa grup OLUŞMUYOR ve sorgu boş
+    /// dönüyor; o durumda sıfır/null döndürüyoruz — yeni hesabın doğru
+    /// cevabı bu.
+    /// </remarks>
+    public async Task<SyncStateResult> StateAsync(
+        Guid userId,
+        long cursor,
+        CancellationToken cancellationToken)
+    {
+        var ozet = await context.ChangeLog
+            .Where(e => e.UserId == userId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Bas = g.Max(e => (long?)e.Seq),
+                Bekleyen = g.Count(e => e.Seq > cursor),
+                SonDegisiklik = g.Max(e => (DateTimeOffset?)e.ChangedAt),
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new SyncStateResult(
+            ozet?.Bas ?? 0,
+            ozet?.Bekleyen ?? 0,
+            ozet?.SonDegisiklik);
+    }
+
     public async Task<long> CurrentCursorAsync(Guid userId, CancellationToken cancellationToken) =>
         await context.ChangeLog
             .Where(e => e.UserId == userId)
