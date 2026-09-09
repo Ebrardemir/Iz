@@ -49,9 +49,15 @@ internal sealed class RedisIdempotencyStore(
         {
             var deger = await redis.GetDatabase().StringGetAsync(Anahtar(userId, key));
 
-            return deger.IsNullOrEmpty
-                ? null
-                : JsonSerializer.Deserialize<IdempotencyRecord>(deger!, Bicim);
+            // METNE AÇIKÇA ÇEVİRİLİYOR. `RedisValue`'nun hem `string`e hem
+            // `ReadOnlySpan<byte>`a örtük dönüşümü var; doğrudan
+            // `Deserialize(deger, ...)` yazmak, System.Text.Json'ın her iki
+            // aşırı yüklemesini de taşıyan sürümlerinde DERLENMİYOR
+            // ("call is ambiguous"). Yerelde sessizce derlenip CI'da
+            // patlayan tam olarak buydu.
+            return (string?)deger is { Length: > 0 } json
+                ? JsonSerializer.Deserialize<IdempotencyRecord>(json, Bicim)
+                : null;
         }
         catch (Exception ex) when (Gecici(ex))
         {
