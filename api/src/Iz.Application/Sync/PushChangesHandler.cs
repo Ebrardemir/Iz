@@ -1,3 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Iz.Application.Abstractions;
 using Iz.Application.Devices;
 using Iz.Domain.Sync;
@@ -39,11 +43,34 @@ namespace Iz.Application.Sync;
 public sealed class PushChangesHandler(
     ISyncStore store,
     ISyncLock syncLock,
+    IIdempotencyStore idempotency,
     IDeviceRepository devices,
     IUnitOfWork unitOfWork,
     IClock clock,
     SyncOrigin origin)
 {
+    /// <summary>
+    /// <c>Idempotency-Key</c> üst uzunluğu.
+    /// </summary>
+    /// <remarks>
+    /// Anahtarı İSTEMCİ üretiyor ve doğrudan Redis anahtarına giriyor.
+    /// Sınırsız bıraksaydık tek bir istek megabaytlık bir anahtar yazdırıp
+    /// belleği şişirebilirdi. 128, bir UUID'nin (36) üç katından fazla.
+    /// </remarks>
+    public const int MaxIdempotencyKeyLength = 128;
+
+    /// <summary>Önbelleğe alınan yanıtın biçimi — yalnız BİZİM okuduğumuz.</summary>
+    /// <remarks>
+    /// Enum METİN olarak yazılıyor: sayı olsaydı, <c>SyncPushStatus</c>'a
+    /// ileride bir değer eklemek, o an Redis'te duran 24 saatlik kayıtların
+    /// anlamını kaydırırdı.
+    /// </remarks>
+    private static readonly JsonSerializerOptions CacheFormat = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() },
+    };
+
     /// <summary>
     /// Bir istekteki üst sınır (yol haritası §4.1).
     /// </summary>
@@ -61,6 +88,16 @@ public sealed class PushChangesHandler(
         if (command.Changes.Count > MaxChangesPerBatch)
         {
             throw new AppValidationException("batch_too_large", field: "changes");
+        }
+
+        if (string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        {
+            throw new AppValidationException(IdempotencyErrors.Required, field: "Idempotency-Key");
+        }
+
+        if (command.IdempotencyKey.Length > MaxIdempotencyKeyLength)
+        {
+            throw new AppValidationException(IdempotencyErrors.Invalid, field: "Idempotency-Key");
         }
 
         // CİHAZ BİZDE KAYITLI OLMAK ZORUNDA. Doğrulamasaydık istemci başka
@@ -83,6 +120,31 @@ public sealed class PushChangesHandler(
         // Kilit aynı zamanda bu isteğin TRANSACTION'I: commit edilmezse
         // yazılan her şey geri sarılıyor.
         await using var kilit = await syncLock.AcquireAsync(userId, cancellationToken);
+
+        // IDEMPOTENCY KONTROLÜ KİLİDİN İÇİNDE. Dışarıda olsaydı aynı anahtarla
+        // aynı anda gelen iki istek de "bulunamadı" görür ve ikisi de
+        // işlenirdi — yani anahtarın var olma sebebi ortadan kalkardı.
+        // Kilit sayesinde ikincisi, birincinin YAZILMIŞ yanıtını buluyor.
+        var parmakIzi = ParmakIzi(command);
+
+        if (await idempotency.FindAsync(userId, command.IdempotencyKey, cancellationToken)
+            is { } kayit)
+        {
+            if (!string.Equals(kayit.RequestFingerprint, parmakIzi, StringComparison.Ordinal))
+            {
+                throw new AppValidationException(
+                    IdempotencyErrors.Reused, field: "Idempotency-Key");
+            }
+
+            if (OncekiYanit(kayit.Response) is { } onceki)
+            {
+                return onceki;
+            }
+
+            // Yanıt okunamadı (biçim değişmiş olabilir). İstisna atmak yerine
+            // isteği yeniden işliyoruz: bedeli olası bir yanlış çakışma,
+            // alternatifi ise kullanıcının kuyruğunun 500'lerde takılması.
+        }
 
         var now = clock.UtcNow;
 
@@ -120,7 +182,23 @@ public sealed class PushChangesHandler(
         // istemci hangi satırın gittiğini bilemez.
         await kilit.CommitAsync(cancellationToken);
 
-        return new SyncPushResult(results, cursor);
+        var sonuc = new SyncPushResult(results, cursor);
+
+        // YANIT COMMIT'TEN SONRA SAKLANIYOR. Önce saklasaydık ve commit
+        // başarısız olsaydı, hiç yapılmamış bir işin yanıtını 24 saat boyunca
+        // geri döndürürdük — istemci değişikliklerini kuyruktan düşürür ve
+        // onlar hiçbir zaman yazılmazdı.
+        //
+        // Ters yöndeki risk kabul edilebilir: commit ile bu satır arasında
+        // çöken bir sunucu, kaydı saklayamaz ve tekrar denenen push bir
+        // yanlış çakışma üretir. Veri kaybı değil, çözülebilir bir uyarı.
+        await idempotency.SaveAsync(
+            userId,
+            command.IdempotencyKey,
+            new IdempotencyRecord(parmakIzi, JsonSerializer.Serialize(sonuc, CacheFormat)),
+            cancellationToken);
+
+        return sonuc;
     }
 
     private async Task<ChangeOutcome> ApplyChangeAsync(
@@ -391,6 +469,87 @@ public sealed class PushChangesHandler(
 
         entity.UpdatedAt = now;
         entity.Version++;
+    }
+
+    /// <summary>
+    /// İsteğin parmak izi — aynı anahtarın FARKLI bir gövdeyle kullanılmasını
+    /// yakalar.
+    /// </summary>
+    /// <remarks>
+    /// ALANLAR ARASINA AYIRAÇ KONUYOR. Düz birleştirseydik
+    /// <c>("ab", "c")</c> ile <c>("a", "bc")</c> aynı izi verirdi ve iki
+    /// FARKLI istek aynı sayılırdı. <c>\0</c> hiçbir alanın içinde geçmiyor.
+    ///
+    /// Gövde HAM METİN olarak katılıyor: ayrıştırıp yeniden yazsaydık alan
+    /// sırası ya da boşluk farkları izi değiştirir, gerçekten aynı olan iki
+    /// istek farklı görünürdü.
+    /// </remarks>
+    private static string ParmakIzi(SyncPushCommand command)
+    {
+        var yazi = new StringBuilder();
+        yazi.Append(command.DeviceId);
+
+        foreach (var change in command.Changes)
+        {
+            yazi.Append('\0').Append(change.EntityType)
+                .Append('\0').Append(change.EntityId)
+                .Append('\0').Append(change.Op)
+                .Append('\0').Append(change.BaseVersion)
+                .Append('\0').Append(HamGovde(change.Payload));
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(yazi.ToString())));
+    }
+
+    /// <summary>
+    /// Gövdenin ham metni — okunamıyorsa bir işaret.
+    /// </summary>
+    /// <remarks>
+    /// <c>GetRawText</c> ham baytları metne çeviriyor ve gövdede GEÇERSİZ
+    /// UTF-8 varsa İSTİSNA ATIYOR. Parmak izi, gövdenin geçerliliği daha
+    /// denetlenmeden hesaplandığı için burada patlarsa BÜTÜN istek 500
+    /// olurdu — hem de "payload_encoding_invalid" ile düzgünce
+    /// reddedilebilecek bir istek. (Bu tam olarak yaşandı: kodlama
+    /// düzeltmesinin testi bu satır yüzünden kırmızıya döndü.)
+    ///
+    /// İŞARETE DÜŞMENİN BEDELİ KABUL EDİLEBİLİR: bozuk kodlamalı iki FARKLI
+    /// gövde aynı parmak izini alabilir, ama ikisi de zaten reddediliyor.
+    /// Yani en kötü ihtimalle istemci, bir reddin yerine başka bir reddi
+    /// alıyor.
+    /// </remarks>
+    private static string HamGovde(JsonElement? payload)
+    {
+        if (payload is not { } element)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return element.GetRawText();
+        }
+        catch (InvalidOperationException)
+        {
+            return "<okunamadi>";
+        }
+    }
+
+    /// <summary>Saklanmış yanıtı çözer; çözemezse <c>null</c>.</summary>
+    /// <remarks>
+    /// Biçim değişebilir ve Redis'te 24 saatlik ESKİ biçimli kayıtlar
+    /// kalabilir. Çözemediğimizde istisna atmak, o kullanıcının kuyruğunu bir
+    /// gün boyunca 500'lerde tutardı.
+    /// </remarks>
+    private static SyncPushResult? OncekiYanit(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<SyncPushResult>(json, CacheFormat);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static SyncPushChangeResult Conflict(string echo, ISyncable existing) =>

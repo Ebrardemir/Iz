@@ -8,7 +8,22 @@ namespace Iz.Application.Sync;
 /// Değişiklikleri gönderen cihaz. <c>change_log.device_id</c> buradan
 /// doluyor ve echo önlemenin dayanağı o (yol haritası §4.2).
 /// </param>
-public sealed record SyncPushCommand(Guid DeviceId, IReadOnlyList<SyncPushChange> Changes);
+/// <param name="IdempotencyKey">
+/// İstemcinin ürettiği, YENİDEN DENEMEDE AYNI KALAN anahtar. Zorunlu.
+/// </param>
+/// <remarks>
+/// ANAHTAR NEDEN ZORUNLU? İsteğe bağlı olsaydı, göndermeyi unutan bir
+/// istemci sürümünde güvence SESSİZCE yok olurdu ve kullanıcı bunu ancak
+/// kendi değişikliğini "başka bir sürüm" diye çözmek zorunda kaldığında fark
+/// ederdi. Eksik anahtar, açıkça reddedilmesi gereken bir programlama hatası.
+///
+/// Anahtar İSTEK BAŞINA, satır başına değil: bir push bir batch gönderiyor
+/// ve tekrar edilen şey o batch'in tamamı.
+/// </remarks>
+public sealed record SyncPushCommand(
+    Guid DeviceId,
+    string? IdempotencyKey,
+    IReadOnlyList<SyncPushChange> Changes);
 
 /// <summary>Kuyruktaki tek bir satır.</summary>
 /// <param name="BaseVersion">
@@ -137,4 +152,29 @@ public static class PushRejectionReasons
     /// duruyor ki istemci tarafı paywall'ı beklemeden yazılabilsin.
     /// </remarks>
     public const string EntitlementRequired = "entitlement_required";
+}
+
+/// <summary>
+/// <c>Idempotency-Key</c> ile ilgili istek hataları — bunlar SATIRI değil
+/// İSTEĞİ reddediyor (400).
+/// </summary>
+/// <remarks>
+/// Satır bazlı redlerden ayrı duruyorlar çünkü sebep gövdede değil
+/// başlıkta: hiçbir değişiklik işlenmedi ve istemcinin yapması gereken şey
+/// kuyruğu değil İSTEĞİ düzeltmek.
+/// </remarks>
+public static class IdempotencyErrors
+{
+    public const string Required = "idempotency_key_required";
+
+    public const string Invalid = "idempotency_key_invalid";
+
+    /// <summary>Aynı anahtar FARKLI bir gövdeyle geldi.</summary>
+    /// <remarks>
+    /// Kabul etseydik istemci, ikinci batch'inin yanıtı yerine birincisinin
+    /// yanıtını alırdı: değişiklikleri hiç işlenmez ama "applied" gördüğü
+    /// için kuyruktan düşürürdü. Sessiz veri kaybının en kolay kaçırılan
+    /// biçimi.
+    /// </remarks>
+    public const string Reused = "idempotency_key_reused";
 }
