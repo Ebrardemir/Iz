@@ -89,8 +89,84 @@ public sealed class SyncPayload
             return false;
         }
 
+        if (!MetinlerOkunabilir(envelope))
+        {
+            rejection = PushRejectionReasons.PayloadEncodingInvalid;
+            return false;
+        }
+
         result = new SyncPayload(new SyncRow(entity), ReadLinks(envelope));
         return true;
+    }
+
+    /// <summary>
+    /// Gövdedeki her metnin GERÇEKTEN okunabildiğini, alan alan denemeden
+    /// önce doğrular.
+    /// </summary>
+    /// <remarks>
+    /// System.Text.Json geçersiz UTF-8 taşıyan bir metni AYRIŞTIRIRKEN
+    /// yakalamıyor; hata ancak o alan okunduğunda çıkıyor. Yani bozuk tek bir
+    /// bayt, eşlemenin ortasında istisna atıp BÜTÜN batch'i düşürürdü — üstelik
+    /// 500 olarak, yani istemci "sunucu bozuk" diye okuyup aynı isteği yeniden
+    /// denerdi. Kuyruk orada sonsuza kadar takılırdı.
+    ///
+    /// NEDEN SESSİZCE ATLAMIYORUZ? Bozuk baytı olan alanı <c>null</c> yazmak
+    /// kuyruğu açardı ama kullanıcının başlığını SESSİZCE silerdi. §4.4'ün
+    /// sözü açık: hiçbir metin sessizce kaybolmaz. Değişikliği reddetmek metni
+    /// cihazda bırakıyor ve istemciye bir sebep veriyor.
+    ///
+    /// Bu, "eksik alan varsayılana düşer" kuralının istisnası değil onun
+    /// tamamlayıcısı: eksik alan bir BİLGİDİR ("burası boş"), okunamayan bayt
+    /// ise bilginin kendisinin bozulduğunun işareti.
+    /// </remarks>
+    private static bool MetinlerOkunabilir(JsonElement element)
+    {
+        try
+        {
+            return Gez(element);
+        }
+        catch (InvalidOperationException)
+        {
+            // "Cannot transcode invalid UTF-8 JSON text to UTF-16 string" —
+            // alan adlarından da gelebiliyor, o yüzden gezinti tümüyle sarılı.
+            return false;
+        }
+
+        static bool Gez(JsonElement node)
+        {
+            switch (node.ValueKind)
+            {
+                case JsonValueKind.String:
+                    node.GetString();
+                    return true;
+
+                case JsonValueKind.Object:
+                    foreach (var property in node.EnumerateObject())
+                    {
+                        _ = property.Name;
+                        if (!Gez(property.Value))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+
+                case JsonValueKind.Array:
+                    foreach (var item in node.EnumerateArray())
+                    {
+                        if (!Gez(item))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+
+                default:
+                    return true;
+            }
+        }
     }
 
     /// <remarks>

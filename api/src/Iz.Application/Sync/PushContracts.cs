@@ -118,6 +118,17 @@ public static class PushRejectionReasons
     public const string PayloadEntityMissing = "payload_entity_missing";
 
     /// <summary>
+    /// Gövdedeki bir metin geçerli UTF-8 değil.
+    /// </summary>
+    /// <remarks>
+    /// Tekrar denemekle düzelmez — istemcinin gövdeyi yanlış kodlaması
+    /// demek. İstemcinin doğru tepkisi satırı kuyruktan düşürüp hatayı
+    /// Yedekleme Sağlığı ekranında göstermek (FR-614); sonsuza kadar denemek
+    /// değil.
+    /// </remarks>
+    public const string PayloadEncodingInvalid = "payload_encoding_invalid";
+
+    /// <summary>
     /// Sync İZ+ özelliği (ADR-B09) ve hesap free planda.
     /// </summary>
     /// <remarks>

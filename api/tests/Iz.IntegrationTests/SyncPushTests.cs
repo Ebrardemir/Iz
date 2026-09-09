@@ -560,6 +560,56 @@ public sealed class SyncPushTests(IzApiFactory factory)
     }
 
     [Fact]
+    public async Task Gecersiz_UTF8_tasiyan_govde_500_DEGIL_rejected_donuyor()
+    {
+        // GERCEK BIR OLAYDAN GELIYOR: elle test betigi Windows'ta govdeyi
+        // cp1254 ile gonderdi ("kardesim"deki s harfi tek bayt 0xFE oldu) ve
+        // sunucu BUTUN batch'i 500 ile dusurdu.
+        //
+        // System.Text.Json bozuk UTF-8'i AYRISTIRIRKEN yakalamiyor; hata
+        // ancak o alan okundugunda cikiyor — yani eslemenin ortasinda.
+        // Istemci 500'u "sunucu bozuk" diye okur ve ayni istegi yeniden
+        // dener; kuyruk orada sonsuza kadar takilirdi.
+        var (client, deviceId) = await HesapAsync();
+        var aniId = Guid.CreateVersion7();
+        var saglam = Guid.CreateVersion7();
+
+        // Once gecerli JSON kuruluyor, sonra tek bir bayt bozuluyor: 0xFE
+        // hicbir UTF-8 dizisinin parcasi olamaz. (cp1254'te 's' harfi.)
+        var govde = $$"""
+            { "deviceId": "{{deviceId}}", "changes": [
+              { "entityType": "memory", "entityId": "{{aniId}}", "op": "upsert", "baseVersion": 0,
+                "payload": { "v": 1, "entity": { "id": "{{aniId}}", "title": "kardeXim",
+                             "occurred_at": "2026-03-12T10:00:00.000Z",
+                             "occurred_year": 2026, "occurred_month": 3, "occurred_day": 12 } } }
+            ] }
+            """;
+
+        var bozuk = System.Text.Encoding.UTF8.GetBytes(govde);
+        bozuk[Array.IndexOf(bozuk, (byte)'X')] = 0xFE;
+
+        var response = await client.PostAsync(
+            "/v1/sync/push",
+            new ByteArrayContent(bozuk)
+            {
+                Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json") },
+            });
+
+        var metin = await response.Content.ReadAsStringAsync();
+
+        Assert.True(
+            response.StatusCode == HttpStatusCode.OK,
+            $"Beklenen 200 + rejected, gelen {(int)response.StatusCode}: {metin[..Math.Min(300, metin.Length)]}");
+        Assert.Contains("payload_encoding_invalid", metin, StringComparison.Ordinal);
+
+        // Ve KUYRUK ACIK KALIYOR: ayni batch'teki saglam satir yaziliyor.
+        var devam = await PushAsync(
+            client, deviceId, Degisiklik("memory", saglam, "upsert", 0, AniGovdesi(saglam)));
+
+        Assert.Equal("applied", Assert.Single(devam.Results).Status);
+    }
+
+    [Fact]
     public async Task Batch_ust_siniri_asilirsa_400_donuyor()
     {
         var (client, deviceId) = await HesapAsync();
