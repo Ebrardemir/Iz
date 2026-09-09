@@ -19,11 +19,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iz/app/app.dart';
 import 'package:iz/app/database/app_database.dart';
+import 'package:iz/core/config/app_config.dart';
+import 'package:iz/core/config/feature_flags.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/network/auth_token_provider.dart';
 import 'package:iz/core/storage/app_preferences.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_token_provider.dart';
+import 'package:iz/features/sync/presentation/providers/sync_providers.dart';
 import 'package:logging/logging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -52,8 +55,25 @@ Future<void> bootstrap() async {
       // (ARCHITECTURE.md §2); somut örneği bilen tek yer burası —
       // her şeyi bilmeye yetkili composition root.
       authTokenProviderProvider.overrideWithValue(FirebaseAuthTokenProvider()),
+
+      // YEREL GELİŞTİRMEDE senkronizasyon AÇIK.
+      //
+      // Staging ve üretimde kapalı kalıyor: bayrağı kullanıcıya açmak
+      // ADR-B09 gereği Faz 4'ün (abonelik) tamamlanmasına bağlı. Burada
+      // açmamızın sebebi, motoru gerçek cihazda/emülatörde deneyebilmek —
+      // yalnız testlerle doğrulanan bir senkronizasyon, ilk gerçek
+      // kullanıcıda sürpriz üretirdi.
+      if (AppConfig.current.isDev)
+        featureFlagsProvider.overrideWithValue(const FeatureFlags.dev()),
     ],
   );
+
+  // ZAMANLAYICIYI UYANDIR.
+  //
+  // Riverpod tembel: bu satır olmazsa `syncSchedulerProvider` hiç
+  // oluşturulmaz ve uygulama SESSİZCE hiç eşitlenmez — ne hata verir ne de
+  // bir iz bırakır. Bayrak kapalıysa provider zaten `null` döndürüyor.
+  container.read(syncSchedulerProvider);
 
   // Bakım işleri — kullanıcıyı bekletmeden arka planda.
   unawaited(_runMaintenance(container, log));

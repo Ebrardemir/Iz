@@ -37,6 +37,17 @@ final class FeatureFlags {
   /// MVP (İZ 1.0) — rapor 16.1. Sadece çekirdek açık.
   const FeatureFlags.mvp() : this();
 
+  /// Yerel geliştirme — MVP + YALNIZ senkronizasyon.
+  ///
+  /// NEDEN [FeatureFlags.v15] DEĞİL? O, video/ses/harita/yıl özeti dâhil beş
+  /// bayrağı birden açıyor ve hiçbiri yazılmadı. Yarım kalmış bir ekranı
+  /// açmak, geliştiricinin "bu neden bozuk?" diye vakit kaybetmesi demek.
+  ///
+  /// ⚠️ YALNIZ `AppEnvironment.dev`te kullanılıyor (bkz. `bootstrap.dart`).
+  /// Staging ve üretimde bayrak KAPALI kalıyor: senkronizasyonun kullanıcıya
+  /// açılması ADR-B09 gereği Faz 4'ün (abonelik) tamamlanmasına bağlı.
+  const FeatureFlags.dev() : this(cloudSync: true);
+
   /// V1.5 — bulut ve zengin medya (rapor 16.2).
   const FeatureFlags.v15()
     : this(
