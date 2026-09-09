@@ -40,6 +40,23 @@ enum SecureKey {
   /// tekilleştiren bir değer ve `shared_preferences` düz metin dosyadır.
   izUserId('iz_user_id'),
 
+  /// Sunucunun bu kuruluma verdiği cihaz kimliği (`POST /v1/devices`).
+  ///
+  /// KİMLİĞİ SUNUCU ÜRETİYOR, biz değil (BACKEND_YOL_HARITASI, Faz 1).
+  /// İstemci üretseydi başka bir cihazın kimliğini iddia edip
+  /// senkronizasyondaki echo kuralını kurbanın değişikliklerini gizlemek
+  /// için kullanabilirdi.
+  ///
+  /// NEDEN SAKLANIYOR? Her push bunu gönderiyor ve sunucu kayıtlı olmayan
+  /// bir kimliği reddediyor. Kaybedersek yeni bir cihaz kaydı açılır; eski
+  /// kayıt öksüz kalır ve o cihazdan gelmiş değişiklikler artık "başka
+  /// cihazdan" sayılır — yani kullanıcı kendi yazdığı şeyi bir kez daha
+  /// indirir.
+  ///
+  /// Neden güvenli depoda: [izUserId] ile aynı gerekçe — sır değil ama
+  /// kurulumu tekilleştiren bir değer.
+  izDeviceId('iz_device_id'),
+
   /// NFR-016 — istemci tarafı şifreleme anahtarı (V1.5 teknik keşif).
   contentEncryptionKey('content_encryption_key');
 

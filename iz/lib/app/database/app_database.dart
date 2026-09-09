@@ -47,6 +47,7 @@ import 'package:iz/features/people/domain/entities/person.dart';
 import 'package:iz/features/rituals/data/daos/ritual_dao.dart';
 import 'package:iz/features/rituals/data/tables/ritual_tables.dart';
 import 'package:iz/features/rituals/domain/entities/ritual.dart';
+import 'package:iz/features/sync/data/daos/sync_dao.dart';
 import 'package:iz/features/sync/data/tables/sync_tables.dart';
 import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 
@@ -87,6 +88,8 @@ part 'app_database.g.dart';
     RitualDao,
     CategoryDao,
     JournalDao,
+    // Senkronizasyon: uzak satiri yerele yazan tek yer.
+    SyncDao,
   ],
   // FTS5 sanal tablosu ve trigger'ları SQL ile tanımlanır (Dart API'si
   // sanal tabloyu ifade edemez).
