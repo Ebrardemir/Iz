@@ -82,11 +82,19 @@ echo "Token alındı (${#TOKEN} karakter)."
 # sistemin ANSI kod sayfasına çeviriyor: UTF-8 "ş" (c5 9f) tek bayt 0xFE olur
 # ve gövde geçersiz UTF-8 hâline gelir. Sunucu bunu artık `rejected` ile
 # karşılıyor ama gönderdiğimiz şeyin bozuk olmaması gerekiyor.
-cagir() {  # cagir <METOT> <yol> [gövde]
-  local metot=$1 yol=$2 govde=${3:-}
+cagir() {  # cagir <METOT> <yol> [gövde] [idempotency-key]
+  local metot=$1 yol=$2 govde=${3:-} anahtar=${4:-}
+
+  # ANAHTAR HER ÇAĞRIDA YENİ (aksi söylenmedikçe). Gerçek istemcinin retry
+  # katmanı da böyle: yeni istek yeni anahtar, YENİDEN DENEME aynı anahtar.
+  # Sabit bir anahtar kullansaydık ikinci push hiç işlenmez, ilk yanıt
+  # dönerdi — betik "her şey çalışıyor" der, hiçbir şey yazılmazdı.
+  [ -z "$anahtar" ] && anahtar=$(uuid)
+
   if [ -n "$govde" ]; then
     curl -s -X "$metot" "$API$yol" \
       -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+      -H "Idempotency-Key: $anahtar" \
       --data-binary @- <<< "$govde"
   else
     curl -s -X "$metot" "$API$yol" -H "Authorization: Bearer $TOKEN"
@@ -189,6 +197,44 @@ SON=$(cagir GET "/v1/sync/pull?cursor=0" | tr ',' '\n' \
 
 bolum "14) Kuyruğun sonundan pull (cursor=$SON)  ->  boş sayfa, cursor yerinde"
 cagir GET "/v1/sync/pull?cursor=$SON" | guzel
+
+# ---------------------------------------------------------------------------
+# IDEMPOTENCY — §4.1
+#
+# Senaryo: istemci push'u gönderdi, sunucu yazdı ama YANIT ULAŞMADI. İstemci
+# aynı isteği aynı anahtarla yeniden gönderiyor.
+#
+# Anahtar olmasaydı: sunucudaki sürüm artık ilerlemiş, istemcinin gönderdiği
+# `baseVersion` eski -> `conflict`. Kullanıcı KENDİ değişikliğini "başka bir
+# sürüm" diye çözmek zorunda kalırdı.
+# ---------------------------------------------------------------------------
+
+YENI=$(uuid)
+ANAHTAR=$(uuid)
+
+# Bağsız, sade bir gövde — `govde` genel $ANI/$KISI değişkenlerine bağlı.
+tekrarIstegi() {
+  cat <<JSON
+{ "deviceId": "$CIHAZ", "changes": [
+  { "entityType": "memory", "entityId": "$YENI", "op": "upsert", "baseVersion": 0,
+    "payload": { "v": 1, "entity": {
+      "id": "$YENI", "title": "Tekrar denenecek",
+      "occurred_at": "2026-03-12T10:00:00.000Z",
+      "occurred_year": 2026, "occurred_month": 3, "occurred_day": 12,
+      "created_at": "2026-03-12T10:00:00.000Z", "version": 1 } } } ] }
+JSON
+}
+
+bolum "15) Yeni kayıt, sabit bir anahtarla"
+cagir POST /v1/sync/push "$(tekrarIstegi)" "$ANAHTAR" | guzel
+
+bolum "16) AYNI anahtarla yeniden deneme  ->  applied (conflict DEĞİL), seq AYNI"
+cagir POST /v1/sync/push "$(tekrarIstegi)" "$ANAHTAR" | guzel
+
+bolum "17) Anahtarsız push  ->  400 idempotency_key_required"
+curl -s -X POST "$API/v1/sync/push" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  --data-binary @- <<< "{\"deviceId\":\"$CIHAZ\",\"changes\":[]}" | guzel
 
 psql() { docker compose --project-directory "$KOK" exec -T postgres psql -U iz -d iz -c "$1"; }
 

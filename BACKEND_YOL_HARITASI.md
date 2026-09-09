@@ -282,12 +282,27 @@ Yanıt:
   gövdeyi kimin gönderdiğini öğrenmek için önce onu okumak gerekirdi. *`[RequestSizeLimit]`
   özniteliği denendi ve **sessizce hiçbir şey yapmadı**: 1,2 MB'lık bir gövde 200 OK aldı.
   Çalışmayan bir sınır, hiç olmayan sınırdan kötüdür.*
-- ⏳ `Idempotency-Key` Redis'te 24 saat tutulacak — **henüz yazılmadı** (Faz 3 / adım 4).
-  Eksikliğin bedeli *duplicate değil*: kimlikleri istemci üretiyor ve aynı gövde ikinci kez
-  geldiğinde hiçbir alan değişmiyor. Bedeli **yanlış çakışma**: yanıtı alamadan yeniden
-  denenen bir push, ilk denemede artmış sürüm yüzünden `conflict` alır ve kullanıcıya kendi
-  değişikliği iki sürüm hâlinde gösterilir. Bu yüzden anahtar, istemci motoru yayına
-  çıkmadan **önce** kapanmak zorunda (NFR, rapor satır 820).
+- **`Idempotency-Key` ZORUNLU** — başlıkta, **istek başına** (satır başına değil). Redis'te
+  24 saat tutuluyor; aynı anahtarla gelen ikinci istek **işlenmiyor**, ilk yanıt aynen
+  dönüyor. Eksikliğinin bedeli *duplicate değil*: kimlikleri istemci üretiyor ve aynı gövde
+  ikinci kez geldiğinde hiçbir alan değişmiyor. Bedeli **yanlış çakışma**: yanıtı alamadan
+  yeniden denenen bir push, ilk denemede artmış sürüm yüzünden `conflict` alır ve kullanıcıya
+  kendi değişikliği iki sürüm hâlinde gösterilir (NFR, rapor satır 820).
+  - Anahtar **isteğe bağlı değil**: göndermeyi unutan bir istemci sürümünde güvence sessizce
+    yok olurdu. Eksikse `400 idempotency_key_required`, 128 karakteri aşarsa
+    `idempotency_key_invalid`.
+  - Aynı anahtar **farklı bir gövdeyle** gelirse `400 idempotency_key_reused`. Kabul etseydik
+    istemci ikinci batch'inin yerine birincinin yanıtını alır, değişiklikleri hiç işlenmeden
+    "applied" görüp kuyruktan düşürürdü.
+  - **Redis erişilemezse istek DÜŞMÜYOR**; güvence o istek için devre dışı kalıyor ve uyarı
+    loglanıyor. Reddetseydik Redis'in her hıçkırığında bütün kullanıcıların kuyruğu dururdu,
+    oysa idempotency'nin yokluğunda olan en kötü şey bir yanlış çakışma. Üretimde
+    `IZ_Iz__RedisConnection` **tanımlı olmak zorunda** — uygulama onsuz açılmıyor.
+- **Aynı hesabın push'ları SIRAYA GİRİYOR** (kullanıcı başına PostgreSQL advisory kilidi).
+  Sürüm kontrolü tek başına yetmiyordu: "oku → karşılaştır → yaz" atomik değil ve iki cihaz
+  aynı anda aynı sürümü okuyup ikisi de yazabiliyordu — ikincisi birincisini **sessizce
+  eziyor**, ikisi de `applied` alıyordu. Kilit aynı zamanda isteğin transaction'ı: commit
+  edilmezse yazılan her şey geri sarılıyor.
 
 ### 4.2 Pull
 
@@ -590,8 +605,9 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 - ✅ **adım 4** *(9 Eylül 2026)* — `/v1/sync/pull`: cursor'lı sayfalama, sayfa içi
       birleştirme, echo işaretlemesi, bootstrap (§4.3 — ayrı bir snapshot ucu yok).
       **13 yeni entegrasyon testi, toplam 87.**
-- ⏳ **adım 5** — `Idempotency-Key` (Redis, 24 saat). Gerekçesi ve aciliyeti §4.1'de.
-      Faz 3'ün sunucu tarafında kalan **tek** açık iş.
+- ✅ **adım 5** *(9 Eylül 2026)* — push'u **yarış ve tekrar altında güvenli** yapmak:
+      kullanıcı başına advisory kilit + `Idempotency-Key` (Redis, 24 saat).
+      **11 yeni entegrasyon testi, toplam 98.**
 - ⏳ `/v1/sync/state` — `lastSyncAt` + `serverCursor`. Yedekleme Sağlığı ekranını (FR-614)
       besliyor; `ISyncStore.CurrentCursorAsync` zaten hazır.
 - ⏳ Entitlement kontrolü push'ta (free plan limitleri sunucuda da doğrulanır — istemciye

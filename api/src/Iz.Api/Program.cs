@@ -44,6 +44,13 @@ builder.Services.AddProblemDetails(options =>
                 StatusCodes.Status403Forbidden => "forbidden",
                 StatusCodes.Status404NotFound => "not_found",
                 StatusCodes.Status409Conflict => "conflict",
+
+                // Gövde sınırı aşıldığında bu koda DÜŞMEK zorundayız: minimal
+                // API, gövde okunurken çıkan hatayı kendi ele alıp durumu
+                // burada üretiyor ve `AppExceptionHandler`'a hiç uğramıyor.
+                // Kod olmadan istemci 413'ü öteki hatalardan ayıramaz ve
+                // batch'i küçültmesi gerektiğini anlayamaz.
+                StatusCodes.Status413PayloadTooLarge => "payload_too_large",
                 StatusCodes.Status429TooManyRequests => "rate_limited",
                 _ => "unexpected",
             });
@@ -57,7 +64,9 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddExceptionHandler<AppExceptionHandler>();
 
 // --- Veri erişimi ve use-case'ler ----------------------------------------
-builder.Services.AddIzInfrastructure(RequireDatabaseConnection(izOptions));
+builder.Services.AddIzInfrastructure(
+    RequireDatabaseConnection(izOptions),
+    RequireRedisInProduction(izOptions));
 
 // --- Kimlik ---------------------------------------------------------------
 // ADR-B15: doğrulama Google'da, karar bizde.
@@ -124,6 +133,22 @@ app.Run();
 /// saatler sonra, ilk gerçek kullanıcının isteğinde ortaya çıkarır. Sağlık
 /// yoklaması o sırada yeşil yanıyor olur; çünkü sağlık ucu veritabanına
 /// dokunmuyor. Yanlış yapılandırmanın en ucuz bulunduğu an açılış anıdır.
+/// </remarks>
+static string? RequireRedisInProduction(IzOptions options)
+    => options.IsProduction && string.IsNullOrWhiteSpace(options.RedisConnection)
+        ? throw new InvalidOperationException(
+            "Redis bağlantı dizesi tanımlı değil. Idempotency-Key güvencesi bu olmadan " +
+            "çalışmaz ve üretimde sessizce kapalı kalması kabul edilemez: yeniden denenen " +
+            "her push kullanıcıya kendi değişikliğini çakışma olarak gösterir. " +
+            "IZ_Iz__RedisConnection ortam değişkenini ayarlayın.")
+        : options.RedisConnection;
+
+/// <summary>
+/// Veritabanı bağlantı dizesi olmadan AÇILMAYIZ.
+/// </summary>
+/// <remarks>
+/// Alternatifi — eksikse boş geçip ilk sorguda patlamak — arızayı dağıtımdan
+/// saatler sonra, ilk gerçek kullanıcının isteğinde ortaya çıkarır.
 /// </remarks>
 static string RequireDatabaseConnection(IzOptions options)
     => string.IsNullOrWhiteSpace(options.DatabaseConnection)

@@ -55,6 +55,14 @@ public static class SyncEndpoints
                     limit.MaxRequestBodySize = MaxRequestBytes;
                 }
 
+                // UZUNLUK BİLDİRİLMEMİŞSE AKIŞ SAYILARAK OKUNUYOR.
+                // `Content-Length` kontrolü tek başına yetmiyor: chunked
+                // gönderen bir istemcide o başlık HİÇ GELMİYOR ve sınır
+                // sessizce devre dışı kalıyor. Testte bunu birebir yaşadık —
+                // istemci gövdeyi tamponlamayı bırakınca 1,2 MB'lık istek
+                // sorunsuz geçti.
+                context.Request.Body = new SinirliAkis(context.Request.Body, MaxRequestBytes);
+
                 if (context.Request.ContentLength > MaxRequestBytes)
                 {
                     await Results.Problem(
@@ -76,10 +84,78 @@ public static class SyncEndpoints
                 await next(context);
             }));
 
+    /// <summary>
+    /// Belirli bir bayttan fazlasını OKUTMAYAN akış.
+    /// </summary>
+    /// <remarks>
+    /// Sınırı gövde okunurken uyguluyor, dolayısıyla <c>Content-Length</c>
+    /// bildirilmemiş (chunked) isteklerde de geçerli. Sınır aşıldığı anda
+    /// okuma duruyor: 100 MB'lık bir gövdenin tamamı belleğe ALINMIYOR.
+    ///
+    /// <see cref="BadHttpRequestException"/> fırlatılıyor çünkü
+    /// <c>AppExceptionHandler</c> onun kendi durum kodunu (413) kullanıyor.
+    /// Düz bir istisna 500 üretirdi ve istemci 500'ü "sunucu bozuk" diye
+    /// okuyup batch'i küçültmek yerine aynı isteği yeniden denerdi.
+    /// </remarks>
+    private sealed class SinirliAkis(Stream inner, long limit) : Stream
+    {
+        private long _okunan;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => _okunan;
+            set => throw new NotSupportedException();
+        }
+
+        public override async ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default) =>
+            Say(await inner.ReadAsync(buffer, cancellationToken));
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            Say(inner.Read(buffer, offset, count));
+
+        public override void Flush() => inner.Flush();
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException();
+
+        private int Say(int okunan)
+        {
+            _okunan += okunan;
+
+            return _okunan > limit
+                ? throw new BadHttpRequestException(
+                    "İstek gövdesi çok büyük.", StatusCodes.Status413PayloadTooLarge)
+                : okunan;
+        }
+    }
+
     public static IEndpointRouteBuilder MapSyncEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/v1/sync/push", async (
                 SyncPushRequest request,
+                HttpContext http,
                 CurrentUserContext currentUser,
                 PushChangesHandler handler,
                 CancellationToken cancellationToken) =>
@@ -88,6 +164,13 @@ public static class SyncEndpoints
                     currentUser.Require().Id,
                     new SyncPushCommand(
                         request.DeviceId,
+
+                        // BAŞLIKTAN, gövdeden DEĞİL. Idempotency HTTP'nin
+                        // kendi kavramı ve istemcinin retry katmanı gövdeye
+                        // değil başlığa dokunur; gövdeye koysaydık her yeniden
+                        // denemede anahtarın korunması gövdeyi yeniden kurmayı
+                        // gerektirirdi.
+                        http.Request.Headers["Idempotency-Key"].ToString(),
                         [.. (request.Changes ?? []).Select(c => new SyncPushChange(
                             c.EntityType,
                             c.EntityId,

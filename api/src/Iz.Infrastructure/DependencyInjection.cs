@@ -4,9 +4,11 @@ using Iz.Application.Sync;
 using Iz.Application.Users;
 using Iz.Infrastructure.Persistence;
 using Iz.Infrastructure.Persistence.Interceptors;
+using Iz.Infrastructure.Sync;
 using Iz.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Iz.Infrastructure;
 
@@ -19,9 +21,15 @@ public static class DependencyInjection
     /// PostgreSQL bağlantı dizesi. Depoda değil, ortam değişkeninde durur
     /// (<c>IZ_Iz__DatabaseConnection</c>).
     /// </param>
+    /// <param name="redisConnection">
+    /// Redis bağlantı dizesi. Boşsa idempotency güvencesi KAPALI olur
+    /// (<see cref="NullIdempotencyStore"/>); üretimde bu duruma izin
+    /// verilmiyor, kontrol <c>Program.cs</c>'te.
+    /// </param>
     public static IServiceCollection AddIzInfrastructure(
         this IServiceCollection services,
-        string connectionString)
+        string connectionString,
+        string? redisConnection = null)
     {
         // Interceptor'ın kendisi istek başına ömürlü: içindeki `ISyncOrigin`
         // o isteğe ait. Singleton olsaydı bir kullanıcının cihaz kimliği
@@ -44,6 +52,27 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
         services.AddScoped<ISyncStore, SyncStore>();
+        services.AddScoped<ISyncLock, PostgresSyncLock>();
+        if (string.IsNullOrWhiteSpace(redisConnection))
+        {
+            services.AddScoped<IIdempotencyStore, NullIdempotencyStore>();
+        }
+        else
+        {
+            // ⚠️ `AbortOnConnectFail = false` ŞART. Varsayılan `true` ile
+            // Redis açılış anında erişilemezse `Connect` istisna atar ve
+            // UYGULAMA HİÇ AÇILMAZ — yani senkronizasyonun tamamı, yalnız
+            // yanlış çakışmayı önleyen bir yardımcı yüzünden durur.
+            // `false` ile bağlantı arka planda kurulmaya çalışılır ve
+            // kurulana kadar depo hatalarını yutar.
+            var config = ConfigurationOptions.Parse(redisConnection);
+            config.AbortOnConnectFail = false;
+
+            services.AddSingleton<IConnectionMultiplexer>(
+                _ => ConnectionMultiplexer.Connect(config));
+
+            services.AddScoped<IIdempotencyStore, RedisIdempotencyStore>();
+        }
 
         services.AddSingleton<IClock, SystemClock>();
 
