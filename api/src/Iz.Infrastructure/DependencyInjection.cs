@@ -1,5 +1,6 @@
 using Iz.Application.Abstractions;
 using Iz.Application.Devices;
+using Iz.Application.Sync;
 using Iz.Application.Users;
 using Iz.Infrastructure.Persistence;
 using Iz.Infrastructure.Persistence.Interceptors;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
+        services.AddScoped<ISyncStore, SyncStore>();
 
         services.AddSingleton<IClock, SystemClock>();
 
@@ -55,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<EnsureUserHandler>();
         services.AddScoped<UpdateProfileHandler>();
         services.AddScoped<RegisterDeviceHandler>();
+        services.AddScoped<PushChangesHandler>();
 
         return services;
     }

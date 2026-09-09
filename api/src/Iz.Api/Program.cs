@@ -84,6 +84,10 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+// Gövde sınırı KİMLİKTEN ÖNCE: büyük bir gövdeyi kimin gönderdiğini öğrenmek
+// için önce onu okumak gerekirdi (bkz. SyncEndpoints.UseSyncRequestLimits).
+app.UseSyncRequestLimits();
+
 app.MapOpenApi();
 
 app.UseAuthentication();
@@ -108,6 +112,7 @@ app.MapGet("/health", (IConfiguration config) => Results.Ok(new
 
 app.MapMeEndpoints();
 app.MapDeviceEndpoints();
+app.MapSyncEndpoints();
 
 app.Run();
 
