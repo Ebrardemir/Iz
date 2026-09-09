@@ -59,18 +59,29 @@ final class IzApiClient {
     parse,
   );
 
+  /// [headers] yalnız bu isteğe eklenir.
+  ///
+  /// Tek kullanıcısı `Idempotency-Key`: değeri istek başına değişiyor,
+  /// dolayısıyla Dio'nun genel başlıklarına konamaz. Aynı sebeple
+  /// interceptor'a da konmuyor — anahtarı ÜRETEN taraf (senkronizasyon
+  /// motoru) onu yeniden denemede aynı tutmak zorunda ve bu karar ağ
+  /// katmanının bilebileceği bir şey değil.
   Future<Result<T>> post<T>(
     String path, {
     Object? body,
     required T Function(Object? json) parse,
     bool retryable = false,
+    Map<String, String>? headers,
     CancelToken? cancelToken,
   }) => _send(
     () => _dio.post<Object?>(
       path,
       data: body,
       cancelToken: cancelToken,
-      options: Options(extra: {kRetryableExtraKey: retryable}),
+      options: Options(
+        extra: {kRetryableExtraKey: retryable},
+        headers: headers,
+      ),
     ),
     parse,
   );
