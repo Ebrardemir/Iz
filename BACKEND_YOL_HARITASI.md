@@ -212,19 +212,33 @@ Aksi hâlde bir değişiklik kalıcı olur ama günlüğe düşmez → o kayıt 
 
 ### 4.1 Push
 
+> ✅ **Yazıldı (9 Eylül 2026)** — `PushChangesHandler`, `SyncStore`, `SyncEndpoints`.
+> Aşağıdaki gövde biçimi *tasarlanan* değil **gerçekleşen** biçimdir; ilk taslakta
+> camelCase ve düz bir `payload` yazıyordu, oysa istemcinin ürettiği gövde
+> (`outbox_payload.dart` → `encodeOutboxPayload`) zarflı ve **snake_case**.
+> Sözleşmenin kaynağı istemcidir: kullanıcının cihazında bekleyen kuyruk o biçimde
+> yazılmış durumda ve uygulama güncellemesinden sağ çıkıyor.
+
 ```http
 POST /v1/sync/push
 Authorization: Bearer <access_token>
-Idempotency-Key: <uuid, istemci üretir, retry'da AYNI kalır>
+Idempotency-Key: <uuid, istemci üretir, retry'da AYNI kalır>   ← ⏳ HENÜZ OKUNMUYOR
 
 {
-  "deviceId": "0192f...",
+  "deviceId": "0192f...",             // POST /v1/devices'tan alınmış kimlik; kayıtlı olmalı
   "changes": [
     { "entityType": "memory",
-      "entityId": "0192f8a1-...",
-      "op": "upsert",              // upsert | delete
-      "baseVersion": 3,            // istemcinin bildiği son sunucu sürümü; yeni kayıtta 0
-      "payload": { "title": "...", "occurredAt": "2026-03-02T10:00:00Z", ... } }
+      "entityId": "0192f8a1-...",     // bağlarda "uuid:uuid"
+      "op": "upsert",                 // upsert | delete  (create/update de kabul edilir)
+      "baseVersion": 3,               // istemcinin bildiği son sürüm; yeni kayıtta 0
+      "payload": {
+        "v": 1,
+        "entity": { "id": "0192f8a1-...", "title": "...",
+                    "occurred_at": "2026-03-02T10:00:00.000Z",
+                    "occurred_year": 2026, "occurred_month": 3, "occurred_day": 2 },
+        "links":  { "memory_people": [ { "memory_id": "...", "person_id": "...",
+                                         "role": null, "deleted_at": null } ] }
+      } }
   ]
 }
 ```
@@ -236,7 +250,7 @@ Yanıt:
   "results": [
     { "entityId": "0192f8a1-...", "status": "applied",  "version": 4, "seq": 1187 },
     { "entityId": "0192f8b2-...", "status": "conflict", "server": { "version": 7, "payload": {...} } },
-    { "entityId": "0192f8c3-...", "status": "rejected", "reason": "entitlement_limit" }
+    { "entityId": "0192f8c3-...", "status": "rejected", "reason": "unknown_entity_type" }
   ],
   "cursor": 1187
 }
@@ -247,10 +261,33 @@ Yanıt:
 - `baseVersion` sunucudaki `version` ile eşleşmiyorsa → `conflict`. Sunucu **kendiliğinden ezmez**.
 - Tüm batch tek transaction'da işlenir; kısmi başarı yok (ya hepsi ya hiçbiri). Çakışan öğeler
   "işlenmedi" sayılır, geri kalanı uygulanır — bu tek istisna, çünkü aksi hâlde bir çakışma
-  tüm kuyruğu kilitler.
-- `Idempotency-Key` Redis'te 24 saat tutulur. Aynı anahtarla gelen ikinci istek **işlenmez**,
-  ilk yanıt aynen döner (NFR: "aynı event tekrar işlendiğinde duplicate anı üretmemelidir", rapor satır 820).
-- Batch üst sınırı 200 değişiklik / 1 MB.
+  tüm kuyruğu kilitler. **Çakışan bir değişikliğin bağları da yazılmaz.**
+- **Sahiplik gövdeden okunmaz.** İstemci bugün `owner_id: "local"` gönderiyor (anonim → hesap
+  yükseltmesi henüz yazılmadı); sunucu sahibi token'dan alıyor.
+- **`updatedAt` sunucunun saatidir.** Cihaz saatine güvenseydik, saati ileri kaymış tek bir
+  cihaz alan bazlı "son yazma kazanır" karşılaştırmasını (§4.4) kalıcı olarak kazanırdı.
+- **Değişmeyen kayıt yazılmaz.** İstemci bir anıyı her kaydettiğinde TÜM bağlarını yeniden
+  gönderiyor; hepsine günlük satırı düşseydi kullanıcı tek bir başlığı düzeltir, ikinci cihaz
+  on beş satır çekerdi. Sürüm ve `updatedAt` yalnız gerçekten değişen satırda ilerliyor;
+  yanıtta `seq` o yüzden `null` olabiliyor.
+- **Reddetme sebepleri** (`status: "rejected"`): `unknown_entity_type`, `entity_id_invalid`,
+  `operation_invalid`, `payload_invalid`, `payload_version_unsupported`,
+  `payload_entity_missing`, `entitlement_required` *(sonuncusu Faz 4'te üretilmeye başlanacak)*.
+  Bir satırın reddi **isteği** değil yalnız o satırı düşürür.
+- **`cursor` bir ipucudur, pull cursor'ı DEĞİL.** İstemci bunu doğrudan `SyncState.cursor`'a
+  yazarsa, push ile aynı anda başka bir cihazın yazdığı satırları atlar ve o değişiklikler o
+  cihaza hiç gelmez. Pull cursor'ını yalnız pull ilerletir.
+- Batch üst sınırı **200 değişiklik / 1 MB**. Sayı sınırı işleyicide (`400 batch_too_large`),
+  boyut sınırı kimlik doğrulamadan önceki bir katmanda (`413 payload_too_large`) — büyük bir
+  gövdeyi kimin gönderdiğini öğrenmek için önce onu okumak gerekirdi. *`[RequestSizeLimit]`
+  özniteliği denendi ve **sessizce hiçbir şey yapmadı**: 1,2 MB'lık bir gövde 200 OK aldı.
+  Çalışmayan bir sınır, hiç olmayan sınırdan kötüdür.*
+- ⏳ `Idempotency-Key` Redis'te 24 saat tutulacak — **henüz yazılmadı** (Faz 3 / adım 4).
+  Eksikliğin bedeli *duplicate değil*: kimlikleri istemci üretiyor ve aynı gövde ikinci kez
+  geldiğinde hiçbir alan değişmiyor. Bedeli **yanlış çakışma**: yanıtı alamadan yeniden
+  denenen bir push, ilk denemede artmış sürüm yüzünden `conflict` alır ve kullanıcıya kendi
+  değişikliği iki sürüm hâlinde gösterilir. Bu yüzden anahtar, istemci motoru yayına
+  çıkmadan **önce** kapanmak zorunda (NFR, rapor satır 820).
 
 ### 4.2 Pull
 
@@ -312,7 +349,7 @@ Sync'in neyi **taşımadığı**, neyi taşıdığı kadar bağlayıcı. Dördü
 |---|---|
 | **`privacyMode == deviceOnly` günlük kayıtları** | FR-035'te kullanıcıya verilmiş açık söz. Bu kayıt outbox'a bile girmez. |
 | **FTS5 arama indeksi** | Yerelde yeniden üretilebilir türev veri; taşımak hem gereksiz hem yavaş. Ayrıca arama sorgusunun kendisi hassastır — sunucuya hiç uğramaz (NFR-003 zaten offline arama istiyor). |
-| **`localPreviewPath`, `galleryAssetId`** | Cihaza özgü yollar. Başka cihazda anlamsız, hatta yanıltıcı. Sync'te atlanır. |
+| **`localPreviewPath`, `galleryAssetId`, `lastVerifiedAt`** | Cihaza özgü. İlk ikisi yol, üçüncüsü "bu cihaz orijinali en son ne zaman gördü" (FR-044) — her cihaz kendi galerisine bakıyor, başkasının cevabı yanıltıcı olurdu. Üçünün de sunucuda sütunu yok. |
 | **Medya binary'si** | ADR-B07 — bu haritanın kapsamı dışı. `cloudObjectKey` şemada durur, hep `null`. |
 
 **Süzgeç nerede uygulanır:** `deviceOnly` filtresi **repository'nin outbox'a yazdığı noktada**,
@@ -517,11 +554,18 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 ### Faz 3 — Metadata senkronizasyonu (4–6 hafta) — **haritanın kalbi**
 
 **Sunucu**
-- Tüm entity'ler + `change_log` (aynı transaction kuralı)
-- `/v1/sync/push` — versiyon kontrolü, çakışma tespiti, idempotency
-- `/v1/sync/pull` — cursor'lı sayfalama
-- `/v1/sync/state`
-- Entitlement kontrolü push'ta (free plan limitleri sunucuda da doğrulanır — istemciye güvenilmez)
+- ✅ **adım 1** — `change_log` + `ISyncable` + `ChangeLogInterceptor` (aynı transaction kuralı)
+- ✅ **adım 2** — on dört varlığın hepsi: tablo, sahiplik süzgeci, migration
+- ✅ **adım 3** *(9 Eylül 2026)* — `/v1/sync/push`: sürüm kontrolü, çakışma tespiti,
+      bağların satır bazlı birleşmesi (silme kazanır), tek transaction, batch sınırları,
+      cihaz doğrulaması. **31 yeni entegrasyon testi, toplam 71.**
+- ⏳ **adım 4** — `Idempotency-Key` (Redis, 24 saat). Gerekçesi ve aciliyeti §4.1'de.
+- ⏳ `/v1/sync/pull` — cursor'lı sayfalama (`ISyncStore.ChangesAfterAsync` hazır: push
+      yazdığı satırların `seq`'ini onunla okuyor, yani sorgu her push'ta çalışıyor)
+- ⏳ `/v1/sync/state`
+- ⏳ Entitlement kontrolü push'ta (free plan limitleri sunucuda da doğrulanır — istemciye
+      güvenilmez). Kapının takılacağı nokta `PushChangesHandler` içinde işaretli;
+      `entitlement_required` sabiti bugünden duruyor ki istemci paywall'ı beklemesin.
 
 **İstemci**
 - `SyncEngine`: outbox drain → push → sonuç işleme → pull → yerel uygulama
@@ -699,3 +743,18 @@ geri indirmenin anlamı yok.
 3. **Hesap MVP'de zorunlu mu?** Şu an opsiyonel. Sync açılınca zorunlu mu olacak, yoksa "yalnız cihazda" modu kalıcı mı? → Onboarding ve `ownerId` stratejisini etkiler.
 4. **E2EE ne zaman?** Şimdi değil dedik; ama kullanıcıya ne söz vereceğimiz gizlilik metnini bugünden bağlar.
 5. **Çakışma UI'ını kim tasarlayacak?** Faz 3'ün kullanıcıya değen tek parçası ve en kolay kötü yapılan yeri.
+6. **Birincil anahtar `id` mi, `(owner_id, id)` mi?** *(9 Eylül 2026'da push yazılırken çıktı.)*
+   Bugün on dört tablonun anahtarı tek başına `id`. Yani **aynı kimlik iki kullanıcıda olamaz.**
+   Sahiplik süzgeci ikinci kullanıcıya kaydı göstermediği için sunucu yeni bir satır açmaya
+   çalışıyor ve benzersizlik kısıtı patlıyor — istek `409` alıyor.
+
+   Kötü niyetli senaryoda zararsız (saldırganın kurbanın UUID'sini bilmesi gerekir ve kurbanın
+   satırına yine dokunamaz; `SyncPushTests` bunu doğruluyor). **Meşru senaryosu asıl sorun:**
+   aynı cihazda oturum kapatıp *başka bir hesapla* girmek. Yerel kayıtlar yeni kullanıcı adına
+   push edilir ve kuyruk her denemede burada kilitlenir — kullanıcı hiçbir şeyin eşitlenmediğini
+   görür, sebebini öğrenemez.
+
+   Karar üç seçenek arasında: (a) bileşik anahtar `(owner_id, id)` — on dört tabloyu birden
+   ilgilendiren bir göç, (b) hesap değişiminde yerel veriyi silmek/yeni kimliklerle
+   kopyalamak — ürün kararı, (c) çarpışmayı `rejected` ile bildirmek — kuyruk açılır ama veri
+   o cihazda kalır. **Soru 3 ("hesap zorunlu mu") ile aynı masada çözülmeli.**

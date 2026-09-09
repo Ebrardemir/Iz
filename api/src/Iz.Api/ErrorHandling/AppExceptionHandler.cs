@@ -31,6 +31,23 @@ public sealed class AppExceptionHandler(IProblemDetailsService problemDetails)
                 (StatusCodes.Status400BadRequest, validation.Code, validation.Field),
             UniqueConstraintException =>
                 (StatusCodes.Status409Conflict, "conflict", null),
+
+            // İSTEĞİN KENDİSİ OKUNAMADI. Sunucu bunu kendi durum koduyla
+            // fırlatıyor (gövde sınırı aşıldığında 413, bozuk çerçevede 400)
+            // ama biz araya girmeseydik `UseExceptionHandler` onu 500'e
+            // çevirirdi — ve istemci 500'ü "sunucu bozuk" diye okur, batch'i
+            // küçültmek yerine aynı isteği yeniden denerdi.
+            //
+            // Push'ta `Content-Length` bildirilmiş gövdeler zaten daha erken,
+            // `UseSyncRequestLimits` içinde kesiliyor; buraya kalan, uzunluğu
+            // önceden bildirilmeyen (chunked) akışın sınırı aşması.
+            BadHttpRequestException bad => (
+                bad.StatusCode,
+                bad.StatusCode == StatusCodes.Status413PayloadTooLarge
+                    ? "payload_too_large"
+                    : "bad_request",
+                null),
+
             _ => (0, string.Empty, null),
         };
 
