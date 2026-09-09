@@ -71,6 +71,14 @@ class MemoryDetailRow {
 /// bu adı taşıyor.
 const kMemoryEntityType = 'memory';
 
+/// Konumun outbox'taki karşılığı.
+///
+/// ⚠️ KONUM AYRI BİR KAYIT, anının parçası DEĞİL. Anı yalnız `locationId`
+/// taşıyor; satırın kendisi ayrıca gönderilmezse ikinci cihazda o kimlik
+/// hiçbir şeye karşılık gelmez ve anı KONUMSUZ görünür — üstelik hiçbir hata
+/// üretmeden.
+const kLocationEntityType = 'location';
+
 @DriftAccessor(
   tables: [
     Memories,
@@ -412,8 +420,36 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
         .getSingleOrNull();
   }
 
-  Future<void> insertLocation(LocationsCompanion location) =>
-      into(locations).insert(location);
+  /// Konumu yazar VE kuyruğa düşürür.
+  ///
+  /// İkisi tek transaction'da: ayrı olsalardı aradaki bir çökme konumu
+  /// yerelde bırakır ama sunucuya gideceği hiçbir yere yazmazdı (TR-M13-01).
+  ///
+  /// Konum yalnız OLUŞTURULUYOR, hiç güncellenmiyor: kullanıcının yazdığı
+  /// etiket bir kez bir satıra çevriliyor ve aynı etiket ikinci kez
+  /// yazıldığında var olan satır bulunuyor (bkz. [findLocationByLabel]).
+  /// Bu yüzden tek işlem `create` ve `baseVersion` her zaman 0.
+  Future<void> insertLocation(
+    LocationsCompanion location, {
+    required String outboxId,
+    required DateTime now,
+  }) => transaction(() async {
+    await into(locations).insert(location);
+
+    final row = await (select(
+      locations,
+    )..where((t) => t.id.equals(location.id.value))).getSingle();
+
+    await OutboxDao(attachedDatabase).enqueue(
+      id: outboxId,
+      entityType: kLocationEntityType,
+      entityId: row.id,
+      op: OutboxOperation.create,
+      payloadJson: encodeOutboxPayload(entity: outboxRowJson(row)),
+      baseVersion: 0,
+      now: now,
+    );
+  });
 
   /// Anıyı ve TÜM ilişkilerini tek transaction'da yazar.
   ///

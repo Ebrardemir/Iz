@@ -236,7 +236,11 @@ final class MemoryRepositoryImpl implements MemoryRepository {
     if (existing != null) return existing.id;
 
     final id = _ids.newId();
-    await _dao.insertLocation(LocationsCompanion.insert(id: id, label: label));
+    await _dao.insertLocation(
+      LocationsCompanion.insert(id: id, label: label),
+      outboxId: _ids.newId(),
+      now: _clock.now(),
+    );
     return id;
   }
 

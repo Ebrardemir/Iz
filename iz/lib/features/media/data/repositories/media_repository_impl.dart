@@ -51,6 +51,8 @@ final class MediaRepositoryImpl implements MediaRepository {
 
           await _dao.upsertMedia(
             MediaMapper.toCompanion(id: id, previewPath: storedPath),
+            outboxId: _ids.newId(),
+            now: _clock.now(),
           );
 
           final row = await _dao.findMedia(id);
@@ -97,7 +99,7 @@ final class MediaRepositoryImpl implements MediaRepository {
     final row = await _dao.findMedia(id);
     // Önce satır, sonra dosya: tersi olsaydı dosya silinip satır kalabilirdi
     // ve kart var olmayan bir görseli göstermeye çalışırdı.
-    await _dao.softDelete(id);
+    await _dao.softDelete(id, outboxId: _ids.newId(), now: _clock.now());
     if (row?.localPreviewPath case final path?) await _files.delete(path);
     return Unit.value;
   }, onError: _dbFailure);
