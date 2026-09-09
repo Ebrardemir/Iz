@@ -308,9 +308,37 @@ GET /v1/sync/pull?cursor=1140&limit=200
 }
 ```
 
+> ✅ **Yazıldı (9 Eylül 2026)** — `PullChangesHandler`. Yanıttaki her satır ayrıca
+> `deviceId` taşıyor (aşağıdaki echo kuralı için).
+
 - İstemci `nextCursor`'ı **ancak tüm değişiklikleri yerel transaction'a yazdıktan sonra** kaydeder.
   Yarıda kesilirse aynı sayfa tekrar gelir — uygulama idempotent olduğu için sorun olmaz.
 - Kendi `deviceId`'sinden gelen değişiklikler yanıtta işaretlenir; istemci onları atlar (echo önleme).
+  **Sunucu süzmüyor, işaretliyor.** Süzseydik sunucunun "hangi cihaz soruyor" bilgisine ihtiyacı
+  olurdu; o bilgi istemcinin *söylediği* bir şey ve ona dayanan bir süzgeç, yanlış cihaz kimliği
+  gönderen bir istemcide **sessizce veri atlardı.**
+
+**Günlük NEYİN değiştiğini söyler, satır NE OLDUĞUNU.** `change_log`'da gövde yok; gövdeyi
+tablodan okuyoruz. Yani gönderilen şey kaydın *o anki* hâli, "o `seq` anındaki" hâli değil.
+Üç sonucu var, üçü de bilinçli:
+
+1. **Aynı kayıt sayfa içinde birleşiyor.** Bir anı beş kez düzenlenmişse günlükte beş satır var
+   ama gövde beşinde de aynı olurdu. Sayfada tek satır olarak, en yüksek `seq`'iyle dönüyor.
+2. **`op` günlükten değil satırdan türetiliyor.** Günlükte `upsert` yazan bir kayıt, sayfanın
+   *dışında* kalan daha yeni bir `seq`'te silinmiş olabilir. Günlüğe uysaydık silinmiş bir kaydı
+   "güncellendi" diye gönderir, istemci onu **diriltirdi.** Aynı sebeple `version` da satırdan
+   geliyor: gövdeyle sürüm aynı andan gelmek zorunda.
+3. **Tabloda olmayan kayıt silme sayılıyor.** Çöp kutusu temizliği (FR-015) satırı fiziksel
+   olarak siliyor, günlük satırı duruyor. "Bulamadım" yerine "artık yok" doğru çeviri.
+
+- Silmede `payload` **yok**: gerekmiyor, ve göndermek kullanıcının sildiği veriyi kabloya geri
+  koymak olurdu.
+- `limit` varsayılan 200, üst sınır 200 — push'un batch sınırıyla aynı; istemcide tek bir sayfa
+  boyutu ve tek bir bellek hesabı olsun diye.
+- Negatif `cursor` **reddedilmiyor, sıfırlanıyor.** Reddetmek istemciyi eşitlemeden tamamen
+  keserdi; sıfırlamak yalnız bir bootstrap pahasına doğru sonucu veriyor.
+- `nextCursor` **birleştirmeden önceki** son günlük satırından: istemci tükettiği her satırın
+  ötesine geçmeli, yoksa her pull aynı yerde döner.
 
 ### 4.3 İlk senkronizasyon (bootstrap)
 
@@ -559,10 +587,13 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 - ✅ **adım 3** *(9 Eylül 2026)* — `/v1/sync/push`: sürüm kontrolü, çakışma tespiti,
       bağların satır bazlı birleşmesi (silme kazanır), tek transaction, batch sınırları,
       cihaz doğrulaması. **31 yeni entegrasyon testi, toplam 71.**
-- ⏳ **adım 4** — `Idempotency-Key` (Redis, 24 saat). Gerekçesi ve aciliyeti §4.1'de.
-- ⏳ `/v1/sync/pull` — cursor'lı sayfalama (`ISyncStore.ChangesAfterAsync` hazır: push
-      yazdığı satırların `seq`'ini onunla okuyor, yani sorgu her push'ta çalışıyor)
-- ⏳ `/v1/sync/state`
+- ✅ **adım 4** *(9 Eylül 2026)* — `/v1/sync/pull`: cursor'lı sayfalama, sayfa içi
+      birleştirme, echo işaretlemesi, bootstrap (§4.3 — ayrı bir snapshot ucu yok).
+      **13 yeni entegrasyon testi, toplam 87.**
+- ⏳ **adım 5** — `Idempotency-Key` (Redis, 24 saat). Gerekçesi ve aciliyeti §4.1'de.
+      Faz 3'ün sunucu tarafında kalan **tek** açık iş.
+- ⏳ `/v1/sync/state` — `lastSyncAt` + `serverCursor`. Yedekleme Sağlığı ekranını (FR-614)
+      besliyor; `ISyncStore.CurrentCursorAsync` zaten hazır.
 - ⏳ Entitlement kontrolü push'ta (free plan limitleri sunucuda da doğrulanır — istemciye
       güvenilmez). Kapının takılacağı nokta `PushChangesHandler` içinde işaretli;
       `entitlement_required` sabiti bugünden duruyor ki istemci paywall'ı beklemesin.

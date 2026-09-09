@@ -103,8 +103,71 @@ public static class SyncEndpoints
             .WithSummary("Bir cihazın bekleyen değişikliklerini sunucuya yazar.")
             .WithTags("Sync");
 
+        app.MapGet("/v1/sync/pull", async (
+                long? cursor,
+                int? limit,
+                CurrentUserContext currentUser,
+                PullChangesHandler handler,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await handler.HandleAsync(
+                    currentUser.Require().Id,
+                    cursor ?? 0,
+                    limit,
+                    cancellationToken);
+
+                return Results.Ok(SyncPullResponse.From(result));
+            })
+            .RequireAuthorization()
+            .WithName("SyncPull")
+            .WithSummary("Cursor'dan sonraki değişiklikleri sayfa sayfa döndürür.")
+            .WithTags("Sync");
+
         return app;
     }
+}
+
+/// <param name="NextCursor">
+/// Bir sonraki pull'da gönderilecek değer.
+/// </param>
+/// <remarks>
+/// ⚠️ İstemci bunu ANCAK tüm değişiklikleri yerel transaction'a yazdıktan
+/// sonra kaydeder (yol haritası §4.2). Önce kaydederse ve araya bir çökme
+/// girerse o sayfa bir daha gelmez.
+/// </remarks>
+public sealed record SyncPullResponse(
+    IReadOnlyList<SyncPullChangeResponse> Changes,
+    long NextCursor,
+    bool HasMore)
+{
+    public static SyncPullResponse From(SyncPullResult result) => new(
+        [.. result.Changes.Select(SyncPullChangeResponse.From)],
+        result.NextCursor,
+        result.HasMore);
+}
+
+/// <param name="DeviceId">
+/// Değişikliği gönderen cihaz. İstemci KENDİ kimliğiyle eşleşen satırları
+/// atlıyor — echo önleme (yol haritası §4.2). Arka plan işlerinden gelen
+/// satırlarda <c>null</c>: onlar herkese gider.
+/// </param>
+public sealed record SyncPullChangeResponse(
+    long Seq,
+    string EntityType,
+    string EntityId,
+    string Op,
+    int Version,
+    Guid? DeviceId,
+    JsonNode? Payload)
+{
+    public static SyncPullChangeResponse From(SyncPullChange change) => new(
+        change.Seq,
+        change.EntityType,
+        change.EntityId,
+        change.Op,
+        change.Version,
+        change.DeviceId,
+        change.Payload);
 }
 
 /// <param name="DeviceId">

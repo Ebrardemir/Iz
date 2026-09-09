@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<UpdateProfileHandler>();
         services.AddScoped<RegisterDeviceHandler>();
         services.AddScoped<PushChangesHandler>();
+        services.AddScoped<PullChangesHandler>();
 
         return services;
     }

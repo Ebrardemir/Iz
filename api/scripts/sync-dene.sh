@@ -162,6 +162,34 @@ cagir POST /v1/sync/push "{\"deviceId\":\"$CIHAZ\",\"changes\":[
   {\"entityType\":\"memory\",\"entityId\":\"$ANI\",\"op\":\"upsert\",
    \"baseVersion\":2,\"payload\":$(govde 'Kuyruk kilitlenmedi' hayir)}]}" | guzel
 
+# ---------------------------------------------------------------------------
+# PULL — ters yön. §4.2
+#
+# İKİNCİ BİR CİHAZ TAKLİDİ: aynı hesaba yeni bir cihaz kaydediyoruz ve
+# `cursor=0` ile bootstrap yapıyoruz (§4.3). Ayrı bir "full snapshot" ucu yok;
+# ilk yükleme ile delta AYNI yoldan geçiyor, dolayısıyla ilk yükleme yolu her
+# gün test edilmiş oluyor.
+# ---------------------------------------------------------------------------
+
+CIHAZ_B=$(cagir POST /v1/devices \
+  '{"platform":"ios","appVersion":"1.5.0","schemaVersion":8}' | alan id)
+
+bolum "11) İkinci cihaz kaydedildi -> $CIHAZ_B"
+
+bolum "12) Bootstrap (cursor=0)  ->  bütün veri, ve satırlar A CİHAZINI taşıyor"
+# `deviceId` alanı echo önlemenin dayanağı: gerçek istemci KENDİ kimliğiyle
+# eşleşen satırları atlıyor. Sunucu süzmüyor, işaretliyor (§4.2).
+cagir GET "/v1/sync/pull?cursor=0" | guzel
+
+bolum "13) Sayfalama (limit=1)  ->  hasMore true, nextCursor ilerliyor"
+cagir GET "/v1/sync/pull?cursor=0&limit=1" | guzel
+
+SON=$(cagir GET "/v1/sync/pull?cursor=0" | tr ',' '\n' \
+      | sed -n 's/.*"nextCursor": *\([0-9]*\).*/\1/p' | tail -1)
+
+bolum "14) Kuyruğun sonundan pull (cursor=$SON)  ->  boş sayfa, cursor yerinde"
+cagir GET "/v1/sync/pull?cursor=$SON" | guzel
+
 psql() { docker compose --project-directory "$KOK" exec -T postgres psql -U iz -d iz -c "$1"; }
 
 bolum "SUNUCUDA NE VAR?"
