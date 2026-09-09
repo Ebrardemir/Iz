@@ -26,18 +26,18 @@ import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
-import 'package:iz/features/auth/data/sources/account_api.dart';
 import 'package:iz/features/sync/data/daos/outbox_dao.dart';
 import 'package:iz/features/sync/data/sources/sync_api.dart';
 import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
 import 'package:iz/features/sync/domain/entities/sync_outcome.dart';
+import 'package:iz/features/sync/domain/repositories/sync_identity.dart';
 import 'package:iz/features/sync/domain/repositories/sync_repository.dart';
 
 final class SyncEngine implements SyncRepository {
   SyncEngine({
     required AppDatabase database,
     required SyncApi api,
-    required AccountApi accounts,
+    required SyncIdentity identity,
     required SecureStore secureStore,
     required Clock clock,
     required IdGenerator idGenerator,
@@ -45,7 +45,7 @@ final class SyncEngine implements SyncRepository {
     int? schemaVersion,
   }) : _db = database,
        _api = api,
-       _accounts = accounts,
+       _identity = identity,
        _store = secureStore,
        _clock = clock,
        _ids = idGenerator,
@@ -59,7 +59,7 @@ final class SyncEngine implements SyncRepository {
   /// bir kez kurup saklıyoruz.
   late final OutboxDao _outbox = OutboxDao(_db);
   final SyncApi _api;
-  final AccountApi _accounts;
+  final SyncIdentity _identity;
   final SecureStore _store;
   final Clock _clock;
   final IdGenerator _ids;
@@ -92,7 +92,7 @@ final class SyncEngine implements SyncRepository {
     final baslangic = _clock.now();
 
     try {
-      final ownerId = await _ownerId();
+      final ownerId = await _identity.ownerId();
       if (ownerId == null) {
         return const Err(
           AuthFailure(message: 'sync requires a signed-in account'),
@@ -141,23 +141,6 @@ final class SyncEngine implements SyncRepository {
   }
 
   // --- Kimlik ------------------------------------------------------------
-
-  /// Sunucudaki kullanıcı kimliği. Oturum yoksa `null`.
-  ///
-  /// Önce güvenli depodan okunuyor; yoksa `/v1/me` soruluyor. O çağrının
-  /// sunucuda bir yan etkisi var: kullanıcı ilk kez görülüyorsa kaydı orada
-  /// açılıyor. Yani ilk eşitleme, hesabı da açmış oluyor.
-  Future<String?> _ownerId() async {
-    final onbellek = await _store.read(SecureKey.izUserId);
-    if (onbellek != null && onbellek.isNotEmpty) return onbellek;
-
-    final uzak = await _accounts.fetchMe();
-    if (uzak case Ok(:final value)) {
-      await _store.write(SecureKey.izUserId, value.id);
-      return value.id;
-    }
-    return null;
-  }
 
   /// Bu kurulumun cihaz kimliği; yoksa sunucuya kaydettirilip saklanıyor.
   ///

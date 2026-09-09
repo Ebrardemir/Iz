@@ -17,21 +17,28 @@ import 'package:iz/core/network/network_providers.dart';
 import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
-import 'package:iz/features/auth/data/sources/account_api.dart';
 import 'package:iz/features/sync/data/repositories/sync_engine.dart';
+import 'package:iz/features/sync/data/sources/remote_sync_identity.dart';
 import 'package:iz/features/sync/data/sources/sync_api.dart';
+import 'package:iz/features/sync/domain/repositories/sync_identity.dart';
 import 'package:iz/features/sync/domain/repositories/sync_repository.dart';
 
 final syncApiProvider = Provider<SyncApi>(
   (ref) => SyncApi(client: ref.watch(apiClientProvider)),
 );
 
-/// Hesap ucu — motorun kullanıcı kimliğini öğrendiği yer.
+/// Motorun kimlik kaynağı.
 ///
-/// `auth` feature'ında değil burada tanımlı çünkü tek kullanıcısı motor.
-/// Oraya taşımak, iki feature'ı birbirine bağlamak için bir sebep yaratırdı.
-final accountApiProvider = Provider<AccountApi>(
-  (ref) => AccountApi(client: ref.watch(apiClientProvider)),
+/// ⚠️ BURADA `AccountApi` GÖRÜNMÜYOR ve bu bir mimari zorunluluk:
+/// `presentation` katmanı BAŞKA bir feature'ın `data/`sine bakamaz
+/// (ARCHITECTURE.md §2, CI'daki TR-C-03 denetimi). Hesap ucuna erişim
+/// `sync/data/sources/remote_sync_identity.dart` içinde — orada `data` →
+/// `data` geçişi serbest.
+final syncIdentityProvider = Provider<SyncIdentity>(
+  (ref) => RemoteSyncIdentity(
+    client: ref.watch(apiClientProvider),
+    secureStore: ref.watch(secureStoreProvider),
+  ),
 );
 
 /// Cihazın platform adı — sunucudaki `devices.platform`.
@@ -56,7 +63,7 @@ final syncRepositoryProvider = Provider<SyncRepository?>((ref) {
   return SyncEngine(
     database: ref.watch(appDatabaseProvider),
     api: ref.watch(syncApiProvider),
-    accounts: ref.watch(accountApiProvider),
+    identity: ref.watch(syncIdentityProvider),
     secureStore: ref.watch(secureStoreProvider),
     clock: ref.watch(clockProvider),
     idGenerator: ref.watch(idGeneratorProvider),

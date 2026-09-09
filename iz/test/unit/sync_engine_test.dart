@@ -14,11 +14,11 @@ import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
-import 'package:iz/features/auth/data/sources/account_api.dart';
 import 'package:iz/features/sync/data/daos/outbox_dao.dart';
 import 'package:iz/features/sync/data/repositories/sync_engine.dart';
 import 'package:iz/features/sync/data/sources/sync_api.dart';
 import 'package:iz/features/sync/domain/entities/outbox_operation.dart';
+import 'package:iz/features/sync/domain/repositories/sync_identity.dart';
 
 import '../helpers/test_database.dart';
 
@@ -41,21 +41,13 @@ final class _FakeSecureStore implements SecureStore {
   Future<void> clear() async => _degerler.clear();
 }
 
-final class _FakeAccounts implements AccountApi {
-  _FakeAccounts({this.userId = 'kullanici-1'});
+final class _FakeIdentity implements SyncIdentity {
+  _FakeIdentity({this.userId = 'kullanici-1'});
 
   final String? userId;
 
   @override
-  Future<Result<RemoteAccount>> fetchMe() async => userId == null
-      ? const Err(NetworkFailure(message: 'yok'))
-      : Ok(RemoteAccount(id: userId!, plan: 'plus'));
-
-  @override
-  Future<Result<RemoteAccount>> updateProfile({
-    String? displayName,
-    String? locale,
-  }) async => fetchMe();
+  Future<String?> ownerId() async => userId;
 }
 
 final class _FakeSyncApi implements SyncApi {
@@ -181,10 +173,10 @@ void main() {
 
   tearDown(() => db.close());
 
-  SyncEngine motor(_FakeSyncApi api, {AccountApi? accounts}) => SyncEngine(
+  SyncEngine motor(_FakeSyncApi api, {SyncIdentity? identity}) => SyncEngine(
     database: db,
     api: api,
-    accounts: accounts ?? _FakeAccounts(),
+    identity: identity ?? _FakeIdentity(),
     secureStore: store,
     clock: FixedClock(simdi),
     idGenerator: SequentialIdGenerator(prefix: 'cakisma-'),
@@ -704,7 +696,7 @@ void main() {
 
       final sonuc = await motor(
         api,
-        accounts: _FakeAccounts(userId: null),
+        identity: _FakeIdentity(userId: null),
       ).syncNow();
 
       expect(sonuc.isErr, isTrue);
