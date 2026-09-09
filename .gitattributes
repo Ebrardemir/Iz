@@ -1,0 +1,11 @@
+# Kabuk betikleri HER ZAMAN LF.
+#
+# Windows'ta `core.autocrlf=true` varsayılan ve checkout sırasında satır
+# sonlarını CRLF yapıyor. Bir `.sh` dosyasında bu, çalışmayan bir betik
+# demek: shebang satırının sonundaki `\r` yorumlayıcının adına yapışıyor ve
+# kabuk `bad interpreter: /usr/bin/env bash^M` diyor. Git Bash'te de her
+# satır `$'\r': command not found` üretiyor.
+#
+# Hata mesajı sebebi göstermiyor — dosya ekranda normal görünüyor. Bu yüzden
+# kural burada duruyor, hatırlanmaya bırakılmıyor.
+*.sh text eol=lf
