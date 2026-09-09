@@ -154,7 +154,7 @@ journal_entries     (…, entry_date, text, title, mood_score, is_starred, conve
 people              (…, name, relation_type, birth_date, avatar_media_id)
 categories          (…, name, icon, sort_order, is_system)
 collections         (…, title, description, cover_media_id, visibility)
-rituals             (…, title, recurrence_type, related_person_id)
+rituals             (…, title, recurrence_type, anchor_month, anchor_day, icon_key)
 locations           (…, label, latitude, longitude, city, country)
 media_items         (…, type, gallery_asset_id, cloud_object_key(NULL), mime, w, h,
                      duration_ms, size_bytes, original_status)
@@ -163,12 +163,29 @@ memory_collections  (memory_id, collection_id, sort_order, updated_at, deleted_a
 memory_rituals      (memory_id, ritual_id, occurrence_year, updated_at, deleted_at, version)
 memory_media        (memory_id, media_id, sort_order,   updated_at, deleted_at, version)
 journal_media       (journal_entry_id, media_id, sort_order, updated_at, deleted_at, version)
+ritual_people       (ritual_id, person_id,          updated_at, deleted_at, version)
 
 change_log          (seq BIGSERIAL, user_id, entity_type, entity_id, op, version,
                      changed_at, device_id)          ← sync'in kalbi
 idempotency_keys    (key, user_id, request_hash, response_body, created_at)
 subscriptions       (user_id, provider, plan, status, expires_at, original_transaction_ref)
 ```
+
+> **Bu liste 26 Ağustos'ta yazıldı, iki yerde gerçeğin gerisinde kalmıştı:**
+> `rituals.related_person_id` TEKİLDİ; bir seri birden fazla kişiyle paylaşılıyor
+> ("Aile Yemeklerimiz") ve tekil sütun istemci şema v7'de `ritual_people` bağ tablosuna
+> dönüştü. Sunucu istemciyi izliyor. Yukarıdaki iki satır düzeltildi.
+>
+> **Sunucuda fazladan bir sütun var: bağ tablolarında `owner_id`.** İstemcide yok çünkü orada
+> tek kullanıcı var. Sunucuda gerekli: (a) IDOR'a karşı global sorgu süzgeci bir sahip sütunu
+> istiyor, (b) `change_log` kullanıcı başına sıralanıyor. Bağın sahibini her seferinde ana
+> kayda join yaparak bulmak, güvenliğin en sıcak yolunu en pahalı yol yapardı.
+>
+> **İçerik enum'ları sunucuda METİN**, dar tip değil — `plan` ve `platform`dan bilinçli bir
+> ayrım. Sunucu o ikisine göre KARAR VERİYOR (entitlement kapısı, platform davranışı); içerik
+> enum'ları ise hiçbir kararına girmiyor. Dar tip olsaydı istemci yeni bir `relation_type`
+> eklediği gün — sunucu güncellenene kadar — o kaydı okumak istisna atar ve kullanıcının TÜM
+> kuyruğu o satırda takılırdı. TR-M13-22'nin sunucu tarafındaki karşılığı.
 
 ### 3.1 change_log — neden ayrı tablo
 
@@ -181,6 +198,13 @@ Sıra deterministik, sorgu tek indeks, sayfalama trivial.
 
 **Kural:** `change_log`'a yazma, entity yazmasıyla **aynı transaction** içinde olur.
 Aksi hâlde bir değişiklik kalıcı olur ama günlüğe düşmez → o kayıt hiçbir cihaza gitmez, sessizce kaybolur.
+
+> **Nasıl uygulandı:** kural her use-case'e bırakılmadı. `ChangeLogInterceptor` günlük satırlarını
+> `SaveChanges` sırasında kendisi üretiyor, yani `ISyncable` uygulayan bir kayıt yazıldığı anda
+> günlük satırı da yazılıyor — **unutulamıyor**. Elle yazsaydık on dört varlık ve gelecek her yeni
+> yazma yolu için biri bir gün unuturdu; sonucu hata mesajı değil, ikinci cihazda hiç belirmeyen
+> bir anı olurdu. `SaveChanges`in eşzamanlı yolu da kapalı: iki kapıdan yalnız birini kilitlemek,
+> kilitlememektir.
 
 ---
 
@@ -477,9 +501,12 @@ Görünür hiçbir özellik üretmez; Faz 3'ün ön koşuludur.
 
 **Faz 3'e devredilen borçlar** (motor yazılmadan kapatılması ZORUNLU):
 
-1. **`deviceOnly` süzgeci yok** (TR-M3-02). Günlük kaydı gizlilik modu ne olursa olsun outbox'a
-   giriyor. Bugün kuyruğu okuyan kimse yok — yani veri cihazdan çıkmıyor — ama motor açılmadan
-   önce `journal_dao.dart` içindeki `_enqueue` bir koşul kazanmak zorunda.
+1. ~~**`deviceOnly` süzgeci yok** (TR-M3-02).~~ ✅ **Kapatıldı.** `journal_dao.dart` içindeki
+   `_enqueue` artık üç durumu ayırıyor: baştan `deviceOnly` olan kayıt kuyruğa hiç girmiyor;
+   `deviceOnly` iken düzenlenen de girmiyor; **senkronize edilebilirken `deviceOnly`ye çevrilen**
+   ise kuyruğa bir SİLME düşürüyor — sunucudaki eski kopya da gitsin diye. O silme isteğinin
+   gövdesi yalnız kimlik taşıyor: tam gövdeyi koymak, "bu cihazda kalsın" denen metni silme
+   isteğinin içinde buluta göndermek olurdu.
 2. **Free plan kapısı yok** (TR-M13-06). Motor hiç başlamayacağı için bugün zararsız.
 3. **Kuyruk boşalmıyor.** `OutboxDao.pending/recordFailure/remove` yazıldı ama çağıran yok;
    `SyncState` satırı hiç açılmıyor.
