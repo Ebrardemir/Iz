@@ -38,6 +38,7 @@ namespace Iz.Application.Sync;
 /// </remarks>
 public sealed class PushChangesHandler(
     ISyncStore store,
+    ISyncLock syncLock,
     IDeviceRepository devices,
     IUnitOfWork unitOfWork,
     IClock clock,
@@ -74,6 +75,15 @@ public sealed class PushChangesHandler(
 
         origin.Attach(command.DeviceId);
 
+        // KİLİT BURADAN İTİBAREN: "oku → karşılaştır → yaz" üçlüsü atomik
+        // olmak zorunda. Aynı hesabın iki cihazı aynı anda aynı kaydı
+        // gönderirse, kilit olmadan ikisi de aynı sürümü okur, ikisi de
+        // kontrolü geçer ve sonraki öncekini SESSİZCE ezer (bkz. ISyncLock).
+        //
+        // Kilit aynı zamanda bu isteğin TRANSACTION'I: commit edilmezse
+        // yazılan her şey geri sarılıyor.
+        await using var kilit = await syncLock.AcquireAsync(userId, cancellationToken);
+
         var now = clock.UtcNow;
 
         // KAYDETMEDEN ÖNCEKİ BAŞ. Aşağıda "bu istekte hangi satırlar
@@ -102,9 +112,15 @@ public sealed class PushChangesHandler(
 
         await AttachSequencesAsync(userId, cursorBefore, applied, results, cancellationToken);
 
-        return new SyncPushResult(
-            results,
-            await store.CurrentCursorAsync(userId, cancellationToken));
+        var cursor = await store.CurrentCursorAsync(userId, cancellationToken);
+
+        // COMMIT EN SONDA: buraya kadar bir istisna çıkarsa `kilit` commit
+        // edilmeden kapanır ve yazılan HER ŞEY geri sarılır. Yarım uygulanmış
+        // bir batch, hiç uygulanmamış bir batch'ten çok daha kötüdür —
+        // istemci hangi satırın gittiğini bilemez.
+        await kilit.CommitAsync(cancellationToken);
+
+        return new SyncPushResult(results, cursor);
     }
 
     private async Task<ChangeOutcome> ApplyChangeAsync(

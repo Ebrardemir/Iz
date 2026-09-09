@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IDeviceRepository, DeviceRepository>();
         services.AddScoped<ISyncStore, SyncStore>();
+        services.AddScoped<ISyncLock, PostgresSyncLock>();
 
         services.AddSingleton<IClock, SystemClock>();
 
