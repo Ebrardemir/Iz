@@ -789,6 +789,10 @@
   "errorPermissionSettings": "İzni Ayarlar'dan açabilirsin.",
   "errorNetwork": "Bağlantı kurulamadı.",
   "errorOffline": "İnternet bağlantın yok gibi görünüyor.",
+  "errorServerUnreachable": "İZ sunucusuna ulaşılamıyor. Bağlantını kontrol edip tekrar dene.",
+  "@errorServerUnreachable": {
+    "description": "Ağ çalışıyor ama sunucudan yanıt yok — çevrimdışı olmakla aynı şey değil"
+  },
   "errorValidationEmptyMemory": "Bir anı en az bir not veya bir fotoğraf içermeli.",
   "@errorValidationEmptyMemory": {
     "description": "FR-012 iş kuralı — ValidationCode.emptyMemory karşılığı"

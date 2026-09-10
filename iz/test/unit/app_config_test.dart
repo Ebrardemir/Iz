@@ -8,6 +8,8 @@
 /// Buradaki beklentiler o davranışın geri gelmesini engelliyor.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/config/app_config.dart';
@@ -39,7 +41,7 @@ void main() {
 
         // 10.0.2.2, emülatörden ana makinenin loopback'idir. "localhost"
         // olsaydı emülatörün KENDİSİNE gidilirdi.
-        expect(config.apiBaseUrl, 'http://10.0.2.2:5163');
+        expect(config.apiBaseUrl, 'http://10.0.2.2:8080');
       },
     );
 
@@ -52,7 +54,7 @@ void main() {
         enableVerboseLogging: true,
       );
 
-      expect(config.apiBaseUrl, 'http://localhost:5163');
+      expect(config.apiBaseUrl, 'http://localhost:8080');
     });
 
     test('prod + adres verilmemiş → yerel adrese ASLA düşmez', () {
@@ -69,6 +71,40 @@ void main() {
       expect(config.apiBaseUrl, 'https://api.iz.app');
       expect(config.apiBaseUrl, isNot(contains('10.0.2.2')));
       expect(config.apiBaseUrl, isNot(contains('localhost')));
+    });
+  });
+
+  group('yerel port', () {
+    test("VARSAYILAN PORT, docker-compose'un açtığı portla AYNI", () {
+      // GERÇEK OLAY: burada 5163 (launchSettings.json'ın portu) yazıyordu,
+      // compose ise 8080 açıyordu. `docker compose up` deyip `flutter run`
+      // diyen geliştirici kimsenin dinlemediği bir porta gidiyor, bağlantı
+      // reddediliyor ve ekranda "internet bağlantın yok" yazıyordu.
+      //
+      // İki sayının aynı kalması bir DİKKAT meselesi olamaz; testin işi bu.
+      final compose = File('../api/docker-compose.yml');
+      expect(
+        compose.existsSync(),
+        isTrue,
+        reason: 'testler paket kökünden (iz/) koşuyor olmalı',
+      );
+
+      // `      - "8080:8080"` → dışarı açılan port ilk sayı.
+      final eslesme = RegExp(
+        r'-\s*"(\d+):\d+"',
+      ).firstMatch(compose.readAsStringSync());
+      expect(eslesme, isNotNull, reason: 'compose port eşlemesi okunamadı');
+
+      final acilanPort = eslesme!.group(1);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      const config = AppConfig(
+        environment: AppEnvironment.dev,
+        apiBaseUrl: '',
+        enableVerboseLogging: true,
+      );
+
+      expect(config.apiBaseUrl, endsWith(':$acilanPort'));
     });
   });
 }

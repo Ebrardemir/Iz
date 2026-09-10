@@ -7,6 +7,8 @@
 /// değiştirmeye çalışır ve sorunu çözemez.
 library;
 
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iz/core/error/failure.dart';
@@ -43,10 +45,28 @@ DioException _serverError(
   );
 }
 
-DioException _transport(DioExceptionType type) => DioException(
+DioException _transport(DioExceptionType type, {Object? sebep}) => DioException(
   requestOptions: RequestOptions(path: '/v1/me'),
   type: type,
+  error: sebep,
 );
+
+/// İşletim sisteminin "bağlantı reddedildi" hatası — dinleyen sunucu yok.
+///
+/// ECONNREFUSED (Android/Linux 111). Paket karşı tarafa ULAŞTI: ağ çalışıyor.
+const _baglantiReddedildi = SocketException(
+  'Connection refused',
+  osError: OSError('Connection refused', 111),
+);
+
+/// İşletim sisteminin "ağ erişilemez" hatası — cihaz gerçekten çevrimdışı.
+const _agErisilemez = SocketException(
+  'Network is unreachable',
+  osError: OSError('Network is unreachable', 101),
+);
+
+/// Cihazın ağı yokken bir ALAN ADINA gitmeye çalışmanın hatası.
+const _dnsCozulemedi = SocketException('Failed host lookup: api.iz.app');
 
 void main() {
   group('sunucu hataları', () {
@@ -154,18 +174,79 @@ void main() {
   });
 
   group('taşıma katmanı arızaları', () {
-    test('bağlantı hatası ÇEVRİMDIŞI olarak işaretlenir', () {
+    test('bağlantı arızaları ağ hatasına çevrilir', () {
       for (final type in [
         DioExceptionType.connectionError,
         DioExceptionType.connectionTimeout,
         DioExceptionType.sendTimeout,
         DioExceptionType.receiveTimeout,
       ]) {
-        final failure = mapDioException(_transport(type));
-
-        expect(failure, isA<NetworkFailure>(), reason: '$type');
-        expect((failure as NetworkFailure).isOffline, isTrue, reason: '$type');
+        expect(
+          mapDioException(_transport(type)),
+          isA<NetworkFailure>(),
+          reason: '$type',
+        );
       }
+    });
+
+    test('BAĞLANTI REDDEDİLDİ çevrimdışı SAYILMAZ', () {
+      // Gerçek olay: geliştirme API'sinin portu değişmişti. Ekranda "internet
+      // bağlantın yok" yazdı; oysa aynı anda Firebase girişi internetten
+      // geçip başarıyla tamamlanmıştı. Sorun aranan yerde değildi.
+      //
+      // Paket karşı tarafa ULAŞTI ve reddedildi: ağ çalışıyor, dinleyen
+      // sunucu yok.
+      final failure =
+          mapDioException(
+                _transport(
+                  DioExceptionType.connectionError,
+                  sebep: _baglantiReddedildi,
+                ),
+              )
+              as NetworkFailure;
+
+      expect(failure.isOffline, isFalse);
+      expect(failure.isServerUnreachable, isTrue);
+    });
+
+    test('AĞ ERİŞİLEMEZ gerçekten çevrimdışıdır', () {
+      final failure =
+          mapDioException(
+                _transport(
+                  DioExceptionType.connectionError,
+                  sebep: _agErisilemez,
+                ),
+              )
+              as NetworkFailure;
+
+      expect(failure.isOffline, isTrue);
+      expect(failure.isServerUnreachable, isFalse);
+    });
+
+    test('DNS çözülemedi de çevrimdışıdır', () {
+      // Cihazın ağı yokken bir alan adına gitmenin ilk takıldığı yer burası.
+      final failure =
+          mapDioException(
+                _transport(
+                  DioExceptionType.connectionError,
+                  sebep: _dnsCozulemedi,
+                ),
+              )
+              as NetworkFailure;
+
+      expect(failure.isOffline, isTrue);
+    });
+
+    test('SEBEBİ BİLİNMEYEN arıza çevrimdışı İDDİA ETMİYOR', () {
+      // İşletim sistemi bir şey söylemediyse tahmin etmiyoruz. Olmayan bir
+      // arıza için "internetini kontrol et" demek, kullanıcıyı sorunun
+      // tamamen başka yerde olduğu bir arayışa sokuyor.
+      final failure =
+          mapDioException(_transport(DioExceptionType.connectionTimeout))
+              as NetworkFailure;
+
+      expect(failure.isOffline, isFalse);
+      expect(failure.isServerUnreachable, isTrue);
     });
 
     test('sertifika hatası ağ hatası gibi gösterilmez', () {

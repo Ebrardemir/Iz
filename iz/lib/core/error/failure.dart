@@ -261,15 +261,35 @@ final class NetworkFailure extends Failure {
     super.message = 'Bağlantı kurulamadı.',
     this.statusCode,
     this.isOffline = false,
+    this.isServerUnreachable = false,
     super.cause,
     super.stackTrace,
   });
 
   final int? statusCode;
+
+  /// CİHAZ ağa çıkamıyor — işletim sistemi bunu açıkça söyledi.
+  ///
+  /// Yalnız "ağ erişilemez", "ana makineye ulaşılamıyor" ya da DNS çözülemedi
+  /// durumlarında işaretleniyor. Tahminle işaretlemiyoruz: kullanıcıya
+  /// olmayan bir arıza için "internetini kontrol et" demek, onu telefonuyla
+  /// uğraşırken sorunun tamamen başka yerde olduğu bir arayışa sokuyor.
   final bool isOffline;
 
+  /// AĞ ÇALIŞIYOR ama İZ sunucusundan yanıt alınamıyor.
+  ///
+  /// Bağlantının reddedilmesi (sunucu ayakta değil ya da yanlış adres) ve
+  /// zaman aşımları buraya düşüyor. [isOffline] ile aynı anda doğru olmaz;
+  /// ikisini de `_connectionFailure` tek yerde belirliyor.
+  final bool isServerUnreachable;
+
   @override
-  List<Object?> get props => [...super.props, statusCode, isOffline];
+  List<Object?> get props => [
+    ...super.props,
+    statusCode,
+    isOffline,
+    isServerUnreachable,
+  ];
 }
 
 /// Yakalanamayan/sınıflandırılamayan her şey. Buraya çok düşüyorsa,

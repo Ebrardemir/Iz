@@ -584,6 +584,7 @@
   "errorPermissionSettings": "You can grant it in Settings.",
   "errorNetwork": "Couldn't connect.",
   "errorOffline": "You appear to be offline.",
+  "errorServerUnreachable": "Can't reach the İZ servers. Check your connection and try again.",
   "errorValidationEmptyMemory": "A memory needs at least a note or one photo.",
   "errorValidationFutureDate": "A memory can't be dated in the future.",
   "errorValidationEmailRequired": "Enter your email address.",

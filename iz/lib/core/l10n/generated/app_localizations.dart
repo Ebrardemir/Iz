@@ -2107,6 +2107,12 @@ abstract class AppL10n {
   /// **'İnternet bağlantın yok gibi görünüyor.'**
   String get errorOffline;
 
+  /// Ağ çalışıyor ama sunucudan yanıt yok — çevrimdışı olmakla aynı şey değil
+  ///
+  /// In tr, this message translates to:
+  /// **'İZ sunucusuna ulaşılamıyor. Bağlantını kontrol edip tekrar dene.'**
+  String get errorServerUnreachable;
+
   /// FR-012 iş kuralı — ValidationCode.emptyMemory karşılığı
   ///
   /// In tr, this message translates to:

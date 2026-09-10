@@ -118,25 +118,32 @@ Prod'da ayrıntılı log kapanır (NFR-014).
 ### Emülatörden yerel API'ye bağlanmak
 
 ```bash
-# 1) API'yi ayağa kaldır (repo kökünde)
+# 1) API + PostgreSQL + Redis'i ayağa kaldır (repo kökünde)
 docker compose -f api/docker-compose.yml up -d
-dotnet run --project api/src/Iz.Api --urls http://0.0.0.0:5163
+curl http://localhost:8080/health          # 200 dönmeli
 
 # 2) Uygulamayı çalıştır — bayrak GEREKMEZ
 flutter run
 ```
 
 Geliştirme ortamında `IZ_API` verilmezse uygulama yerel API'ye düşer:
-Android'de `http://10.0.2.2:5163`, iOS simülatörü ve masaüstünde
-`http://localhost:5163`. `10.0.2.2`, Android emülatöründen ana makinenin
+Android'de `http://10.0.2.2:8080`, iOS simülatörü ve masaüstünde
+`http://localhost:8080`. `10.0.2.2`, Android emülatöründen ana makinenin
 (host) `localhost`'una karşılık gelen özel adrestir; `localhost` yazmak
 emülatörün KENDİSİNİ kastetmek olurdu.
+
+**Port 8080, `docker-compose.yml`'nin açtığı porttur.** `dotnet run` ile
+çalışmayı tercih ediyorsan `launchSettings.json` 5163 kullanır; o zaman ya
+portu geçersiz kıl (`--urls http://0.0.0.0:8080`) ya da uygulamaya adresi
+açıkça söyle (`--dart-define=IZ_API=http://10.0.2.2:5163`). İkisini
+karıştırmak, uygulamanın kimsenin dinlemediği bir porta gidip ekrana
+"internet bağlantın yok" yazması demek.
 
 GERÇEK TELEFONDA çalışıyorsan bu varsayılan işe yaramaz — makinenin LAN
 adresini açıkça geç:
 
 ```bash
-flutter run --dart-define=IZ_API=http://192.168.1.x:5163
+flutter run --dart-define=IZ_API=http://192.168.1.x:8080
 ```
 
 Şifresiz (`http://`) trafik Android 9'dan beri varsayılan olarak engelli.

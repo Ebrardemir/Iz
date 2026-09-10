@@ -1204,6 +1204,10 @@ class AppL10nEn extends AppL10n {
   String get errorOffline => 'You appear to be offline.';
 
   @override
+  String get errorServerUnreachable =>
+      'Can\'t reach the İZ servers. Check your connection and try again.';
+
+  @override
   String get errorValidationEmptyMemory =>
       'A memory needs at least a note or one photo.';
 

@@ -4,7 +4,7 @@
 
   NEDEN VAR?
   Android 9'dan (API 28) beri şifresiz HTTP trafiği varsayılan olarak
-  ENGELLİ. Geliştirirken API'yi kendi makinemizde `http://10.0.2.2:5163`
+  ENGELLİ. Geliştirirken API'yi kendi makinemizde `http://10.0.2.2:8080`
   üzerinde çalıştırıyoruz; sertifikasız olduğu için istek daha cihazdan
   çıkmadan platform tarafından kesiliyor ve uygulamaya "ağ yok" gibi
   görünüyor.
