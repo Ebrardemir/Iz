@@ -4,6 +4,9 @@ using Iz.Api.Authentication;
 using Iz.Api.Endpoints;
 using Iz.Api.ErrorHandling;
 using Iz.Infrastructure;
+using Iz.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,6 +92,8 @@ builder.Services.AddOpenApi("v1");
 
 var app = builder.Build();
 
+await ApplyMigrationsInDevelopment(app);
+
 // Yakalanmamış istisnalar da ProblemDetails olarak döner; yığın izi SIZMAZ.
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -124,6 +129,50 @@ app.MapDeviceEndpoints();
 app.MapSyncEndpoints();
 
 app.Run();
+
+/// <summary>
+/// Geliştirme ortamında şemayı açılışta uygular.
+/// </summary>
+/// <remarks>
+/// <para>
+/// NEDEN VAR? Konteyner yalnız <c>dotnet Iz.Api.dll</c> çalıştırıyordu ve
+/// şemayı kuran hiçbir adım yoktu. <c>docker compose up</c> diyen biri
+/// AYAKTA ama TABLOSUZ bir sistem elde ediyor: API açılıyor, sağlık ucu
+/// yeşil yanıyor, ilk gerçek istek 500 dönüyor. Şema bu makinede elle
+/// (<c>dotnet ef database update</c>) kurulmuştu ve bu adım kimsenin
+/// göremeyeceği bir yerde, tek bir geliştiricinin makinesinde duruyordu.
+/// </para>
+/// <para>
+/// ÜRETİMDE ÇALIŞMIYOR — bilinçli. Orada birden çok kopya aynı anda açılır
+/// ve hepsi şemayı değiştirmeye kalkardı; ayrıca şema değişikliği gözden
+/// geçirilmesi gereken bir olaydır, açılışın yan etkisi değil. Üretimde
+/// migration dağıtım hattının ayrı bir adımı olarak koşar.
+/// </para>
+/// </remarks>
+static async Task ApplyMigrationsInDevelopment(WebApplication app)
+{
+    var options = app.Services.GetRequiredService<IOptions<IzOptions>>().Value;
+    if (options.IsProduction)
+    {
+        return;
+    }
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<IzDbContext>();
+
+    var bekleyen = (await db.Database.GetPendingMigrationsAsync()).ToList();
+    if (bekleyen.Count == 0)
+    {
+        return;
+    }
+
+    app.Logger.LogInformation(
+        "Bekleyen {Adet} migration uygulanıyor: {Migrationlar}",
+        bekleyen.Count,
+        string.Join(", ", bekleyen));
+
+    await db.Database.MigrateAsync();
+}
 
 /// <summary>
 /// Veritabanı bağlantı dizesi olmadan AÇILMAYIZ.
