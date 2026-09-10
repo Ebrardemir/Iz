@@ -14,8 +14,9 @@
 /// gerçek kaynağı olurdu ve biri diğerinden ayrıştığı gün ya doldurma hiç
 /// çalışmaz ya her açılışta yeniden çalışırdı.
 ///
-/// Sinyal HER KURULUMDA doğru başlıyor: kategoriler veritabanı açılırken
-/// `ownerId` varsayılanıyla ('local') tohumlanıyor.
+/// Sinyal, YALNIZ hesapsızken yazılmış içerik varsa yanıyor. Taze bir
+/// kurulumda hiçbir 'local' satır yok ve doldurmanın taşıyacağı bir şey de
+/// yok — sinyalin kapalı olması doğru.
 ///
 /// AYNI CİHAZDA İKİNCİ BİR HESAP açılırsa doldurma çalışmıyor — ve doğrusu
 /// bu: ilk kullanıcının verisi ikincinin hesabına gitmemeli.
@@ -81,7 +82,12 @@ class SyncBackfillDao extends DatabaseAccessor<AppDatabase>
       select(memories)..where((t) => t.ownerId.equals(Users.localId)),
       select(journalEntries)..where((t) => t.ownerId.equals(Users.localId)),
       select(people)..where((t) => t.ownerId.equals(Users.localId)),
-      select(categories)..where((t) => t.ownerId.equals(Users.localId)),
+      // SİSTEM KATEGORİLERİ SAYILMIYOR: cihaz geneli satırlar, sahipleri
+      // hiçbir zaman bir hesaba yazılmıyor (aşağıdaki `_sahipligiDuzelt`
+      // notu). Sayılsalardı sinyal HİÇBİR ZAMAN kapanmaz, doldurma her
+      // açılışta baştan koşardı.
+      select(categories)
+        ..where((t) => t.ownerId.equals(Users.localId) & t.isSystem.not()),
       select(collections)..where((t) => t.ownerId.equals(Users.localId)),
       select(rituals)..where((t) => t.ownerId.equals(Users.localId)),
     ]) {
@@ -288,9 +294,23 @@ class SyncBackfillDao extends DatabaseAccessor<AppDatabase>
     await duzelt(memories, memories.ownerId);
     await duzelt(journalEntries, journalEntries.ownerId);
     await duzelt(people, people.ownerId);
-    await duzelt(categories, categories.ownerId);
     await duzelt(collections, collections.ownerId);
     await duzelt(rituals, rituals.ownerId);
+
+    // SİSTEM KATEGORİLERİ 'local' KALIYOR — bilinçli.
+    //
+    // Cihaz geneli satırlar: kimlikleri sabit, her kurulumda aynı
+    // tohumlanıyorlar ve hiç senkronize edilmiyorlar. İlk giriş yapan hesaba
+    // yazsaydık, aynı cihazdaki İKİNCİ hesap hiç kategori göremezdi —
+    // sorgular sahibe göre süzülüyor (`category_dao.dart` `_kapsam`).
+    //
+    // Kullanıcının kendi kategorisi (FR-071) buraya girecek; öyle bir yazma
+    // yolu bugün yok.
+    await (update(
+      categories,
+    )..where((t) => t.ownerId.equals(Users.localId) & t.isSystem.not())).write(
+      RawValuesInsertable<CategoryRow>({'owner_id': Variable<String>(ownerId)}),
+    );
   }
 
   static Map<String, List<T>> _grupla<T>(

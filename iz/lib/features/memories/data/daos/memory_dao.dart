@@ -144,7 +144,14 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
         ),
     );
 
-    final query = select(memories).join([
+    // SAHİP SÜZGECİ EN BAŞTA. Bu, uygulamanın ana anı listesi: süzgeçsiz
+    // kaldığı sürece aynı cihazda ikinci bir hesapla giriş yapan kullanıcı
+    // birincinin bütün anılarını görüyordu.
+    //
+    // Süzgeci `join`den ÖNCE koyuyoruz ki sorgunun kurulduğu yerle aynı
+    // satırda dursun; aşağıya bir `query.where(...)` olarak eklenseydi
+    // araya giren bir düzenlemede kolayca kaybolurdu.
+    final query = selectOwned(memories, memories.ownerId).join([
       leftOuterJoin(mediaItems, mediaItems.id.equalsExp(memories.coverMediaId)),
       leftOuterJoin(locations, locations.id.equalsExp(memories.locationId)),
     ])..addColumns([mediaCountExp, personCountExp]);
@@ -265,8 +272,9 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
 
   /// FR-020 — detay ekranı için tüm ilişkileri yükler.
   Future<MemoryDetailRow?> findDetail(String id) async {
-    final memory = await (select(
+    final memory = await (selectOwned(
       memories,
+      memories.ownerId,
     )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
 
     if (memory == null) return null;
@@ -279,7 +287,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   /// eklendiğinde de tetiklenir, çünkü `upsertMemory` aynı transaction'da
   /// `memories.updatedAt` alanını da tazeler.
   Stream<MemoryDetailRow?> watchDetail(String id) {
-    return (select(memories)
+    return (selectOwned(memories, memories.ownerId)
           ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
         .watchSingleOrNull()
         .asyncMap((row) async => row == null ? null : await _detailOf(row));
@@ -378,7 +386,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   /// SQLite'ta tarih TEXT (ISO-8601) saklandığı için ay/gün karşılaştırmasını
   /// `strftime` ile yapıyoruz.
   Future<List<MemoryRow>> findOnThisDay(DateTime day) {
-    return (select(memories)
+    return (selectOwned(memories, memories.ownerId)
           ..where(
             (t) =>
                 t.deletedAt.isNull() &
@@ -475,11 +483,15 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   }) {
     return transaction(() async {
       final id = memory.id.value;
-      final onceki = await (select(
+      final onceki = await (selectOwned(
         memories,
+        memories.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-      await into(memories).insertOnConflictUpdate(memory);
+      // Sahip YAZMA ANINDA damgalanıyor; gerekçesi `activeOwnerId`de.
+      await into(
+        memories,
+      ).insertOnConflictUpdate(memory.copyWith(ownerId: Value(activeOwnerId)));
 
       await _syncPeople(id, personIds, now);
       await _syncCollections(id, collectionIds, now);
@@ -513,8 +525,9 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     required String outboxId,
     required DateTime now,
   }) async {
-    final row = await (select(
+    final row = await (selectOwned(
       memories,
+      memories.ownerId,
     )..where((t) => t.id.equals(memoryId))).getSingleOrNull();
     if (row == null) return;
 
@@ -820,6 +833,11 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   ///
   /// [now] DIŞARIDAN (TR-C-41): "30 gün doldu mu" kararı testte sabit bir
   /// ana göre verilebilsin.
+  ///
+  /// SAHİP SÜZGECİ YOK — bilinçli. 30 gün sözü ZAMANA bağlı, oturuma değil:
+  /// süresi dolmuş bir kaydın silinmesi, o sırada kimin giriş yaptığına
+  /// bağlanamaz. Süzseydik, uzun süre giriş yapmayan bir hesabın çöp kutusu
+  /// cihazda süresiz büyürdü.
   Future<int> purgeExpiredTrash({
     required DateTime now,
     Duration retention = const Duration(days: 30),
@@ -833,7 +851,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
   }
 
   Future<List<MemoryRow>> trashedMemories() =>
-      (select(memories)
+      (selectOwned(memories, memories.ownerId)
             ..where((t) => t.deletedAt.isNotNull())
             ..orderBy([(t) => OrderingTerm.desc(t.deletedAt)]))
           .get();
@@ -843,6 +861,7 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     final row =
         await (selectOnly(memories)
               ..addColumns([countExp])
+              ..where(ownedBy(memories.ownerId))
               ..where(memories.deletedAt.isNull()))
             .getSingle();
     return row.read(countExp) ?? 0;
@@ -861,15 +880,16 @@ class MemoryDao extends DatabaseAccessor<AppDatabase> with _$MemoryDaoMixin {
     OutboxOperation op = OutboxOperation.update,
   }) {
     return transaction(() async {
-      final current = await (select(
+      final current = await (selectOwned(
         memories,
+        memories.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (current == null) return;
 
-      await (update(
-        memories,
-      )..where((t) => t.id.equals(id))).write(build(current));
+      await (update(memories)
+            ..where((t) => t.id.equals(id) & ownedBy(memories.ownerId)))
+          .write(build(current));
 
       await _enqueue(
         id,

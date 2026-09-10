@@ -31,7 +31,7 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
   ///
   /// `deletedAt IS NULL` ZORUNLU (TR-C-32): silme tombstone.
   Stream<List<RitualRow>> watchRituals() {
-    return (select(rituals)
+    return (selectOwned(rituals, rituals.ownerId)
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .watch();
@@ -42,7 +42,8 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
   Future<RitualRow?> findRitual(String id) => _byId(id).getSingleOrNull();
 
   SimpleSelectStatement<$RitualsTable, RitualRow> _byId(String id) =>
-      select(rituals)..where((t) => t.id.equals(id) & t.deletedAt.isNull());
+      selectOwned(rituals, rituals.ownerId)
+        ..where((t) => t.id.equals(id) & t.deletedAt.isNull());
 
   /// Seri kimliği → bağlı anılar ve yılları.
   ///
@@ -98,14 +99,17 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
   }) {
     return transaction(() async {
       final id = ritual.id.value;
-      final current = await (select(
+      final current = await (selectOwned(
         rituals,
+        rituals.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(rituals).insertOnConflictUpdate(
         ritual.copyWith(
           updatedAt: Value(now),
           version: Value((current?.version ?? 0) + 1),
+          // Sahip YAZMA ANINDA damgalanıyor; gerekçesi `activeOwnerId`de.
+          ownerId: Value(activeOwnerId),
         ),
       );
 
@@ -138,8 +142,9 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
     required String outboxId,
     required DateTime now,
   }) async {
-    final row = await (select(
+    final row = await (selectOwned(
       rituals,
+      rituals.ownerId,
     )..where((t) => t.id.equals(ritualId))).getSingleOrNull();
     if (row == null) return;
 
@@ -223,13 +228,16 @@ class RitualDao extends DatabaseAccessor<AppDatabase> with _$RitualDaoMixin {
     required String outboxId,
   }) {
     return transaction(() async {
-      final current = await (select(
+      final current = await (selectOwned(
         rituals,
+        rituals.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (current == null) return;
 
-      await (update(rituals)..where((t) => t.id.equals(id))).write(
+      await (update(
+        rituals,
+      )..where((t) => t.id.equals(id) & ownedBy(rituals.ownerId))).write(
         RitualsCompanion(
           deletedAt: Value(now),
           updatedAt: Value(now),

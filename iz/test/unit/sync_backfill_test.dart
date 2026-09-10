@@ -49,14 +49,31 @@ void main() {
       jsonDecode(satir.payloadJson) as Map<String, Object?>;
 
   group('sinyal', () {
-    test('taze kurulumda doldurma GEREKİYOR', () async {
-      // Kategoriler `ownerId` varsayılanıyla ('local') tohumlanıyor, yani
-      // sinyal her kurulumda doğru başlıyor.
+    test('TAZE kurulumda doldurma GEREKMİYOR', () async {
+      // Taşınacak bir şey yok. Sistem kategorileri sayılmıyor: onlar cihaz
+      // geneli satırlar ve sahipleri hiçbir zaman bir hesaba yazılmıyor
+      // (yazsaydık aynı cihazdaki ikinci hesap hiç kategori göremezdi).
+      expect(await dao.needsBackfill(), isFalse);
+    });
+
+    test('hesapsızken yazılmış kayıt varsa doldurma GEREKİYOR', () async {
+      final repo = createTestRepository(db);
+      await repo.saveDraft(
+        MemoryDraft(occurredAt: kTestDatabaseNow, title: 'Hesapsız'),
+      );
+
       expect(await dao.needsBackfill(), isTrue);
     });
 
     test('doldurmadan SONRA sinyal kapanıyor', () async {
+      final repo = createTestRepository(db);
+      await repo.saveDraft(
+        MemoryDraft(occurredAt: kTestDatabaseNow, title: 'Hesapsız'),
+      );
+      expect(await dao.needsBackfill(), isTrue);
+
       await doldur();
+
       expect(await dao.needsBackfill(), isFalse);
     });
 
@@ -87,9 +104,14 @@ void main() {
       await doldur();
 
       expect((await db.select(db.memories).getSingle()).ownerId, sahip);
-      // Kategoriler de düzeltiliyor — sinyalin kapanması buna bağlı.
+
+      // SİSTEM KATEGORİLERİ DOKUNULMADAN KALIYOR: cihaz geneli satırlar.
+      // İlk giriş yapan hesaba yazsaydık aynı cihazdaki İKİNCİ hesap hiç
+      // kategori göremezdi — sorgular sahibe göre süzülüyor.
       expect(
-        (await db.select(db.categories).get()).every((c) => c.ownerId == sahip),
+        (await db.select(db.categories).get()).every(
+          (c) => c.ownerId == 'local',
+        ),
         isTrue,
       );
     });

@@ -13,6 +13,7 @@ library;
 
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:iz/core/database/owner_scope.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/secure_store.dart';
@@ -87,14 +88,18 @@ void main() {
     password: 'gizli123',
   );
 
+  late OwnerScope kapsam;
+
   setUp(() {
     auth = _MockFirebaseAuth();
     account = _FakeAccountApi();
     secureStore = _FakeSecureStore();
+    kapsam = OwnerScope();
     repository = FirebaseAuthRepository(
       auth: auth,
       account: account,
       secureStore: secureStore,
+      ownerScope: kapsam,
     );
   });
 
@@ -162,6 +167,12 @@ void main() {
 
       expect(session.email, 'ebru@ornek.com');
       expect(session.displayName, 'Ebru');
+
+      // Yerel veritabanının KAPSAMI da açılmış olmalı. Açılmasaydı çağıran
+      // taraf hemen veri okumaya başlar ve kullanıcı kendi anılarını BOŞ
+      // görürdü — üstelik bunu bir hata olarak değil "hiç anım yok" diye
+      // okurdu.
+      expect(kapsam.current, session.userId);
     });
 
     test('e-posta baştaki boşluklardan arındırılarak gönderilir', () async {
@@ -449,6 +460,11 @@ void main() {
 
       expect((result as Ok<AuthSession?>).value?.userId, 'onbellekteki-kimlik');
       expect(account.fetchCount, 0, reason: 'sunucuya sorulmamalıydı');
+
+      // Önbellekten dönen yolda da kapsam açılmalı: uygulamanın çoğu açılışı
+      // BU yoldan geçiyor. Yalnız ağdan dönen yolda açsaydık, uçak modunda
+      // açan kullanıcı kendi verisini boş görürdü.
+      expect(kapsam.current, 'onbellekteki-kimlik');
     });
 
     test(
@@ -502,6 +518,17 @@ void main() {
       expect(result, isA<Ok<Unit>>());
       expect(secureStore.values.containsKey(SecureKey.izUserId), isFalse);
       verify(auth.signOut).called(1);
+    });
+
+    test('çıkışta veritabanı kapsamı da KAPANIR', () async {
+      // Kapanmasaydı, çıkış yapan kullanıcının anıları ekranda kalmaya devam
+      // ederdi; hatta cihazı devralan biri onları görürdü.
+      when(auth.signOut).thenAnswer((_) async {});
+      kapsam.enter('01a06c5a-33d0-7907-a814-806b39a3719e');
+
+      await repository.signOut();
+
+      expect(kapsam.isLocal, isTrue);
     });
 
     test('şifre sıfırlama e-postası gönderilir', () async {

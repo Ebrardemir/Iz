@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // (`flutter analyze` bunu YAKALAMAZ: analysis_options.yaml `*.g.dart`
 //  dosyalarını hariç tutar. Hata ancak `flutter test`/`flutter run`
 //  sırasında görünür.)
+import 'package:iz/core/database/owner_scope.dart';
 import 'package:iz/features/auth/data/tables/user_tables.dart';
 import 'package:iz/features/categories/data/daos/category_dao.dart';
 import 'package:iz/features/categories/data/tables/category_tables.dart';
@@ -107,6 +108,14 @@ class AppDatabase extends _$AppDatabase {
   /// final db = AppDatabase.forTesting(NativeDatabase.memory());
   /// ```
   AppDatabase.forTesting(super.executor);
+
+  /// AKTİF HESAP — sahipli tablolardaki her okumanın kapsamı.
+  ///
+  /// Veritabanının kendisinde duruyor çünkü süzgeci uygulayan yer DAO'lar ve
+  /// onlar veritabanına `attachedDatabase` ile zaten erişiyor. Ayrı bir
+  /// provider'dan geçirseydik her DAO'nun kurucusuna bir parametre eklemek
+  /// gerekirdi; eklenmeyen tek DAO da sessizce süzgeçsiz kalırdı.
+  final ownerScope = OwnerScope();
 
   /// ŞEMA SÜRÜMÜ — her şema değişikliğinde artır.
   /// Artırmayı unutursan kullanıcının cihazındaki eski şema olduğu gibi
@@ -403,3 +412,33 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   ref.onDispose(db.close);
   return db;
 });
+
+/// Sahipli tablolarda AKTİF HESABIN kapsamı.
+///
+/// KURAL: sahipli bir tablodan (`OwnedTable`) okuyan her sorgu bu süzgeçten
+/// geçmek ZORUNDA. `select(memories)` yazmak serbest bırakılsaydı, unutulan
+/// tek sorgu sızıntının devam etmesi demek olurdu — bu yüzden çıplak
+/// kullanım CI'da yasak (`test/unit/sahip_suzgeci_test.dart`).
+extension OwnerScopedQueries on DatabaseAccessor<AppDatabase> {
+  /// Sahipli tablodan YALNIZ aktif hesabın satırlarını seçer.
+  ///
+  /// `select(...)` yerine bunu çağır. Sahip sütunu açıkça geçiliyor çünkü
+  /// `OwnedTable` bir mixin: Drift her tabloya kendi `ownerId` sütununu
+  /// üretiyor ve hepsini kapsayan ortak bir arayüz yok.
+  SimpleSelectStatement<T, D> selectOwned<T extends HasResultSet, D>(
+    ResultSetImplementation<T, D> tablo,
+    GeneratedColumn<String> sahip,
+  ) => select(tablo)..where((_) => ownedBy(sahip));
+
+  /// Aynı süzgecin İFADE hâli — join kuran ya da `selectOnly` kullanan
+  /// sorgular `selectOwned`ı kullanamıyor, süzgeci elle ekliyorlar.
+  Expression<bool> ownedBy(GeneratedColumn<String> sahip) =>
+      sahip.equals(activeOwnerId);
+
+  /// Yeni yazılan satırın sahibi.
+  ///
+  /// YAZMA ANINDA damgalanıyor, sonradan düzeltilmiyor. Satır varsayılan
+  /// `'local'` ile yazılsaydı, hesaplı kullanıcı kaydettiği anıyı ANINDA
+  /// kaybederdi: süzgeç onu kendi kapsamının dışında sayardı.
+  String get activeOwnerId => attachedDatabase.ownerScope.current;
+}
