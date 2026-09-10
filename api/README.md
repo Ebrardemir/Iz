@@ -6,9 +6,49 @@
 
 ## Hızlı başlangıç
 
+Gereken tek şey **Docker**. .NET SDK kurmana gerek yok — derleme de
+konteynerin içinde yapılıyor.
+
 ```bash
+git clone https://github.com/Ebrardemir/Iz.git
+cd Iz/api
+docker compose up --build          # ilk sefer birkaç dakika sürer
+curl http://localhost:8080/health  # {"status":"ok","environment":"dev"}
+```
+
+Bu kadar. Şema **açılışta kendiliğinden kuruluyor**: geliştirme ortamında
+API, bekleyen migration'ları uygulayarak başlıyor (bkz. `Program.cs`
+içindeki `ApplyMigrationsInDevelopment`). Boş bir veritabanıyla ilk
+açılışta loglarda şunu görürsün:
+
+```
+Bekleyen 3 migration uygulanıyor: 20260903114043_Faz1Kimlik, …
+```
+
+> EF, geçmiş tablosunu aramadan önce onun var olup olmadığını bilmiyor;
+> bu yüzden ilk açılışta `Failed executing DbCommand … __EFMigrationsHistory`
+> satırlarını görmen NORMAL. Tablo bir sonraki adımda oluşturuluyor.
+
+Sırlar yok, ek dosya yok: bağlantı dizeleri ve Firebase proje kimliği
+`docker-compose.yml` içinde açıkça duruyor. İkisi de sır değil — Firebase
+proje kimliği her mobil uygulamanın içine gömülü dağıtılıyor ve token'ı
+Google'ın AÇIK anahtarlarıyla doğruluyoruz (ADR-B15).
+
+### Ne çalıştığını nasıl anlarsın
+
+```bash
+curl http://localhost:8080/health/ready   # 200
+curl -i http://localhost:8080/v1/me       # 401 — token yok, DOĞRU davranış
+```
+
+`/v1/me` için 401 görmek iyi haber: istek kimlik katmanına ulaşmış demektir.
+500 görüyorsan şema kurulmamıştır; `docker compose logs api` bakılacak yer.
+
+### Sıfırdan başlamak
+
+```bash
+docker compose down -v   # -v: veritabanı birimini de siler
 docker compose up --build
-curl http://localhost:8080/health
 ```
 
 Docker olmadan:
@@ -28,6 +68,13 @@ dotnet test
 
 Şema EF Core migration'larıyla yönetilir; migration'lar `Iz.Infrastructure`
 içinde yaşar (ayrı bir `Iz.Migrations` projesi açılmadı — bir proje az, aynı iş).
+
+Geliştirme ortamında migration'lar açılışta kendiliğinden uygulanıyor, yani
+aşağıdaki `database update` komutuna günlük akışta ihtiyacın yok.
+**Üretimde bu otomatik adım ÇALIŞMIYOR** — bilinçli: orada birden çok kopya
+aynı anda açılır ve hepsi şemayı değiştirmeye kalkardı; ayrıca şema
+değişikliği gözden geçirilmesi gereken bir olaydır, açılışın yan etkisi
+değil.
 
 ```bash
 # Yeni migration üret
