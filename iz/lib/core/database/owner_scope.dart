@@ -21,6 +21,8 @@
 /// karşısına çıkıyor.
 library;
 
+import 'dart:async';
+
 /// Hesabı olmayan kullanıcının sahip kimliği.
 ///
 /// `OwnedTable.ownerId`nin varsayılanı ve `Users` tablosunda tohumlanan
@@ -45,20 +47,46 @@ final class OwnerScope {
 
   String _current = kLocalOwnerId;
 
+  final _degisimler = StreamController<String>.broadcast();
+
   /// Sorgulara giren sahip kimliği.
   String get current => _current;
+
+  /// Kapsam DEĞİŞTİĞİNDE yeni kimliği yayınlar.
+  ///
+  /// NEDEN VAR?
+  /// Giriş yapmak, uygulamanın "artık senkronize edilecek bir hesap var"
+  /// dediği andır — ve zamanlayıcının bunu duyması gerekiyor. Duymadığı
+  /// sürece ikinci cihazda giriş yapan kullanıcı verisinin gelmesi için
+  /// başka bir tetikleyiciyi (uygulamayı arka plana atıp geri açmak) BEKLEMEK
+  /// zorunda kalıyordu; veri "gecikmeli" geliyordu ve sebebi görünmüyordu.
+  ///
+  /// Kapsamı zaten giriş/çıkışın TEK geçtiği yer olarak kurmuştuk; haberi de
+  /// buradan vermek, aynı bilgiyi ikinci bir yerde tekrar takip etmekten
+  /// iyi. Yeni bir giriş yolu (Google, Apple) eklendiğinde tetikleyici
+  /// kendiliğinden çalışıyor.
+  Stream<String> get changes => _degisimler.stream;
 
   /// Hesap açıldı / oturum geri yüklendi.
   ///
   /// Boş ya da `null` kimlik ANLAMSIZ: öyle bir değerle damgalanmış satır
   /// hiçbir zaman geri okunamaz. Sessizce hesapsız kapsama düşüyoruz.
+  ///
+  /// AYNI kimlik tekrar girilirse haber VERİLMİYOR: her açılışta önbellekten
+  /// okunan kimlik, gereksiz bir eşitleme turu tetiklerdi.
   void enter(String? ownerId) {
-    _current = (ownerId == null || ownerId.isEmpty) ? kLocalOwnerId : ownerId;
+    final yeni = (ownerId == null || ownerId.isEmpty) ? kLocalOwnerId : ownerId;
+    if (yeni == _current) return;
+
+    _current = yeni;
+    if (!_degisimler.isClosed) _degisimler.add(yeni);
   }
 
   /// Çıkış yapıldı. Veri SİLİNMİYOR, yalnız görünmez oluyor.
-  void leave() => _current = kLocalOwnerId;
+  void leave() => enter(null);
 
   /// Hesapsız kullanım mı?
   bool get isLocal => _current == kLocalOwnerId;
+
+  Future<void> dispose() => _degisimler.close();
 }

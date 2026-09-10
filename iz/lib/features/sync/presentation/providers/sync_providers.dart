@@ -91,6 +91,9 @@ final syncSchedulerProvider = Provider<SyncScheduler?>((ref) {
   final zamanlayici = SyncScheduler(
     sync: motor,
     pendingCount: OutboxDao(ref.watch(appDatabaseProvider)).watchPendingCount(),
+    // Giriş yapıldığı an eşitleme başlasın; gerekçesi sınıfın başındaki
+    // "GİRİŞ TETİKLEYİCİSİ" notunda.
+    ownerChanges: ref.watch(appDatabaseProvider).ownerScope.changes,
   );
 
   final yasamDongusu = AppLifecycleListener(onResume: zamanlayici.onResumed);

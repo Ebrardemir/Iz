@@ -12,6 +12,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:iz/core/database/owner_scope.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/features/sync/data/repositories/sync_scheduler.dart';
@@ -53,12 +54,14 @@ final class _FakeSync implements SyncRepository {
 SyncScheduler _kur(
   _FakeSync motor,
   Stream<int> kuyruk, {
+  Stream<String>? hesapDegisimleri,
   Duration bekleme = const Duration(milliseconds: 40),
   Duration enAzYeniden = const Duration(milliseconds: 20),
   Duration enCokYeniden = const Duration(milliseconds: 80),
 }) => SyncScheduler(
   sync: motor,
   pendingCount: kuyruk,
+  ownerChanges: hesapDegisimleri,
   writeDebounce: bekleme,
   minRetryDelay: enAzYeniden,
   maxRetryDelay: enCokYeniden,
@@ -69,9 +72,84 @@ Future<void> _bekle([int ms = 120]) =>
 
 void main() {
   late StreamController<int> kuyruk;
+  late OwnerScope kapsam;
 
-  setUp(() => kuyruk = StreamController<int>.broadcast());
-  tearDown(() => kuyruk.close());
+  setUp(() {
+    kuyruk = StreamController<int>.broadcast();
+    kapsam = OwnerScope();
+  });
+
+  tearDown(() async {
+    await kuyruk.close();
+    await kapsam.dispose();
+  });
+
+  group('giriş', () {
+    test('GİRİŞ YAPILINCA hemen tur başlıyor', () async {
+      // GERÇEK OLAY: ikinci bir cihazda hesabına giren kullanıcının verisi
+      // gelmiyordu. Açılış turu, kullanıcı henüz giriş yapmadığı için boş
+      // dönüyordu; kuyruk beklemesi yalnız YAZMA olduğunda çalışır ve taze
+      // cihazda kuyruk boştur. Geriye tek yol kalıyordu: uygulamayı arka
+      // plana atıp geri açmak. Veri "gecikmeli" geliyordu.
+      final motor = _FakeSync();
+      _kur(motor, kuyruk.stream, hesapDegisimleri: kapsam.changes).start();
+      await _bekle();
+
+      final acilistakiTur = motor.cagriSayisi;
+
+      kapsam.enter('kullanici-1');
+      await _bekle();
+
+      expect(motor.cagriSayisi, acilistakiTur + 1);
+    });
+
+    test('BEKLEMEYE takılmıyor', () async {
+      // Otuz saniye bekletseydik kullanıcı çalışan bir eşitlemeyi bozuk
+      // sanardı.
+      final motor = _FakeSync();
+      _kur(
+        motor,
+        kuyruk.stream,
+        hesapDegisimleri: kapsam.changes,
+        bekleme: const Duration(seconds: 30),
+      ).start();
+      await _bekle();
+
+      final once = motor.cagriSayisi;
+      kapsam.enter('kullanici-1');
+      await _bekle(60);
+
+      expect(motor.cagriSayisi, once + 1);
+    });
+
+    test('AYNI hesap tekrar girilince tur AÇILMIYOR', () async {
+      // Her açılışta önbellekten okunan kimlik gereksiz bir tur tetiklerdi.
+      final motor = _FakeSync();
+      kapsam.enter('kullanici-1');
+      _kur(motor, kuyruk.stream, hesapDegisimleri: kapsam.changes).start();
+      await _bekle();
+
+      final once = motor.cagriSayisi;
+      kapsam.enter('kullanici-1');
+      await _bekle();
+
+      expect(motor.cagriSayisi, once);
+    });
+
+    test('ÇIKIŞ tur başlatmıyor', () async {
+      // Gönderilecek oturum yok; motor zaten hemen dönerdi.
+      final motor = _FakeSync();
+      kapsam.enter('kullanici-1');
+      _kur(motor, kuyruk.stream, hesapDegisimleri: kapsam.changes).start();
+      await _bekle();
+
+      final once = motor.cagriSayisi;
+      kapsam.leave();
+      await _bekle();
+
+      expect(motor.cagriSayisi, once);
+    });
+  });
 
   group('açılış', () {
     test('start() bir tur başlatıyor', () async {

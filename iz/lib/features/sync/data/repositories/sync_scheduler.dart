@@ -4,10 +4,19 @@
 /// durmalarının sebebi test edilebilirlik: motoru sınarken zamanlayıcı
 /// kurmak, zamanlayıcıyı sınarken sahte sunucu kurmak gerekirdi.
 ///
-/// ÜÇ TETİKLEYİCİ (BACKEND_YOL_HARITASI, Faz 3 istemci):
+/// TETİKLEYİCİLER (BACKEND_YOL_HARITASI, Faz 3 istemci):
+///   • uygulama açılışı
+///   • GİRİŞ YAPILDIĞI AN
 ///   • uygulama öne geldiğinde
 ///   • yazma sonrası bekleme (varsayılan 30 sn)
 ///   • kullanıcının "şimdi eşitle" demesi
+///
+/// GİRİŞ TETİKLEYİCİSİ SONRADAN EKLENDİ ve eksikliği şöyle görünüyordu:
+/// ikinci bir cihazda hesabına giren kullanıcının verisi GELMİYORDU. Açılış
+/// turu, kullanıcı henüz giriş yapmadığı için boş dönüyor; kuyruk beklemesi
+/// yalnız YAZMA olduğunda çalışıyor ve taze cihazda kuyruk boş. Geriye tek
+/// yol kalıyordu: uygulamayı arka plana atıp geri açmak. Veri "gecikmeli"
+/// geliyordu ve sebebi hiçbir yerde görünmüyordu.
 ///
 /// AYNI ANDA TEK TUR. Bir tur sürerken gelen tetikleyici yeni bir tur
 /// başlatmıyor, "bittiğinde bir daha koş" diye işaretliyor. Paralel iki tur,
@@ -21,6 +30,7 @@ library;
 import 'dart:async';
 import 'dart:math';
 
+import 'package:iz/core/database/owner_scope.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/result/result.dart';
 import 'package:iz/features/sync/domain/entities/sync_outcome.dart';
@@ -30,12 +40,16 @@ final class SyncScheduler {
   SyncScheduler({
     required SyncRepository sync,
     required Stream<int> pendingCount,
+
+    /// Giriş/çıkış haberleri. Yayınlanan değer yeni hesabın kimliği.
+    Stream<String>? ownerChanges,
     Duration writeDebounce = const Duration(seconds: 30),
     Duration minRetryDelay = const Duration(seconds: 5),
     Duration maxRetryDelay = const Duration(minutes: 10),
     Random? random,
   }) : _sync = sync,
        _pendingCount = pendingCount,
+       _ownerChanges = ownerChanges,
        _writeDebounce = writeDebounce,
        _minRetryDelay = minRetryDelay,
        _maxRetryDelay = maxRetryDelay,
@@ -43,6 +57,7 @@ final class SyncScheduler {
 
   final SyncRepository _sync;
   final Stream<int> _pendingCount;
+  final Stream<String>? _ownerChanges;
   final Duration _writeDebounce;
   final Duration _minRetryDelay;
   final Duration _maxRetryDelay;
@@ -51,6 +66,7 @@ final class SyncScheduler {
   static final _log = appLogger('sync.scheduler');
 
   StreamSubscription<int>? _kuyrukAbonesi;
+  StreamSubscription<String>? _hesapAbonesi;
   Timer? _bekleme;
   Timer? _yenidenDeneme;
 
@@ -73,6 +89,14 @@ final class SyncScheduler {
     // "yazdıktan sonra zamanlayıcıya haber ver" satırı eklemek, on beş yere
     // dağılmış ve biri bir gün unutulacak bir kural olurdu.
     _kuyrukAbonesi = _pendingCount.listen(_kuyrukDegisti);
+
+    // GİRİŞ ANINDA HEMEN BİR TUR.
+    //
+    // Beklemeye takılmıyor: kullanıcı hesabına yeni girdi ve verisinin
+    // gelmesini şimdi bekliyor. Otuz saniye beklemesi ya da uygulamayı
+    // kapatıp açması gerekseydi, çalışan bir eşitleme bozukmuş gibi
+    // görünürdü.
+    _hesapAbonesi = _ownerChanges?.listen(_hesapDegisti);
 
     // Açılışta hemen bir tur: uygulama kapalıyken başka cihazda yapılan
     // değişiklikler ekrana ilk açılışta gelsin.
@@ -99,6 +123,28 @@ final class SyncScheduler {
     _yenidenDeneme?.cancel();
 
     return _calistir(reason: 'manual', sonucIsteniyor: true);
+  }
+
+  /// Aktif hesap değişti — giriş ya da çıkış.
+  ///
+  /// ÇIKIŞTA TUR BAŞLATMIYORUZ: gönderilecek oturum yok, motor zaten hemen
+  /// dönerdi. Bekleyen tetikleyicileri iptal etmek ise gerekli — çıkıştan
+  /// sonra tetiklenen bir tur boşa koşardı.
+  void _hesapDegisti(String kimlik) {
+    if (_kapandi) return;
+
+    if (kimlik == kLocalOwnerId) {
+      _bekleme?.cancel();
+      _bekleme = null;
+      _yenidenDeneme?.cancel();
+      _yenidenDeneme = null;
+      return;
+    }
+
+    // Yeni hesap: geri çekilme sayacı da sıfırlanıyor. Önceki hesabın
+    // başarısız turları yüzünden yeni kullanıcıyı bekletmenin anlamı yok.
+    _basarisiz = 0;
+    unawaited(_calistir(reason: 'sign-in'));
   }
 
   /// Kuyruk sayacı değişti.
@@ -213,6 +259,7 @@ final class SyncScheduler {
     _bekleme?.cancel();
     _yenidenDeneme?.cancel();
     await _kuyrukAbonesi?.cancel();
+    await _hesapAbonesi?.cancel();
     await _suren;
   }
 }
