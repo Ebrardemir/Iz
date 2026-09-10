@@ -30,7 +30,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   ///
   /// `deletedAt IS NULL` ZORUNLU (TR-C-32): silme tombstone.
   Stream<List<JournalEntryRow>> watchEntries() {
-    return (select(journalEntries)
+    return (selectOwned(journalEntries, journalEntries.ownerId)
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.entryDate)]))
         .watch();
@@ -44,7 +44,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   SimpleSelectStatement<$JournalEntriesTable, JournalEntryRow> _byId(
     String id,
   ) =>
-      select(journalEntries)
+      selectOwned(journalEntries, journalEntries.ownerId)
         ..where((t) => t.id.equals(id) & t.deletedAt.isNull());
 
   /// Kaç günlük kaydı var? Ana sayfadaki sayaç için.
@@ -54,6 +54,7 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   Stream<int> watchCount() {
     final query = selectOnly(journalEntries)
       ..addColumns([journalEntries.id.count()])
+      ..where(ownedBy(journalEntries.ownerId))
       ..where(journalEntries.deletedAt.isNull());
 
     return query
@@ -75,14 +76,17 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
   }) {
     return transaction(() async {
       final id = entry.id.value;
-      final current = await (select(
+      final current = await (selectOwned(
         journalEntries,
+        journalEntries.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(journalEntries).insertOnConflictUpdate(
         entry.copyWith(
           updatedAt: Value(now),
           version: Value((current?.version ?? 0) + 1),
+          // Sahip YAZMA ANINDA damgalanıyor; gerekçesi `activeOwnerId`de.
+          ownerId: Value(activeOwnerId),
         ),
       );
 
@@ -123,8 +127,9 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
     required DateTime now,
     required JournalPrivacyMode? oncekiGizlilik,
   }) async {
-    final row = await (select(
+    final row = await (selectOwned(
       journalEntries,
+      journalEntries.ownerId,
     )..where((t) => t.id.equals(entryId))).getSingleOrNull();
     if (row == null) return;
 
@@ -255,13 +260,16 @@ class JournalDao extends DatabaseAccessor<AppDatabase> with _$JournalDaoMixin {
     OutboxOperation op = OutboxOperation.update,
   }) {
     return transaction(() async {
-      final current = await (select(
+      final current = await (selectOwned(
         journalEntries,
+        journalEntries.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (current == null) return;
 
-      await (update(journalEntries)..where((t) => t.id.equals(id))).write(
+      await (update(
+        journalEntries,
+      )..where((t) => t.id.equals(id) & ownedBy(journalEntries.ownerId))).write(
         build(
           current,
         ).copyWith(updatedAt: Value(now), version: Value(current.version + 1)),

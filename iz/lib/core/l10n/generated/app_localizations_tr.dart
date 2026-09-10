@@ -1198,6 +1198,10 @@ class AppL10nTr extends AppL10n {
   String get errorOffline => 'İnternet bağlantın yok gibi görünüyor.';
 
   @override
+  String get errorServerUnreachable =>
+      'İZ sunucusuna ulaşılamıyor. Bağlantını kontrol edip tekrar dene.';
+
+  @override
   String get errorValidationEmptyMemory =>
       'Bir anı en az bir not veya bir fotoğraf içermeli.';
 

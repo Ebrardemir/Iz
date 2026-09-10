@@ -32,6 +32,8 @@ library;
 
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iz/app/database/app_database.dart';
+import 'package:iz/core/database/owner_scope.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/network/network_providers.dart';
 import 'package:iz/core/result/result.dart';
@@ -44,13 +46,23 @@ final class FirebaseAuthRepository implements AuthRepository {
   const FirebaseAuthRepository({
     required AccountApi account,
     required SecureStore secureStore,
+    required OwnerScope ownerScope,
     fb.FirebaseAuth? auth,
   }) : _account = account,
        _secureStore = secureStore,
+       _ownerScope = ownerScope,
        _injected = auth;
 
   final AccountApi _account;
   final SecureStore _secureStore;
+
+  /// Yerel veritabanındaki okumaların kapsamı.
+  ///
+  /// Oturumun açıldığı/kapandığı TEK yer burası olduğu için kapsamı da
+  /// burası taşıyor. Başka bir yere koysaydık, bir gün eklenen ikinci bir
+  /// giriş yolu (Google, Apple) kapsamı güncellemeyi unuturdu ve kullanıcı
+  /// bir önceki hesabın verisini görürdü.
+  final OwnerScope _ownerScope;
 
   /// [auth] yalnız testlerde verilir; üretimde varsayılan örnek kullanılır.
   ///
@@ -150,6 +162,9 @@ final class FirebaseAuthRepository implements AuthRepository {
       // olsaydı, Firebase oturumu kapanmış ama bizim kimliğimiz cihazda
       // kalmış olurdu — sonraki kullanıcıya ait olmayan bir kimlik.
       await _secureStore.delete(SecureKey.izUserId);
+      // Hesabın verisi cihazda KALIYOR, yalnız görünmez oluyor: aynı hesapla
+      // tekrar giriş yapıldığında olduğu gibi geri geliyor.
+      _ownerScope.leave();
       await _auth.signOut();
       return okUnit;
     } on Object catch (error, stackTrace) {
@@ -175,6 +190,7 @@ final class FirebaseAuthRepository implements AuthRepository {
     // sunucuya sorsaydı, uçak modunda açan kullanıcı oturumunu kaybederdi.
     final cachedId = await _readCachedId();
     if (cachedId != null) {
+      _ownerScope.enter(cachedId);
       return Ok(
         AuthSession(
           userId: cachedId,
@@ -228,6 +244,9 @@ final class FirebaseAuthRepository implements AuthRepository {
     }
 
     await _cacheId(account.id);
+    // KAPSAMI AÇMADAN DÖNMEK OLMAZ: çağıran taraf hemen veri okumaya
+    // başlıyor ve kapsam hâlâ hesapsızken açılan bir liste boş görünürdü.
+    _ownerScope.enter(account.id);
 
     return Ok(
       AuthSession(
@@ -355,5 +374,6 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return FirebaseAuthRepository(
     account: AccountApi(client: ref.watch(apiClientProvider)),
     secureStore: ref.watch(secureStoreProvider),
+    ownerScope: ref.watch(appDatabaseProvider).ownerScope,
   );
 });

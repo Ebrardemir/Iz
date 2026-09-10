@@ -14,6 +14,7 @@ import 'package:iz/core/result/result.dart';
 import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/core/utils/id_generator.dart';
+import 'package:iz/features/memories/domain/entities/memory.dart';
 import 'package:iz/features/sync/data/daos/outbox_dao.dart';
 import 'package:iz/features/sync/data/repositories/sync_engine.dart';
 import 'package:iz/features/sync/data/sources/sync_api.dart';
@@ -748,6 +749,60 @@ void main() {
 
       expect(sonuc.valueOrNull!.pendingAfter, 1);
       expect((await db.syncStateDao.current()).pendingCount, 1);
+    });
+  });
+
+  // --- Geriye dönük doldurma ----------------------------------------------
+
+  group('geriye dönük doldurma', () {
+    test('hesap açılmadan önceki kayıt İLK turda gönderiliyor', () async {
+      // Motorun kablolaması: kayıt var, kuyrukta izi yok. Doldurma push'tan
+      // önce çalışmasaydı bu anı hiçbir zaman gönderilmezdi.
+      final repo = createTestRepository(db);
+      await repo.saveDraft(
+        MemoryDraft(occurredAt: kTestDatabaseNow, title: 'Hesapsız anı'),
+      );
+      await db.delete(db.outboxEntries).go();
+
+      final api = _FakeSyncApi();
+      final sonuc = await motor(api).syncNow();
+
+      expect(sonuc.valueOrNull!.pushed, 1);
+      expect(api.gonderilenGruplar.single.single.entityType, 'memory');
+    });
+
+    test('İKİNCİ turda tekrar gönderilmiyor', () async {
+      final repo = createTestRepository(db);
+      await repo.saveDraft(
+        MemoryDraft(occurredAt: kTestDatabaseNow, title: 'Bir kez yeter'),
+      );
+      await db.delete(db.outboxEntries).go();
+
+      await motor(_FakeSyncApi()).syncNow();
+
+      final ikinci = _FakeSyncApi();
+      final sonuc = await motor(ikinci).syncNow();
+
+      expect(sonuc.valueOrNull!.pushed, 0);
+      expect(ikinci.gonderilenGruplar, isEmpty);
+    });
+
+    test('kimlik YOKSA doldurma da çalışmıyor', () async {
+      // Kime ait olduğu bilinmeden sahiplik yazılamaz; yanlış kimliği yazmak
+      // veriyi başka bir hesaba bağlamak olurdu.
+      final repo = createTestRepository(db);
+      await repo.saveDraft(
+        MemoryDraft(occurredAt: kTestDatabaseNow, title: 'Sahipsiz'),
+      );
+      await db.delete(db.outboxEntries).go();
+
+      await motor(
+        _FakeSyncApi(),
+        identity: _FakeIdentity(userId: null),
+      ).syncNow();
+
+      expect(await db.syncBackfillDao.needsBackfill(), isTrue);
+      expect(await outbox.pending(), isEmpty);
     });
   });
 }

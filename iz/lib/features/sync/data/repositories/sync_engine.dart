@@ -104,6 +104,17 @@ final class SyncEngine implements SyncRepository {
         return const Err(NetworkFailure(message: 'device registration failed'));
       }
 
+      // GERİYE DÖNÜK DOLDURMA — PUSH'TAN ÖNCE.
+      //
+      // Kuyruk yalnız yeni yazmalarda doluyor; hesap açılmadan önce
+      // oluşturulmuş kayıtların kuyrukta satırı yok ve motor onları hiçbir
+      // zaman göndermez. Bu çağrı olmadan mevcut kullanıcının bütün geçmişi
+      // sessizce yerelde kalır (yol haritası: "Faz 1'in en riskli parçası").
+      //
+      // İlk turda çalışıp bir daha çalışmıyor: sinyal verinin kendisinde
+      // (bkz. SyncBackfillDao).
+      await _doldur(ownerId);
+
       var sonuc = const SyncOutcome();
 
       final push = await _push(deviceId: deviceId, outcome: sonuc);
@@ -169,6 +180,27 @@ final class SyncEngine implements SyncRepository {
     // ve push'un tek ihtiyacı o kimlik. İlk kurulumda `null` döner ve tur
     // burada biter — doğrusu da bu, cihazsız push reddedilir.
     return onbellek;
+  }
+
+  /// Hesap açılmadan önceki kayıtları kuyruğa taşır — bir kez.
+  ///
+  /// HATASI TURU DURDURMUYOR. Doldurma bir kereye mahsus bir onarım; orada
+  /// çıkan bir sorun yüzünden bugünkü değişikliklerin de gönderilememesi,
+  /// bir sorunu ikiye çıkarmak olurdu. Sayı loglanıyor ki sessiz kalmasın.
+  Future<void> _doldur(String ownerId) async {
+    try {
+      if (!await _db.syncBackfillDao.needsBackfill()) return;
+
+      final eklenen = await _db.syncBackfillDao.run(
+        ownerId: ownerId,
+        now: _clock.now(),
+        nextOutboxId: _ids.newId,
+      );
+
+      _log.info('backfill enqueued $eklenen existing records');
+    } on Object catch (error, stackTrace) {
+      _log.severe('backfill failed', error, stackTrace);
+    }
   }
 
   // --- Push --------------------------------------------------------------

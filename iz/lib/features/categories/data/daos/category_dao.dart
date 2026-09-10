@@ -25,13 +25,28 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///
   /// `deletedAt IS NULL` ZORUNLU (TR-C-32): silme tombstone.
   Stream<List<CategoryRow>> watchCategories() {
-    return (select(categories)
+    return (_kapsam()
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .watch();
   }
 
-  Future<CategoryRow?> findCategory(String id) => (select(
-    categories,
-  )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).getSingleOrNull();
+  Future<CategoryRow?> findCategory(String id) =>
+      (_kapsam()..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
+          .getSingleOrNull();
+
+  /// Aktif hesabın gördüğü kategoriler.
+  ///
+  /// SİSTEM KATEGORİLERİ HERKESE AÇIK — bilinçli. Kimlikleri sabit
+  /// (`cat_travel`…), her kurulumda aynı tohumlanıyorlar ve hiçbir zaman
+  /// senkronize edilmiyorlar; yani kullanıcıya ait bir içerik taşımıyorlar.
+  /// Onları da sahibe göre süzseydik aynı cihazda ikinci bir hesapla giriş
+  /// yapan kullanıcı HİÇ kategori göremezdi ve anı kaydetme ekranı boş bir
+  /// listeyle açılırdı.
+  ///
+  /// Kullanıcının KENDİ kategorisi (FR-071) sahibe göre süzülüyor. Böyle bir
+  /// yazma yolu henüz yok ama süzgeç şimdiden doğru yerde duruyor.
+  SimpleSelectStatement<$CategoriesTable, CategoryRow> _kapsam() =>
+      select(categories)
+        ..where((t) => ownedBy(categories.ownerId) | t.isSystem.equals(true));
 }

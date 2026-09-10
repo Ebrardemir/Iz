@@ -32,7 +32,7 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
   /// için satır tabloda kalmaya devam ediyor. Filtreyi unutan bir sorgu
   /// silinmiş kişiyi ekranda gösterir.
   Stream<List<PersonRow>> watchPeople() {
-    return (select(people)
+    return (selectOwned(people, people.ownerId)
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.isFavorite),
@@ -46,7 +46,8 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
   Future<PersonRow?> findPerson(String id) => _byId(id).getSingleOrNull();
 
   SimpleSelectStatement<$PeopleTable, PersonRow> _byId(String id) =>
-      select(people)..where((t) => t.id.equals(id) & t.deletedAt.isNull());
+      selectOwned(people, people.ownerId)
+        ..where((t) => t.id.equals(id) & t.deletedAt.isNull());
 
   /// Oluşturur veya günceller.
   ///
@@ -62,14 +63,17 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
   }) {
     return transaction(() async {
       final id = person.id.value;
-      final current = await (select(
+      final current = await (selectOwned(
         people,
+        people.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(people).insertOnConflictUpdate(
         person.copyWith(
           updatedAt: Value(now),
           version: Value((current?.version ?? 0) + 1),
+          // Sahip YAZMA ANINDA damgalanıyor; gerekçesi `activeOwnerId`de.
+          ownerId: Value(activeOwnerId),
         ),
       );
 
@@ -128,8 +132,9 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
     required String outboxId,
     required DateTime now,
   }) async {
-    final row = await (select(
+    final row = await (selectOwned(
       people,
+      people.ownerId,
     )..where((t) => t.id.equals(personId))).getSingleOrNull();
     if (row == null) return;
 
@@ -157,15 +162,16 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
     OutboxOperation op = OutboxOperation.update,
   }) {
     return transaction(() async {
-      final current = await (select(
+      final current = await (selectOwned(
         people,
+        people.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (current == null) return;
 
-      await (update(
-        people,
-      )..where((t) => t.id.equals(id))).write(build(current));
+      await (update(people)
+            ..where((t) => t.id.equals(id) & ownedBy(people.ownerId)))
+          .write(build(current));
 
       await _enqueue(
         id,

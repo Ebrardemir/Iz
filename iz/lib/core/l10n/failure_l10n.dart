@@ -60,8 +60,16 @@ extension FailureL10nX on Failure {
     EntitlementFailure(:final requiredPlan) => l10n.paywallFeatureLocked(
       requiredPlan,
     ),
-    NetworkFailure(:final isOffline) =>
-      isOffline ? l10n.errorOffline : l10n.errorNetwork,
+    // Üç ayrı durum, üç ayrı cümle: cihazın ağı yok / ağ var ama İZ
+    // sunucusu yanıt vermiyor / sunucu yanıt verdi ama hatalı.
+    NetworkFailure(:final isOffline, :final isServerUnreachable) => switch ((
+      isOffline,
+      isServerUnreachable,
+    )) {
+      (true, _) => l10n.errorOffline,
+      (_, true) => l10n.errorServerUnreachable,
+      _ => l10n.errorNetwork,
+    },
     UnexpectedFailure() => l10n.errorGeneric,
   };
 

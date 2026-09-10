@@ -11350,6 +11350,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final JournalDao journalDao = JournalDao(this as AppDatabase);
   late final SyncDao syncDao = SyncDao(this as AppDatabase);
   late final SyncStateDao syncStateDao = SyncStateDao(this as AppDatabase);
+  late final SyncBackfillDao syncBackfillDao = SyncBackfillDao(
+    this as AppDatabase,
+  );
   Selectable<String> searchMemoryIds({required String query}) {
     return customSelect(
       'SELECT memory_id FROM memory_search WHERE memory_search MATCH ?1 ORDER BY rank',

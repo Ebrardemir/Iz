@@ -10,6 +10,8 @@
 /// `failure_l10n.dart` seçer.
 library;
 
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:iz/core/error/failure.dart';
 import 'package:iz/core/network/problem_details.dart';
@@ -142,17 +144,18 @@ Failure mapProblemDetails(
 
 /// Yanıt hiç gelmeyen durumlar.
 Failure _connectionFailure(DioException error) => switch (error.type) {
-  // Kullanıcı çevrimdışı ya da sunucuya ulaşılamıyor. `isOffline`
-  // işaretlemek önemli: UI bunu "bağlantı yok" rozetine çeviriyor,
-  // "sunucu bozuk" mesajına değil.
+  // Ağ mı yok, sunucu mu yok? İKİSİ AYNI ŞEY DEĞİL ve karıştırmanın bedeli
+  // somut: uygulama uzun süre bağlantı hatalarının hepsine "internetin yok"
+  // dedi. Bir kez, geliştirme API'sinin portu değiştiği için ekranda
+  // "internet bağlantın yok" yazdı — oysa aynı anda Firebase girişi
+  // internetten geçip başarıyla tamamlanmıştı. Sorun aranan yerde değildi.
+  //
+  // Artık kararı [_agSebebi] işletim sisteminin verdiği hataya bakarak
+  // veriyor; tahmin etmiyoruz.
   DioExceptionType.connectionError ||
   DioExceptionType.connectionTimeout ||
   DioExceptionType.sendTimeout ||
-  DioExceptionType.receiveTimeout => NetworkFailure(
-    isOffline: true,
-    cause: error,
-    stackTrace: error.stackTrace,
-  ),
+  DioExceptionType.receiveTimeout => _agSebebi(error),
 
   // TLS doğrulaması başarısız. Ağ hatası gibi göstermek yanlış olurdu:
   // araya giren biri olabilir. Kullanıcıya genel hata, log'a gerçek sebep.
@@ -179,4 +182,53 @@ Failure _connectionFailure(DioException error) => switch (error.type) {
     cause: error,
     stackTrace: error.stackTrace,
   ),
+};
+
+/// Bağlantı kurulamadığında SEBEBİ işletim sisteminin hatasından okur.
+///
+/// VARSAYILAN "sunucuya ulaşılamıyor", "cihaz çevrimdışı" DEĞİL. Sebep:
+/// yanlış tarafa yönlendirmenin maliyeti simetrik değil. Sunucu gerçekten
+/// çökmüşken "internetini kontrol et" demek kullanıcıyı hiç bitmeyen bir
+/// arayışa sokuyor; ağı gerçekten yokken "sunucuya ulaşılamıyor" demek ise
+/// yalnızca eksik bilgi — kullanıcı zaten birazdan tekrar deniyor.
+///
+/// Çevrimdışı olduğunu ancak İŞLETİM SİSTEMİ söylerse iddia ediyoruz.
+Failure _agSebebi(DioException error) {
+  final socket = error.error;
+  final cevrimdisi = socket is SocketException && _cevrimdisiHatasi(socket);
+
+  return NetworkFailure(
+    isOffline: cevrimdisi,
+    isServerUnreachable: !cevrimdisi,
+    cause: error,
+    stackTrace: error.stackTrace,
+  );
+}
+
+/// İşletim sistemi "ağa hiç çıkamadım" mı diyor?
+///
+/// İki imza var:
+///   • DNS çözülemedi — cihazın ağı yoksa ilk takılan yer burasıdır.
+///   • Ağ / ana makine erişilemez (ENETUNREACH, EHOSTUNREACH).
+///
+/// Bağlantının REDDEDİLMESİ (ECONNREFUSED) bilerek dışarıda: paket karşı
+/// tarafa ULAŞTI ve reddedildi, yani ağ çalışıyor — dinleyen bir sunucu yok.
+bool _cevrimdisiHatasi(SocketException hata) {
+  // Mesaj metnine bakan tek yer. `osError` bu durumda genelde null olduğu
+  // için başka imza kalmıyor; metin Dart'ın kendi sabiti, işletim sisteminin
+  // yerelleştirilmiş metni değil.
+  if (hata.message.contains('Failed host lookup')) return true;
+
+  final kod = hata.osError?.errorCode;
+  return kod != null && _erisilemezKodlari.contains(kod);
+}
+
+/// ENETUNREACH ve EHOSTUNREACH — platformlara göre.
+///
+/// Numaraları platform başlıklarından geliyor ve değişmiyorlar; `errno`
+/// değerleri ABI'nin parçası. Windows'unkiler WSA* karşılıkları.
+const Set<int> _erisilemezKodlari = {
+  101, 113, // Linux / Android: ENETUNREACH, EHOSTUNREACH
+  51, 65, // macOS / iOS: ENETUNREACH, EHOSTUNREACH
+  10051, 10065, // Windows: WSAENETUNREACH, WSAEHOSTUNREACH
 };

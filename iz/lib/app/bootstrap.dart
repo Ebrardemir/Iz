@@ -24,6 +24,7 @@ import 'package:iz/core/config/feature_flags.dart';
 import 'package:iz/core/logging/app_logger.dart';
 import 'package:iz/core/network/auth_token_provider.dart';
 import 'package:iz/core/storage/app_preferences.dart';
+import 'package:iz/core/storage/secure_store.dart';
 import 'package:iz/core/utils/clock.dart';
 import 'package:iz/features/auth/data/repositories/firebase_auth_token_provider.dart';
 import 'package:iz/features/sync/presentation/providers/sync_providers.dart';
@@ -68,6 +69,16 @@ Future<void> bootstrap() async {
     ],
   );
 
+  // KAPSAMI AÇ — VERİ OKUNMADAN ÖNCE.
+  //
+  // Sahipli tablolardaki her sorgu aktif hesaba göre süzülüyor. Kapsam
+  // kurulmadan bir liste açılırsa hesaplı kullanıcı kendi verisini BOŞ
+  // görür; üstelik bunu bir hata olarak değil "hiç anım yok" diye okur.
+  //
+  // `runApp`tan ve zamanlayıcıdan ÖNCE ve `await` ile: ikisi de hemen veri
+  // okumaya başlıyor.
+  await _kapsamiAc(container, log);
+
   // ZAMANLAYICIYI UYANDIR.
   //
   // Riverpod tembel: bu satır olmazsa `syncSchedulerProvider` hiç
@@ -79,6 +90,29 @@ Future<void> bootstrap() async {
   unawaited(_runMaintenance(container, log));
 
   runApp(UncontrolledProviderScope(container: container, child: const IzApp()));
+}
+
+/// Cihazda saklı hesap kimliğini yerel veritabanının kapsamına yazar.
+///
+/// KİMLİK `SecureStore`DAN OKUNUYOR, sunucudan değil: açılış ağa
+/// bağlanamamalı. Uçak modunda açan kullanıcı da kendi verisini görmeli.
+///
+/// Okunamazsa hesapsız kapsamda kalıyoruz — güvenli yön. Ters varsayım
+/// (bilinmiyorsa her şeyi göster) tam da düzeltmeye çalıştığımız sızıntı
+/// olurdu.
+Future<void> _kapsamiAc(ProviderContainer container, Logger log) async {
+  try {
+    final kimlik = await container
+        .read(secureStoreProvider)
+        .read(SecureKey.izUserId);
+    container.read(appDatabaseProvider).ownerScope.enter(kimlik);
+  } on Object catch (e, s) {
+    log.warning(
+      'Hesap kapsamı okunamadı; hesapsız kipte devam ediliyor.',
+      e,
+      s,
+    );
+  }
 }
 
 /// Firebase'i başlatır — ama başlatamazsa uygulamayı DURDURMAZ.

@@ -87,13 +87,27 @@ final class AppConfig {
   /// gelir; "localhost" yazmak emülatörün KENDİSİNİ kastetmek olurdu.
   /// iOS simülatörü ve masaüstü ana makineyle aynı ağ isim alanındadır.
   ///
+  /// PORT NEDEN 8080?
+  /// `api/docker-compose.yml` API'yi bu portta dışarı açıyor ve yerel yığını
+  /// ayağa kaldırmanın belgelenmiş yolu o. Burada eskiden 5163 yazıyordu —
+  /// `dotnet run`'ın launchSettings.json'daki portu. İkisi ayrı olduğu için
+  /// `docker compose up` deyip `flutter run` diyen geliştirici hiç kimsenin
+  /// dinlemediği bir porta gidiyor, bağlantı reddediliyor ve ekranda
+  /// "internet bağlantın yok" yazıyordu. Firebase girişi başarılı olduğu
+  /// için hata bir kez daha yanıltıcıydı: internet gayet yerindeydi, kopan
+  /// yer yalnızca bizim sunucumuzdu.
+  ///
+  /// `dotnet run` ile çalışıyorsan portu açıkça geç:
+  ///   dotnet run --project api/src/Iz.Api --urls http://0.0.0.0:8080
+  /// ya da uygulamayı kendi portuna yönlendir.
+  ///
   /// GERÇEK TELEFONDA çalışıyorsan bu adres anlamsızdır — o durumda
   /// makinenin LAN adresini açıkça geç:
-  ///   flutter run --dart-define=IZ_API=http://192.168.1.x:5163
+  ///   flutter run --dart-define=IZ_API=http://192.168.1.x:8080
   static String get _localApiBaseUrl =>
       defaultTargetPlatform == TargetPlatform.android
-      ? 'http://10.0.2.2:5163'
-      : 'http://localhost:5163';
+      ? 'http://10.0.2.2:8080'
+      : 'http://localhost:8080';
 
   bool get isProd => environment == AppEnvironment.prod;
   bool get isDev => environment == AppEnvironment.dev;

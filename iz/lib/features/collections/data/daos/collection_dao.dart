@@ -34,7 +34,7 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   /// `deletedAt IS NULL` filtresi ZORUNLU (TR-C-32): silme tombstone olduğu
   /// için satır tabloda kalmaya devam ediyor.
   Stream<List<CollectionRow>> watchCollections() {
-    return (select(collections)
+    return (selectOwned(collections, collections.ownerId)
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .watch();
@@ -47,7 +47,8 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
       _byId(id).getSingleOrNull();
 
   SimpleSelectStatement<$CollectionsTable, CollectionRow> _byId(String id) =>
-      select(collections)..where((t) => t.id.equals(id) & t.deletedAt.isNull());
+      selectOwned(collections, collections.ownerId)
+        ..where((t) => t.id.equals(id) & t.deletedAt.isNull());
 
   /// Koleksiyon kimliği → içindeki anı kimlikleri.
   ///
@@ -62,6 +63,10 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
     // `deletedAt IS NULL` ZORUNLU (şema v8): bağlar artık silinmiyor,
     // tombstone'lanıyor. Süzgeci atlayan sorgu koleksiyondan çıkarılmış
     // anıyı göstermeye devam eder.
+    //
+    // SAHİP SÜZGECİ YOK — bağ tablolarının sahibi olmaz. Sonuç koleksiyon
+    // kimliğine göre gruplanıyor ve koleksiyonların kendisi zaten süzülüyor;
+    // başka hesaba ait bir kimliğin altındaki liste hiçbir zaman okunmuyor.
     final query = select(memoryCollections)
       ..where((t) => t.deletedAt.isNull())
       ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]);
@@ -91,14 +96,17 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
   }) {
     return transaction(() async {
       final id = collection.id.value;
-      final current = await (select(
+      final current = await (selectOwned(
         collections,
+        collections.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       await into(collections).insertOnConflictUpdate(
         collection.copyWith(
           updatedAt: Value(now),
           version: Value((current?.version ?? 0) + 1),
+          // Sahip YAZMA ANINDA damgalanıyor; gerekçesi `activeOwnerId`de.
+          ownerId: Value(activeOwnerId),
         ),
       );
 
@@ -130,13 +138,16 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
     required String outboxId,
   }) {
     return transaction(() async {
-      final current = await (select(
+      final current = await (selectOwned(
         collections,
+        collections.ownerId,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
       if (current == null) return;
 
-      await (update(collections)..where((t) => t.id.equals(id))).write(
+      await (update(
+        collections,
+      )..where((t) => t.id.equals(id) & ownedBy(collections.ownerId))).write(
         CollectionsCompanion(
           deletedAt: Value(now),
           updatedAt: Value(now),
@@ -166,8 +177,9 @@ class CollectionDao extends DatabaseAccessor<AppDatabase>
     required String outboxId,
     required DateTime now,
   }) async {
-    final row = await (select(
+    final row = await (selectOwned(
       collections,
+      collections.ownerId,
     )..where((t) => t.id.equals(collectionId))).getSingleOrNull();
     if (row == null) return;
 

@@ -5,7 +5,7 @@
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Geliştirme sırasında yerel API'ye (http://10.0.2.2:5163) şifresiz
+    <!-- Geliştirme sırasında yerel API'ye (http://10.0.2.2:8080) şifresiz
          bağlanabilmek için. Kural dosyasının başındaki nota bak; release
          derlemesi bu manifest'i görmez, dolayısıyla orada şifresiz trafik
          kapalı kalır. -->
